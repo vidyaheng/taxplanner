@@ -16,6 +16,7 @@ import {
 
 import {
   applyPlanningToDeductions,
+  calculatePlanningCapacity,
   calculatePlanningUsageDetails,
 } from "@/lib/tax/scenarios";
 
@@ -237,6 +238,18 @@ export default function PlannerPage() {
         })
     );
 
+  const planningCapacity =
+    calculatePlanningCapacity(
+      state.deductions,
+      (deductions) =>
+        calculateTax({
+          taxYear: state.taxYear,
+          income: state.income,
+          family: state.family,
+          deductions,
+        })
+    );
+
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -391,6 +404,11 @@ export default function PlannerPage() {
                         planningDetails[
                           field.key
                         ].allowedAdditional
+                      }
+                      capacity={
+                        planningCapacity[
+                          field.key
+                        ]
                       }
                       reasons={
                         planningDetails[
@@ -577,6 +595,7 @@ function PlannerInput({
   description,
   value,
   allowed,
+  capacity,
   reasons,
   onChange,
 }: {
@@ -584,6 +603,7 @@ function PlannerInput({
   description: string;
   value: number;
   allowed: number;
+  capacity: number;
 
   reasons:
     PlanningLimitReason[];
@@ -610,6 +630,16 @@ function PlannerInput({
 
           <div className="mt-1 text-sm leading-5 text-slate-400">
             {description}
+          </div>
+
+          <div className="mt-2 text-xs text-slate-500">
+            สิทธิลดหย่อนที่ยังเพิ่มได้โดยประมาณ{" "}
+            <span className="font-medium text-slate-700">
+              {formatNumber(
+                capacity
+              )}{" "}
+              บาท
+            </span>
           </div>
 
 

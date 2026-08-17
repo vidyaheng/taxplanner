@@ -841,3 +841,89 @@ export function calculatePlanningUsageDetails(
 
   return details;
 }
+
+export function calculatePlanningCapacity(
+  current: DeductionData,
+  getTaxResult: (
+    deductions: DeductionData
+  ) => TaxResult
+): PlanningData {
+  const currentResult =
+    getTaxResult(current);
+
+  /*
+   * จำนวนสำหรับใช้ probe แต่ละรายการ
+   *
+   * ไม่ใช่ Tax Rule ใหม่
+   * แต่ดึงเพดานที่ Tax Engine
+   * ส่งออกมาอยู่แล้ว เพื่อให้ยอด
+   * มากพอที่จะชนเพดานแน่นอน
+   */
+  const probeAmounts: PlanningData = {
+    lifeInsurance:
+      currentResult
+        .insuranceDeductions
+        .limits
+        .lifeAndHealthCombinedMax,
+
+    healthInsuranceSelf:
+      currentResult
+        .insuranceDeductions
+        .limits
+        .healthSelfMax,
+
+    pensionInsurance:
+      currentResult
+        .retirementDeductions
+        .pensionLifeRoomAvailable +
+      currentResult
+        .retirementDeductions
+        .limits
+        .pensionExtraMax,
+
+    rmf:
+      currentResult
+        .retirementDeductions
+        .limits
+        .rmfMax,
+
+    thaiEsg:
+      currentResult
+        .generalDeductions
+        .limits
+        .thaiEsgMax,
+  };
+
+  const capacity =
+    emptyPlanning();
+
+  for (
+    const key of
+    planningFieldOrder
+  ) {
+    const probe =
+      emptyPlanning();
+
+    /*
+     * ทดลองทีละรายการ
+     * เพื่อไม่ให้ capacity ของ
+     * Pension ไปกินสิทธิ RMF
+     * หรือกลับกัน
+     */
+    probe[key] =
+      probeAmounts[key];
+
+    const details =
+      calculatePlanningUsageDetails(
+        current,
+        probe,
+        getTaxResult
+      );
+
+    capacity[key] =
+      details[key]
+        .allowedAdditional;
+  }
+
+  return capacity;
+}

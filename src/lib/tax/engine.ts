@@ -844,6 +844,15 @@ export function calculateTax({
       rules
     );
 
+  /*
+   * effective tax rate หลัง deduction
+   */
+  const effectiveTaxRate =
+  totalGrossIncome > 0
+    ? taxBeforeCredits /
+      totalGrossIncome
+    : 0;
+
   return {
     taxYear,
 
@@ -895,6 +904,8 @@ export function calculateTax({
     taxSavingsFromCurrentDeductions,
 
     marginalTaxRate,
+
+    effectiveTaxRate,
 
     isComplete,
 

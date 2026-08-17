@@ -27,6 +27,8 @@ import {
 } from "@/types/planning";
 
 export interface TaxPlannerState {
+  schemaVersion: number;
+
   taxYear: number;
 
   income: IncomeData;
@@ -117,7 +119,15 @@ const emptyPlanning: PlanningData = {
   thaiEsg: 0,
 };
 
+const STORAGE_KEY =
+  "thai-tax-planner-v0.1";
+
+const CURRENT_SCHEMA_VERSION = 1;
+
 const initialState: TaxPlannerState = {
+  schemaVersion:
+  CURRENT_SCHEMA_VERSION,
+
   taxYear: 2569,
 
   income: emptyIncome,
@@ -158,6 +168,54 @@ type Action =
       type: "SET_PLANNING";
       payload: Partial<PlanningData>;
     };
+
+export function migrateStoredState(
+  stored: Partial<TaxPlannerState>
+): Partial<TaxPlannerState> {
+  let migrated = {
+    ...stored,
+  };
+
+  const version =
+    typeof stored.schemaVersion ===
+    "number"
+      ? stored.schemaVersion
+      : 0;
+
+  /*
+   * -------------------------
+   * Version 0 -> Version 1
+   * -------------------------
+   *
+   * State รุ่นแรกยังไม่มี:
+   * - schemaVersion
+   * - planning
+   */
+  if (version < 1) {
+    migrated = {
+      ...migrated,
+
+      schemaVersion: 1,
+
+      planning: {
+        ...emptyPlanning,
+
+        ...(migrated.planning ??
+          {}),
+      },
+    };
+  }
+
+  return {
+    ...migrated,
+
+    schemaVersion:
+      Math.max(
+        version,
+        CURRENT_SCHEMA_VERSION
+      ),
+  };
+}    
 
 function reducer(
   state: TaxPlannerState,
@@ -307,9 +365,6 @@ const TaxPlannerContext =
     null
   );
 
-const STORAGE_KEY =
-  "thai-tax-planner-v0.1";
-
 export function TaxPlannerProvider({
   children,
 }: {
@@ -335,9 +390,14 @@ export function TaxPlannerProvider({
         const parsed =
           JSON.parse(stored);
 
+        const migrated =
+          migrateStoredState(
+            parsed
+          );
+
         dispatch({
           type: "LOAD_STATE",
-          payload: parsed,
+          payload: migrated,
         });
       }
     } catch (error) {

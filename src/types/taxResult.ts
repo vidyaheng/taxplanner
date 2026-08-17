@@ -79,6 +79,8 @@ export interface TaxResult {
 
   marginalTaxRate: number;
 
+  effectiveTaxRate: number;
+
   isComplete: boolean;
 
   warnings: string[];

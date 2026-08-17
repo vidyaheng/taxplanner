@@ -8,6 +8,7 @@ import {
   applyPlanningToDeductions,
   calculatePlanningUsage,
   calculatePlanningUsageDetails,
+  calculatePlanningCapacity,
 } from "./scenarios";
 
 import {
@@ -1221,6 +1222,270 @@ describe(
         expect(
           current.rmf
         ).toBe(100_000);
+      }
+    );
+
+    it(
+      "คำนวณสิทธิคงเหลือของ life insurance โดยคำนึงถึง health ที่มีอยู่แล้ว",
+      () => {
+        const current = {
+          ...currentDeductions(),
+
+          lifeInsurance: 0,
+
+          healthInsuranceSelf:
+            25_000,
+        };
+
+        const income = {
+          monthlySalary:
+            100_000,
+
+          annualBonus: 0,
+          otherEmploymentIncome: 0,
+
+          hasOtherIncome: false,
+
+          otherIncome: {
+            commission: 0,
+            rent: 0,
+            professional: 0,
+            business: 0,
+            investment: 0,
+            other: 0,
+          },
+        };
+
+        const family = {
+          taxpayerBirthYearBE: null,
+          isThaiNational: null,
+
+          maritalStatus:
+            "single" as const,
+
+          spouseHasIncome: false,
+          marriedFullTaxYear: false,
+
+          children: [],
+          parents: [],
+          disabledDependents: [],
+          pregnancies: [],
+        };
+
+        const capacity =
+          calculatePlanningCapacity(
+            current,
+            (deductions) =>
+              calculateTax({
+                taxYear: 2569,
+                income,
+                family,
+                deductions,
+              })
+          );
+
+        expect(
+          capacity.lifeInsurance
+        ).toBe(75_000);
+      }
+    );
+
+    it(
+      "คำนวณสิทธิคงเหลือของ pension จากเพดานตามรายได้",
+      () => {
+        const current = {
+          ...currentDeductions(),
+
+          lifeInsurance:
+            100_000,
+
+          pensionInsurance:
+            100_000,
+
+          rmf: 0,
+          thaiEsg: 0,
+        };
+
+        const income = {
+          monthlySalary:
+            100_000,
+
+          annualBonus: 0,
+          otherEmploymentIncome: 0,
+
+          hasOtherIncome: false,
+
+          otherIncome: {
+            commission: 0,
+            rent: 0,
+            professional: 0,
+            business: 0,
+            investment: 0,
+            other: 0,
+          },
+        };
+
+        const family = {
+          taxpayerBirthYearBE: null,
+          isThaiNational: null,
+
+          maritalStatus:
+            "single" as const,
+
+          spouseHasIncome: false,
+          marriedFullTaxYear: false,
+
+          children: [],
+          parents: [],
+          disabledDependents: [],
+          pregnancies: [],
+        };
+
+        const capacity =
+          calculatePlanningCapacity(
+            current,
+            (deductions) =>
+              calculateTax({
+                taxYear: 2569,
+                income,
+                family,
+                deductions,
+              })
+          );
+
+        expect(
+          capacity.pensionInsurance
+        ).toBe(80_000);
+      }
+    );
+
+    it(
+      "คำนวณสิทธิคงเหลือของ RMF จาก retirement shared ceiling",
+      () => {
+        const current = {
+          ...currentDeductions(),
+
+          providentFund:
+            450_000,
+
+          pensionInsurance: 0,
+          rmf: 0,
+          thaiEsg: 0,
+        };
+
+        const income = {
+          monthlySalary:
+            300_000,
+
+          annualBonus: 0,
+          otherEmploymentIncome: 0,
+
+          hasOtherIncome: false,
+
+          otherIncome: {
+            commission: 0,
+            rent: 0,
+            professional: 0,
+            business: 0,
+            investment: 0,
+            other: 0,
+          },
+        };
+
+        const family = {
+          taxpayerBirthYearBE: null,
+          isThaiNational: null,
+
+          maritalStatus:
+            "single" as const,
+
+          spouseHasIncome: false,
+          marriedFullTaxYear: false,
+
+          children: [],
+          parents: [],
+          disabledDependents: [],
+          pregnancies: [],
+        };
+
+        const capacity =
+          calculatePlanningCapacity(
+            current,
+            (deductions) =>
+              calculateTax({
+                taxYear: 2569,
+                income,
+                family,
+                deductions,
+              })
+          );
+
+        expect(
+          capacity.rmf
+        ).toBe(50_000);
+      }
+    );
+
+    it(
+      "คำนวณสิทธิคงเหลือของ Thai ESG จากเพดานตามรายได้",
+      () => {
+        const current = {
+          ...currentDeductions(),
+
+          thaiEsg:
+            100_000,
+        };
+
+        const income = {
+          monthlySalary:
+            50_000,
+
+          annualBonus: 0,
+          otherEmploymentIncome: 0,
+
+          hasOtherIncome: false,
+
+          otherIncome: {
+            commission: 0,
+            rent: 0,
+            professional: 0,
+            business: 0,
+            investment: 0,
+            other: 0,
+          },
+        };
+
+        const family = {
+          taxpayerBirthYearBE: null,
+          isThaiNational: null,
+
+          maritalStatus:
+            "single" as const,
+
+          spouseHasIncome: false,
+          marriedFullTaxYear: false,
+
+          children: [],
+          parents: [],
+          disabledDependents: [],
+          pregnancies: [],
+        };
+
+        const capacity =
+          calculatePlanningCapacity(
+            current,
+            (deductions) =>
+              calculateTax({
+                taxYear: 2569,
+                income,
+                family,
+                deductions,
+              })
+          );
+
+        expect(
+          capacity.thaiEsg
+        ).toBe(80_000);
       }
     );
   }

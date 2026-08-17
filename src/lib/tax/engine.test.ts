@@ -135,6 +135,13 @@ describe("Tax Engine 2569", () => {
     ).toBe(0.25);
 
     expect(
+      result.effectiveTaxRate
+    ).toBeCloseTo(
+      125_000 / 1_200_000,
+      10
+    );
+
+    expect(
       result.isComplete
     ).toBe(true);
   });
@@ -233,6 +240,37 @@ describe("Tax Engine 2569", () => {
       result.marginalTaxRate
     ).toBe(0);
   });
+
+  it(
+    "อัตราภาษีที่แท้จริงเป็น 0 เมื่อไม่มีรายได้",
+    () => {
+      const result =
+        calculateTax({
+          taxYear: 2569,
+
+          income:
+            createIncome(),
+
+          family:
+            createFamily(),
+
+          deductions:
+            createDeductions(),
+        });
+
+      expect(
+        result.totalGrossIncome
+      ).toBe(0);
+
+      expect(
+        result.taxBeforeCredits
+      ).toBe(0);
+
+      expect(
+        result.effectiveTaxRate
+      ).toBe(0);
+    }
+  );
 
   it("หักค่าใช้จ่าย 40(1) ไม่เกิน 100,000 บาท", () => {
     const result = calculateTax({

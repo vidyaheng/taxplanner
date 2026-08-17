@@ -398,13 +398,13 @@ export default function DeductionsPage() {
           </div>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="grid gap-6 min-[960px]:grid-cols-[minmax(0,1fr)_320px] min-[960px]:items-start">
 
           {/* Main */}
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
 
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">
+              <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
                 ค่าลดหย่อนที่คุณมีอยู่แล้ว
               </h1>
 
@@ -450,9 +450,9 @@ export default function DeductionsPage() {
                             section.id
                           )
                         }
-                        className="flex w-full items-center justify-between gap-4 bg-white p-5 text-left transition hover:bg-slate-50"
+                        className="flex w-full items-center justify-between gap-4 bg-white p-4 text-left transition hover:bg-slate-50 sm:p-5"
                       >
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-lg font-semibold text-slate-900">
                             {
                               section.title
@@ -492,7 +492,7 @@ export default function DeductionsPage() {
                       </button>
 
                       {isOpen && (
-                        <div className="border-t border-slate-100 bg-slate-50/60 p-5">
+                        <div className="border-t border-slate-100 bg-slate-50/60 p-4 sm:p-5">
 
                           <div className="space-y-4">
 
@@ -753,7 +753,7 @@ export default function DeductionsPage() {
           </section>
 
           {/* Summary */}
-          <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:sticky lg:top-8">
+          <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 min-[960px]:sticky min-[960px]:top-8">
 
             <div className="text-sm font-medium text-slate-500">
               สรุปค่าลดหย่อน
@@ -765,7 +765,7 @@ export default function DeductionsPage() {
                 จำนวนที่กรอกทั้งหมด
               </div>
 
-              <div className="mt-1 text-3xl font-bold text-slate-900">
+              <div className="mt-1 break-words text-2xl font-bold text-slate-900 sm:text-3xl">
                 {formatNumber(
                   enteredTotal
                 )}
