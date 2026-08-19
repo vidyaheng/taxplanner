@@ -287,32 +287,83 @@ export default function FamilyPage() {
               <div className="mt-5 max-w-sm">
 
                 <label className="mb-2 block text-sm font-medium text-slate-700">
-                  ปีเกิด
+                  อายุในปีภาษี {state.taxYear}
                 </label>
 
-                <div className="relative">
-                  <input
-                    inputMode="numeric"
-                    value={
-                      family.taxpayerBirthYearBE ??
-                      ""
-                    }
-                    onChange={(e) =>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
                       setFamily({
-                        taxpayerBirthYearBE:
-                          parseNumber(
-                            e.target.value
-                          ) || null,
+                        taxpayerAge65OrOlder: false,
                       })
                     }
-                    placeholder="เช่น 2516"
-                    className="h-14 w-full rounded-xl border border-slate-300 px-4 pr-14 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                  />
+                    className={[
+                      "rounded-xl border px-4 py-3 text-sm font-medium transition",
+                      family.taxpayerAge65OrOlder === false
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    ต่ำกว่า 65 ปี
+                  </button>
 
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                    พ.ศ.
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFamily({
+                        taxpayerAge65OrOlder: true,
+                      })
+                    }
+                    className={[
+                      "rounded-xl border px-4 py-3 text-sm font-medium transition",
+                      family.taxpayerAge65OrOlder === true
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    65 ปีขึ้นไป
+                  </button>
                 </div>
+              </div>
+
+              <div className="mt-6">
+                <div className="mb-3 text-sm font-medium text-slate-700">
+                  อยู่ในประเทศไทยรวม 180 วันขึ้นไปในปีภาษีนี้
+                </div>
+
+                <div className="flex max-w-sm gap-2">
+                  <StatusButton
+                    active={
+                      family.isThaiTaxResident === true
+                    }
+                    onClick={() =>
+                      setFamily({
+                        isThaiTaxResident: true,
+                      })
+                    }
+                  >
+                    ใช่
+                  </StatusButton>
+
+                  <StatusButton
+                    active={
+                      family.isThaiTaxResident === false
+                    }
+                    onClick={() =>
+                      setFamily({
+                        isThaiTaxResident: false,
+                      })
+                    }
+                  >
+                    ไม่ใช่
+                  </StatusButton>
+                </div>
+
+                <p className="mt-2 text-sm text-slate-400">
+                  ใช้ตรวจสอบสิทธิยกเว้นเงินได้สำหรับผู้มีอายุ
+                  65 ปีขึ้นไป
+                </p>
               </div>
 
               <div className="mt-6">
@@ -535,10 +586,8 @@ export default function FamilyPage() {
                 </button>
               </div>
 
-              {family.children.length ===
-              0 ? (
-                <EmptyBox text="ยังไม่มีข้อมูลบุตร" />
-              ) : (
+              {family.children.length > 0 && (
+
                 <div className="mt-5 space-y-4">
 
                   {family.children.map(
@@ -708,10 +757,8 @@ export default function FamilyPage() {
                 </button>
               </div>
 
-              {family.parents.length ===
-              0 ? (
-                <EmptyBox text="ยังไม่มีข้อมูลบิดา / มารดา" />
-              ) : (
+              {family.parents.length >0 && (
+
                 <div className="mt-5 space-y-4">
 
                   {family.parents.map(
@@ -949,9 +996,8 @@ export default function FamilyPage() {
 
               {family
                 .disabledDependents
-                .length === 0 ? (
-                <EmptyBox text="ไม่มีข้อมูลผู้พิการ / ทุพพลภาพ" />
-              ) : (
+                .length > 0 && (
+
                 <div className="mt-5 space-y-4">
 
                   {family.disabledDependents.map(

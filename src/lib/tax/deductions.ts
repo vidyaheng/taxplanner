@@ -624,6 +624,100 @@ export function calculateGeneralDeductions({
     );
 
   /*
+  * -------------------------
+  * Thai ESGX from LTF transfer
+  * -------------------------
+  */
+
+  const thaiEsgxTransferredAmount =
+    Math.max(
+      0,
+      deductions
+        .ltfToThaiEsgxTransferAmount
+    );
+
+  const thaiEsgxEligibleTransferAmount =
+    Math.min(
+      thaiEsgxTransferredAmount,
+      rules.deductions
+        .sustainableInvestment
+        .thaiEsgxTransferMax
+    );
+
+  const thaiEsgxTransferAmountOverLimit =
+    Math.max(
+      0,
+      thaiEsgxTransferredAmount -
+        thaiEsgxEligibleTransferAmount
+    );
+
+  const thaiEsgxFirstYearAllowed =
+    Math.min(
+      thaiEsgxEligibleTransferAmount,
+      rules.deductions
+        .sustainableInvestment
+        .thaiEsgxFirstYearMax
+    );
+
+  const thaiEsgxCarryForwardAmount =
+    Math.max(
+      0,
+      thaiEsgxEligibleTransferAmount -
+        thaiEsgxFirstYearAllowed
+    );
+
+  const thaiEsgxCarryForwardPerYear =
+    thaiEsgxCarryForwardAmount /
+    rules.deductions
+      .sustainableInvestment
+      .thaiEsgxCarryForwardYears;
+
+  const thaiEsgxSchedule = [
+    {
+      taxYear: 2568,
+      allowed:
+        thaiEsgxFirstYearAllowed,
+    },
+    {
+      taxYear: 2569,
+      allowed:
+        thaiEsgxCarryForwardPerYear,
+    },
+    {
+      taxYear: 2570,
+      allowed:
+        thaiEsgxCarryForwardPerYear,
+    },
+    {
+      taxYear: 2571,
+      allowed:
+        thaiEsgxCarryForwardPerYear,
+    },
+    {
+      taxYear: 2572,
+      allowed:
+        thaiEsgxCarryForwardPerYear,
+    },
+  ];
+
+  const thaiEsgxTransfer = {
+    transferredAmount:
+      thaiEsgxTransferredAmount,
+
+    eligibleTransferAmount:
+      thaiEsgxEligibleTransferAmount,
+
+    transferAmountOverLimit:
+      thaiEsgxTransferAmountOverLimit,
+
+    allowedThisYear:
+      thaiEsgxCarryForwardPerYear,
+
+    schedule:
+      thaiEsgxSchedule,
+  };  
+
+  /*
    * -------------------------
    * Social Enterprise
    * -------------------------
@@ -664,12 +758,14 @@ export function calculateGeneralDeductions({
     socialSecurity.paid +
     homeLoanInterest.paid +
     thaiEsg.paid +
+    thaiEsgxTransfer.allowedThisYear +
     socialEnterpriseInvestment.paid;
 
   const totalAllowed =
     socialSecurity.allowed +
     homeLoanInterest.allowed +
     thaiEsg.allowed +
+    thaiEsgxTransfer.allowedThisYear +
     socialEnterpriseInvestment.allowed;
 
   const totalExcess =
@@ -685,6 +781,8 @@ export function calculateGeneralDeductions({
     homeLoanInterest,
 
     thaiEsg,
+
+    thaiEsgxTransfer,
 
     socialEnterpriseInvestment,
 
@@ -706,6 +804,21 @@ export function calculateGeneralDeductions({
         rules.deductions
           .sustainableInvestment
           .thaiEsgMax,
+
+      thaiEsgxTransferMax:
+        rules.deductions
+          .sustainableInvestment
+          .thaiEsgxTransferMax,
+
+      thaiEsgxFirstYearMax:
+        rules.deductions
+          .sustainableInvestment
+          .thaiEsgxFirstYearMax,
+
+      thaiEsgxCarryForwardYears:
+        rules.deductions
+          .sustainableInvestment
+          .thaiEsgxCarryForwardYears,
     },
 
     warnings,

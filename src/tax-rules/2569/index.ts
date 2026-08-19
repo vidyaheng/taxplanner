@@ -8,6 +8,10 @@ export const TAX_RULES_2569: TaxRuleSet = {
     max: 100_000,
   },
 
+  incomeExemptions: {
+    seniorResidentMax: 190_000,
+  },
+
   allowances: {
     taxpayer: 60_000,
 
@@ -20,6 +24,13 @@ export const TAX_RULES_2569: TaxRuleSet = {
     parent: 30_000,
 
     disabledDependent: 60_000,
+  },
+
+  otherIncomeExpenses: {
+    section40_3Rights: {
+      standardRate: 0.50,
+      standardMax: 100_000,
+    },
   },
 
   eligibility: {
@@ -82,6 +93,12 @@ export const TAX_RULES_2569: TaxRuleSet = {
       thaiEsgIncomeRate: 0.30,
 
       thaiEsgMax: 300_000,
+
+      thaiEsgxTransferMax: 500_000,
+
+      thaiEsgxFirstYearMax: 300_000,
+
+      thaiEsgxCarryForwardYears: 4,
     },
 
     familyMedical: {

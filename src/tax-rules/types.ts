@@ -11,6 +11,10 @@ export interface TaxRuleSet {
     max: number;
   };
 
+  incomeExemptions: {
+    seniorResidentMax: number;
+  };
+
   allowances: {
     taxpayer: number;
     spouse: number;
@@ -21,6 +25,13 @@ export interface TaxRuleSet {
 
     parent: number;
     disabledDependent: number;
+  };
+
+  otherIncomeExpenses: {
+    section40_3Rights: {
+      standardRate: number;
+      standardMax: number;
+    };
   };
 
   eligibility: {
@@ -72,7 +83,14 @@ export interface TaxRuleSet {
 
     sustainableInvestment: {
       thaiEsgIncomeRate: number;
+
       thaiEsgMax: number;
+
+      thaiEsgxTransferMax: number;
+
+      thaiEsgxFirstYearMax: number;
+
+      thaiEsgxCarryForwardYears: number;
     };
 
     familyMedical: {

@@ -22,9 +22,14 @@ export interface DeductionData {
    */
   thaiEsg: number;
 
-  // สิทธิจาก LTF ที่สับเปลี่ยนเป็น Thai ESGX
-  // และกระจายมาใช้ในปี 2569-2572
-  thaiEsgxCarryForward: number;
+  /*
+  * มูลค่า LTF ที่สับเปลี่ยนเป็น Thai ESGX
+  * ตามมาตรการปี 2568
+  *
+  * ผู้ใช้กรอกยอดที่สับเปลี่ยนจริง
+  * Engine เป็นผู้คำนวณสิทธิปี 2569-2572
+  */
+  ltfToThaiEsgxTransferAmount: number;
 
   /*
    * General deductions
@@ -115,12 +120,32 @@ export interface RetirementDeductionResult {
   warnings: string[];
 }
 
+export interface ThaiEsgxTransferYearResult {
+  taxYear: number;
+  allowed: number;
+}
+
+export interface ThaiEsgxTransferResult {
+  transferredAmount: number;
+
+  eligibleTransferAmount: number;
+
+  transferAmountOverLimit: number;
+
+  allowedThisYear: number;
+
+  schedule: ThaiEsgxTransferYearResult[];
+}
+
 export interface GeneralDeductionResult {
   socialSecurity: DeductionUsageItem;
 
   homeLoanInterest: DeductionUsageItem;
 
   thaiEsg: DeductionUsageItem;
+
+  thaiEsgxTransfer:
+  ThaiEsgxTransferResult;
 
   socialEnterpriseInvestment: DeductionUsageItem;
 
@@ -134,6 +159,10 @@ export interface GeneralDeductionResult {
     thaiEsgIncomeRate: number;
     thaiEsgIncomeLimit: number;
     thaiEsgMax: number;
+
+    thaiEsgxTransferMax: number;
+    thaiEsgxFirstYearMax: number;
+    thaiEsgxCarryForwardYears: number;
   };
 
   warnings: string[];

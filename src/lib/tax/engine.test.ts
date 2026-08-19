@@ -28,6 +28,16 @@ function createIncome(
       other: 0,
     },
 
+    detailedOtherIncome: {
+      section40_3: [],
+      section40_4Interest: [],
+      section40_4Dividend: [],
+      section40_5: [],
+      section40_6: [],
+      section40_7: [],
+      section40_8: [],
+    },
+
     ...values,
   };
 }
@@ -36,9 +46,17 @@ function createFamily(
   values: Partial<FamilyData> = {}
 ): FamilyData {
   return {
-    taxpayerBirthYearBE: null,
+    taxpayerAge65OrOlder: null,
+    isThaiTaxResident: null,
 
     isThaiNational: null,
+
+    seniorIncomeExemptionAllocation: {
+      section40_1: 0,
+      section40_2: 0,
+      section40_3Annuity: 0,
+      section40_3Rights: 0,
+    },
 
     maritalStatus: "single",
     spouseHasIncome: false,
@@ -72,7 +90,7 @@ function createDeductions(
     rmf: 0,
 
     thaiEsg: 0,
-    thaiEsgxCarryForward: 0,
+    ltfToThaiEsgxTransferAmount: 0,
 
     socialSecurity: 0,
     homeLoanInterest: 0,
@@ -145,6 +163,240 @@ describe("Tax Engine 2569", () => {
       result.isComplete
     ).toBe(true);
   });
+
+  it(
+    "ยกเว้นเงินได้ 190,000 บาทเมื่ออายุ 65 ปีขึ้นไปและเป็นผู้อยู่ในประเทศไทย",
+    () => {
+      const result =
+        calculateTax({
+          taxYear: 2569,
+
+          income:
+            createIncome({
+              monthlySalary:
+                100_000,
+            }),
+
+          family:
+            createFamily({
+              taxpayerAge65OrOlder:
+                true,
+
+              isThaiTaxResident:
+                true,
+            }),
+
+          deductions:
+            createDeductions(),
+        });
+
+      expect(
+        result.totalGrossIncome
+      ).toBe(1_200_000);
+
+      expect(
+        result.incomeExemptions
+          .seniorResident
+      ).toBe(190_000);
+
+      expect(
+        result.incomeExemptions
+          .total
+      ).toBe(190_000);
+
+      expect(
+        result.incomeAfterExemptions
+      ).toBe(1_010_000);
+
+      expect(
+        result.employmentExpense
+      ).toBe(100_000);
+
+      expect(
+        result.taxableIncome
+      ).toBe(850_000);
+
+      expect(
+        result.taxBeforeCredits
+      ).toBe(85_000);
+
+      expect(
+        result.marginalTaxRate
+      ).toBe(0.2);
+    }
+  );
+
+  it(
+    "ไม่ให้สิทธิยกเว้น 190,000 บาทเมื่ออายุ 65 ปีขึ้นไปแต่ไม่เป็นผู้อยู่ในประเทศไทย",
+    () => {
+      const result =
+        calculateTax({
+          taxYear: 2569,
+
+          income:
+            createIncome({
+              monthlySalary:
+                100_000,
+            }),
+
+          family:
+            createFamily({
+              taxpayerAge65OrOlder:
+                true,
+
+              isThaiTaxResident:
+                false,
+            }),
+
+          deductions:
+            createDeductions(),
+        });
+
+      expect(
+        result.incomeExemptions
+          .seniorResident
+      ).toBe(0);
+
+      expect(
+        result.incomeAfterExemptions
+      ).toBe(1_200_000);
+
+      expect(
+        result.taxableIncome
+      ).toBe(1_040_000);
+
+      expect(
+        result.taxBeforeCredits
+      ).toBe(125_000);
+    }
+  );
+
+  it(
+    "ผู้มีอายุ 65 ปีขึ้นไปสามารถเลือกใช้สิทธิยกเว้น 190,000 บาทกับ 40(1) แทน 40(2) ได้",
+    () => {
+      const result =
+        calculateTax({
+          taxYear: 2569,
+
+          income:
+            createIncome({
+              monthlySalary:
+                50_000,
+
+              hasOtherIncome:
+                true,
+
+              otherIncome: {
+                commission:
+                  2_000_000,
+
+                rent: 0,
+                professional: 0,
+                business: 0,
+                investment: 0,
+                other: 0,
+              },
+            }),
+
+          family:
+            createFamily({
+              taxpayerAge65OrOlder:
+                true,
+
+              isThaiTaxResident:
+                true,
+
+              seniorIncomeExemptionAllocation:
+                {
+                  section40_1:
+                    190_000,
+
+                  section40_2: 0,
+                  section40_3Annuity: 0,
+                  section40_3Rights: 0,
+                },
+            }),
+
+          deductions:
+            createDeductions(),
+        });
+
+      expect(
+        result.incomeExemptions
+          .seniorResident
+      ).toBe(190_000);
+
+      expect(
+        result.incomeAfterExemptions
+      ).toBe(2_410_000);
+
+      /*
+      * เลือกใช้สิทธิทั้งหมดกับ 40(1)
+      * ดังนั้น 40(2) จำนวน 2,000,000
+      * ยังอยู่ในฐานวิธี 0.5% เต็มจำนวน
+      */
+      expect(
+        result.method2Tax
+      ).toBe(10_000);
+    }
+  );
+
+  it(
+    "Method 2 ใช้เงินได้ 40(2) หลังหักสิทธิผู้สูงอายุ 190,000 บาท",
+    () => {
+      const result =
+        calculateTax({
+          taxYear: 2569,
+
+          income:
+            createIncome({
+              hasOtherIncome:
+                true,
+
+              otherIncome: {
+                commission:
+                  1_200_000,
+
+                rent: 0,
+                professional: 0,
+                business: 0,
+                investment: 0,
+                other: 0,
+              },
+            }),
+
+          family:
+            createFamily({
+              taxpayerAge65OrOlder:
+                true,
+
+              isThaiTaxResident:
+                true,
+            }),
+
+          deductions:
+            createDeductions(),
+        });
+
+      expect(
+        result.incomeExemptions
+          .seniorResident
+      ).toBe(190_000);
+
+      /*
+      * 40(2) หลังยกเว้น
+      * = 1,200,000 - 190,000
+      * = 1,010,000
+      *
+      * Method 2
+      * = 1,010,000 × 0.5%
+      * = 5,050
+      */
+      expect(
+        result.method2Tax
+      ).toBe(5_050);
+    }
+  );
 
   it("เพิ่มค่าลดหย่อนคู่สมรสเมื่อสมรสและคู่สมรสไม่มีเงินได้", () => {
     const result = calculateTax({
@@ -416,6 +668,87 @@ describe("Tax Engine 2569", () => {
         result.generalDeductions
           .thaiEsg.excess
       ).toBe(100_000);
+    }
+  );
+
+  it(
+    "คำนวณสิทธิ Thai ESGX จากยอด LTF ที่สับเปลี่ยน 380,000 บาท",
+    () => {
+      const result =
+        calculateTax({
+          taxYear: 2569,
+
+          income:
+            createIncome({
+              monthlySalary:
+                100_000,
+            }),
+
+          family:
+            createFamily(),
+
+          deductions:
+            createDeductions({
+              ltfToThaiEsgxTransferAmount:
+                380_000,
+            }),
+        });
+
+      expect(
+        result.generalDeductions
+          .thaiEsgxTransfer
+          .transferredAmount
+      ).toBe(380_000);
+
+      expect(
+        result.generalDeductions
+          .thaiEsgxTransfer
+          .eligibleTransferAmount
+      ).toBe(380_000);
+
+      expect(
+        result.generalDeductions
+          .thaiEsgxTransfer
+          .transferAmountOverLimit
+      ).toBe(0);
+
+      expect(
+        result.generalDeductions
+          .thaiEsgxTransfer
+          .allowedThisYear
+      ).toBe(20_000);
+
+      expect(
+        result.generalDeductions
+          .totalAllowed
+      ).toBe(20_000);
+
+      expect(
+        result.generalDeductions
+          .thaiEsgxTransfer
+          .schedule
+      ).toEqual([
+        {
+          taxYear: 2568,
+          allowed: 300_000,
+        },
+        {
+          taxYear: 2569,
+          allowed: 20_000,
+        },
+        {
+          taxYear: 2570,
+          allowed: 20_000,
+        },
+        {
+          taxYear: 2571,
+          allowed: 20_000,
+        },
+        {
+          taxYear: 2572,
+          allowed: 20_000,
+        },
+      ]);
     }
   );
 

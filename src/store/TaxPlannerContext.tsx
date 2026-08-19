@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import {
+  DetailedOtherIncomeData,
   IncomeData,
   OtherIncomeKey,
 } from "@/types/income";
@@ -40,6 +41,23 @@ export interface TaxPlannerState {
   planning: PlanningData;
 }
 
+const emptyDetailedOtherIncome:
+  DetailedOtherIncomeData = {
+  section40_3: [],
+
+  section40_4Interest: [],
+
+  section40_4Dividend: [],
+
+  section40_5: [],
+
+  section40_6: [],
+
+  section40_7: [],
+
+  section40_8: [],
+};
+
 const emptyIncome: IncomeData = {
   monthlySalary: 0,
   annualBonus: 0,
@@ -55,12 +73,24 @@ const emptyIncome: IncomeData = {
     investment: 0,
     other: 0,
   },
+
+  detailedOtherIncome: {
+    ...emptyDetailedOtherIncome,
+  },
 };
 
 const emptyFamily: FamilyData = {
-  taxpayerBirthYearBE: null,
+  taxpayerAge65OrOlder: null,
+  isThaiTaxResident: null,
 
   isThaiNational: null,
+
+  seniorIncomeExemptionAllocation: {
+    section40_1: 0,
+    section40_2: 0,
+    section40_3Annuity: 0,
+    section40_3Rights: 0,
+  },
 
   maritalStatus: "single",
 
@@ -93,7 +123,7 @@ const emptyDeductions: DeductionData = {
 
   thaiEsg: 0,
 
-  thaiEsgxCarryForward: 0,
+  ltfToThaiEsgxTransferAmount: 0,
 
   socialSecurity: 0,
   homeLoanInterest: 0,
@@ -122,7 +152,7 @@ const emptyPlanning: PlanningData = {
 const STORAGE_KEY =
   "thai-tax-planner-v0.1";
 
-const CURRENT_SCHEMA_VERSION = 1;
+const CURRENT_SCHEMA_VERSION = 6;
 
 const initialState: TaxPlannerState = {
   schemaVersion:
@@ -150,6 +180,10 @@ type Action =
       amount: number;
     }
   | {
+      type: "SET_DETAILED_OTHER_INCOME";
+      payload: Partial<DetailedOtherIncomeData>;
+    }
+  | {
       type: "SET_FAMILY";
       payload: Partial<FamilyData>;
     }
@@ -172,25 +206,13 @@ type Action =
 export function migrateStoredState(
   stored: Partial<TaxPlannerState>
 ): Partial<TaxPlannerState> {
-  let migrated = {
-    ...stored,
-  };
+  let migrated = { ...stored };
 
   const version =
-    typeof stored.schemaVersion ===
-    "number"
+    typeof stored.schemaVersion === "number"
       ? stored.schemaVersion
       : 0;
 
-  /*
-   * -------------------------
-   * Version 0 -> Version 1
-   * -------------------------
-   *
-   * State รุ่นแรกยังไม่มี:
-   * - schemaVersion
-   * - planning
-   */
   if (version < 1) {
     migrated = {
       ...migrated,
@@ -199,21 +221,198 @@ export function migrateStoredState(
 
       planning: {
         ...emptyPlanning,
-
-        ...(migrated.planning ??
-          {}),
+        ...(migrated.planning ?? {}),
       },
+    };
+  }
+
+  if (version < 2) {
+    if (migrated.deductions) {
+      const legacyDeductions = {
+        ...migrated.deductions,
+      } as DeductionData & {
+        thaiEsgxCarryForward?: number;
+      };
+
+      delete legacyDeductions
+        .thaiEsgxCarryForward;
+
+      migrated = {
+        ...migrated,
+
+        deductions: {
+          ...legacyDeductions,
+
+          ltfToThaiEsgxTransferAmount: 0,
+        },
+      };
+    }
+
+    migrated = {
+      ...migrated,
+      schemaVersion: 2,
+    };
+  }
+
+  if (version < 3) {
+    if (migrated.family) {
+      const legacyFamily = {
+        ...migrated.family,
+      } as FamilyData & {
+        taxpayerBirthYearBE?:
+          number | null;
+      };
+
+      const legacyBirthYear =
+        legacyFamily
+          .taxpayerBirthYearBE;
+
+      const existingAgeStatus =
+        legacyFamily
+          .taxpayerAge65OrOlder;
+
+      const existingTaxResident =
+        legacyFamily
+          .isThaiTaxResident;
+
+      const taxpayerAge65OrOlder =
+        typeof existingAgeStatus ===
+        "boolean"
+          ? existingAgeStatus
+          : typeof legacyBirthYear ===
+                "number" &&
+              typeof migrated.taxYear ===
+                "number"
+            ? migrated.taxYear -
+                legacyBirthYear >=
+              65
+            : null;
+
+      delete legacyFamily
+        .taxpayerBirthYearBE;
+
+      migrated = {
+        ...migrated,
+
+        family: {
+          ...legacyFamily,
+
+          taxpayerAge65OrOlder,
+
+          isThaiTaxResident:
+            typeof existingTaxResident ===
+            "boolean"
+              ? existingTaxResident
+              : null,
+        },
+      };
+    }
+
+    migrated = {
+      ...migrated,
+      schemaVersion: 3,
+    };
+  }
+
+  if (version < 4) {
+    migrated = {
+      ...migrated,
+
+      income: migrated.income
+        ? {
+            ...migrated.income,
+
+            detailedOtherIncome: {
+              ...emptyDetailedOtherIncome,
+
+              ...(
+                migrated.income
+                  .detailedOtherIncome ?? {}
+              ),
+            },
+          }
+        : migrated.income,
+
+      schemaVersion: 4,
+    };
+  }
+
+  if (version < 5) {
+    migrated = {
+      ...migrated,
+
+      family: migrated.family
+        ? {
+            ...migrated.family,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_1 ?? 0,
+
+              section40_2:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_2 ?? 0,
+
+              section40_3Annuity:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Annuity ?? 0,
+
+              section40_3Rights:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Rights ?? 0,
+            },
+          }
+        : migrated.family,
+
+      schemaVersion: 5,
+    };
+  }
+
+  if (version < 6) {
+    migrated = {
+      ...migrated,
+
+      family: migrated.family
+        ? {
+            ...migrated.family,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_1 ?? 0,
+
+              section40_2:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_2 ?? 0,
+
+              /*
+              * schema 5 มี section40_3 รวมก้อนเดียว
+              * จึงไม่เดาว่าเป็น annuity หรือ rights
+              */
+              section40_3Annuity: 0,
+              section40_3Rights: 0,
+            },
+          }
+        : migrated.family,
+
+      schemaVersion: 6,
     };
   }
 
   return {
     ...migrated,
 
-    schemaVersion:
-      Math.max(
-        version,
-        CURRENT_SCHEMA_VERSION
-      ),
+    schemaVersion: Math.max(
+      version,
+      CURRENT_SCHEMA_VERSION
+    ),
   };
 }    
 
@@ -245,6 +444,20 @@ function reducer(
           },
         },
       };
+
+    case "SET_DETAILED_OTHER_INCOME":
+      return {
+        ...state,
+
+        income: {
+          ...state.income,
+
+          detailedOtherIncome: {
+            ...state.income.detailedOtherIncome,
+            ...action.payload,
+          },
+        },
+      };  
 
     case "SET_FAMILY":
       return {
@@ -289,6 +502,11 @@ function reducer(
           otherIncome: {
             ...state.income.otherIncome,
             ...(loaded.income?.otherIncome ?? {}),
+          },
+
+          detailedOtherIncome: {
+            ...state.income.detailedOtherIncome,
+            ...(loaded.income?.detailedOtherIncome ?? {}),
           },
         },
 
@@ -343,6 +561,10 @@ interface TaxPlannerContextValue {
   setOtherIncome: (
     key: OtherIncomeKey,
     amount: number
+  ) => void;
+
+  setDetailedOtherIncome: (
+    payload: Partial<DetailedOtherIncomeData>
   ) => void;
 
   setFamily: (
@@ -446,6 +668,15 @@ export function TaxPlannerProvider({
     });
   }
 
+  function setDetailedOtherIncome(
+    values: Partial<DetailedOtherIncomeData>
+  ) {
+    dispatch({
+      type: "SET_DETAILED_OTHER_INCOME",
+      payload: values,
+    });
+  }
+
   function setFamily(
     values: Partial<FamilyData>
   ) {
@@ -485,6 +716,7 @@ export function TaxPlannerProvider({
         state,
         setIncome,
         setOtherIncome,
+        setDetailedOtherIncome,
         setFamily,
         setDeductions,
         setPlanning,

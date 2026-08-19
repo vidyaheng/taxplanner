@@ -17,6 +17,10 @@ import {
   calculateDonationDeductions,
 } from "@/lib/tax/deductions";
 
+import {
+  calculateSeniorIncomeExemption,
+} from "./income-exemption";
+
 interface CalculateTaxInput {
   taxYear: number;
 
@@ -511,6 +515,70 @@ export function calculateTax({
     supportedIncome +
     unsupportedOtherIncome;
 
+  /*
+  * --------------------
+  * INCOME EXEMPTIONS
+  * Senior 65+ resident
+  * --------------------
+  */
+
+  const isSeniorResidentEligible =
+    family.taxpayerAge65OrOlder === true &&
+    family.isThaiTaxResident === true;
+
+  const seniorIncomeExemption =
+    calculateSeniorIncomeExemption({
+      eligible:
+        isSeniorResidentEligible,
+
+      maxExemption:
+        rules.incomeExemptions
+          .seniorResidentMax,
+
+      income: {
+        section40_1,
+        section40_2,
+
+        // 40(3) ยังไม่ได้เสียบเข้า Engine ตอนนี้
+        section40_3Annuity: 0,
+        section40_3Rights: 0,
+      },
+
+      requested:
+        family
+          .seniorIncomeExemptionAllocation,
+    });
+
+  const seniorResidentExemption =
+    seniorIncomeExemption.total;
+
+  const section40_1AfterExemptions =
+    Math.max(
+      0,
+      section40_1 -
+        seniorIncomeExemption
+          .allocation.section40_1
+    );
+
+  const section40_2AfterExemptions =
+    Math.max(
+      0,
+      section40_2 -
+        seniorIncomeExemption
+          .allocation.section40_2
+    );
+
+  const supportedIncomeAfterExemptions =
+    section40_1AfterExemptions +
+    section40_2AfterExemptions;
+
+  const incomeAfterExemptions =
+    Math.max(
+      0,
+      totalGrossIncome -
+        seniorResidentExemption
+    );
+
   const isComplete =
     unsupportedOtherIncome ===
     0;
@@ -530,7 +598,7 @@ export function calculateTax({
 
   const employmentExpense =
     Math.min(
-      supportedIncome *
+      supportedIncomeAfterExemptions *
         rules.employmentExpense
           .rate,
 
@@ -541,7 +609,7 @@ export function calculateTax({
   const incomeAfterExpenses =
     Math.max(
       0,
-      supportedIncome -
+      supportedIncomeAfterExemptions -
         employmentExpense
     );
 
@@ -784,8 +852,8 @@ export function calculateTax({
   */
 
   const nonEmploymentIncome =
-    section40_2 +
-    unsupportedOtherIncome;
+  section40_2AfterExemptions +
+  unsupportedOtherIncome;
 
   let method2Tax = 0;
 
@@ -857,6 +925,17 @@ export function calculateTax({
     taxYear,
 
     totalGrossIncome,
+
+    incomeExemptions: {
+      seniorResident:
+        seniorResidentExemption,
+
+      total:
+        seniorResidentExemption,
+    },
+
+    incomeAfterExemptions,
+
 
     supportedIncome: {
       section40_1,

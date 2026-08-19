@@ -35,7 +35,7 @@ function currentDeductions():
     rmf: 100_000,
 
     thaiEsg: 50_000,
-    thaiEsgxCarryForward: 0,
+    ltfToThaiEsgxTransferAmount: 0,
 
     socialSecurity: 0,
     homeLoanInterest: 0,
@@ -99,12 +99,28 @@ describe(
             investment: 0,
             other: 0,
           },
+
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
-
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
           maritalStatus:
             "married" as const,
 
@@ -217,11 +233,29 @@ describe(
             investment: 0,
             other: 0,
           },
+
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
+
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+  section40_3Rights: 0,
+          },
 
           maritalStatus:
             "single" as const,
@@ -352,11 +386,29 @@ describe(
             investment: 0,
             other: 0,
           },
+
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
+
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
 
           maritalStatus:
             "single" as const,
@@ -474,11 +526,29 @@ describe(
             investment: 0,
             other: 0,
           },
+
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
+
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,   
+          },
 
           maritalStatus:
             "single" as const,
@@ -622,11 +692,28 @@ describe(
             investment: 0,
             other: 0,
           },
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
+
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
 
           maritalStatus:
             "single" as const,
@@ -741,11 +828,28 @@ describe(
             investment: 0,
             other: 0,
           },
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
+
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
 
           maritalStatus:
             "single" as const,
@@ -877,12 +981,27 @@ describe(
             investment: 0,
             other: 0,
           },
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
-
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
           maritalStatus:
             "single" as const,
 
@@ -982,12 +1101,27 @@ describe(
             investment: 0,
             other: 0,
           },
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
-
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
           maritalStatus:
             "single" as const,
 
@@ -1092,11 +1226,29 @@ describe(
             investment: 0,
             other: 0,
           },
+
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
+
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
 
           maritalStatus:
             "single" as const,
@@ -1254,11 +1406,28 @@ describe(
             investment: 0,
             other: 0,
           },
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
+
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
 
           maritalStatus:
             "single" as const,
@@ -1323,11 +1492,28 @@ describe(
             investment: 0,
             other: 0,
           },
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
+
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
 
           maritalStatus:
             "single" as const,
@@ -1390,12 +1576,27 @@ describe(
             investment: 0,
             other: 0,
           },
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
-
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
           maritalStatus:
             "single" as const,
 
@@ -1453,12 +1654,27 @@ describe(
             investment: 0,
             other: 0,
           },
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+            section40_8: [],
+          },
         };
 
         const family = {
-          taxpayerBirthYearBE: null,
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
           isThaiNational: null,
-
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+          },
           maritalStatus:
             "single" as const,
 

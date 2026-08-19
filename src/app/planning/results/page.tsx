@@ -37,6 +37,24 @@ interface DeductionCompareRowProps {
   details: DeductionDetail[];
 }
 
+function CompareTableHeader() {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs text-slate-400 sm:grid-cols-[minmax(0,1fr)_140px_140px] sm:px-7 md:px-8">
+      <div>
+        รายการ
+      </div>
+
+      <div className="text-right">
+        ก่อนวางแผน
+      </div>
+
+      <div className="text-right">
+        หลังวางแผน
+      </div>
+    </div>
+  );
+}
+
 function CompareRow({
   label,
   current,
@@ -46,48 +64,43 @@ function CompareRow({
   return (
     <div
       className={[
-        "border-b border-slate-100 py-5 last:border-b-0",
-        emphasize ? "bg-slate-50/70" : "",
+        "grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8",
+        emphasize
+          ? "bg-slate-50/70"
+          : "",
       ].join(" ")}
     >
-      <div className="mb-3 text-sm font-medium text-slate-600">
+      <div
+        className={[
+          "min-w-0 text-sm",
+          emphasize
+            ? "font-semibold text-slate-900"
+            : "font-medium text-slate-600",
+        ].join(" ")}
+      >
         {label}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="mb-1 text-xs text-slate-400">
-            ก่อนวางแผน
-          </div>
+      <div
+        className={[
+          "whitespace-nowrap text-right tabular-nums text-slate-800",
+          emphasize
+            ? "text-base font-semibold sm:text-lg"
+            : "text-sm font-semibold sm:text-base",
+        ].join(" ")}
+      >
+        {current}
+      </div>
 
-          <div
-            className={[
-              "break-words font-semibold text-slate-800",
-              emphasize
-                ? "text-xl sm:text-2xl"
-                : "text-base sm:text-lg",
-            ].join(" ")}
-          >
-            {current}
-          </div>
-        </div>
-
-        <div>
-          <div className="mb-1 text-xs text-slate-400">
-            หลังวางแผน
-          </div>
-
-          <div
-            className={[
-              "break-words font-semibold text-slate-800",
-              emphasize
-                ? "text-xl sm:text-2xl"
-                : "text-base sm:text-lg",
-            ].join(" ")}
-          >
-            {planned}
-          </div>
-        </div>
+      <div
+        className={[
+          "whitespace-nowrap text-right tabular-nums text-blue-700",
+          emphasize
+            ? "text-base font-semibold sm:text-lg"
+            : "text-sm font-semibold sm:text-base",
+        ].join(" ")}
+      >
+        {planned}
       </div>
     </div>
   );
@@ -105,35 +118,23 @@ function DeductionCompareRow({
   );
 
   return (
-    <div className="border-b border-slate-100 py-5">
-      <div className="mb-3 text-sm font-medium text-slate-600">
-        ค่าลดหย่อน
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="mb-1 text-xs text-slate-400">
-            ก่อนวางแผน
-          </div>
-
-          <div className="text-base font-semibold text-slate-800 sm:text-lg">
-            {formatNumber(current)} บาท
-          </div>
+    <div className="border-b border-slate-100">
+      <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] items-center gap-3 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_140px_140px] sm:px-7 md:px-8">
+        <div className="min-w-0 text-sm font-medium text-slate-600">
+          ค่าลดหย่อน
         </div>
 
-        <div>
-          <div className="mb-1 text-xs text-slate-400">
-            หลังวางแผน
-          </div>
+        <div className="text-right text-sm font-semibold tabular-nums text-slate-800 sm:text-base">
+          {formatNumber(current)} บาท
+        </div>
 
-          <div className="text-base font-semibold text-slate-800 sm:text-lg">
-            {formatNumber(planned)} บาท
-          </div>
+        <div className="text-right text-sm font-semibold tabular-nums text-blue-700 sm:text-base">
+          {formatNumber(planned)} บาท
         </div>
       </div>
 
-      <details className="group mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-slate-600">
+      <details className="group">
+        <summary className="mx-5 mb-4 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600 sm:mx-7 md:mx-8">
           <span>
             แสดงรายละเอียดค่าลดหย่อน
           </span>
@@ -143,43 +144,35 @@ function DeductionCompareRow({
           </span>
         </summary>
 
-        <div className="border-t border-slate-200 bg-white">
+        <div className="border-t border-slate-100 bg-slate-50/50">
           {visibleDetails.map(
             (item) => (
               <div
                 key={item.label}
-                className="border-b border-slate-100 px-4 py-3 last:border-b-0"
+                className="grid grid-cols-[minmax(0,1fr)_110px_110px] items-center gap-3 border-b border-slate-100 px-5 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_140px_140px] sm:px-7 md:px-8"
               >
-                <div className="mb-2 text-sm text-slate-600">
+                <div className="min-w-0 pl-2 text-sm text-slate-500">
                   {item.label}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-xs text-slate-400">
-                      ก่อนวางแผน
-                    </div>
+                <div className="text-right text-sm font-medium tabular-nums text-slate-700">
+                  {formatNumber(
+                    item.current
+                  )}
+                </div>
 
-                    <div className="mt-0.5 text-sm font-medium text-slate-700">
-                      {formatNumber(
-                        item.current
-                      )}{" "}
-                      บาท
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-slate-400">
-                      หลังวางแผน
-                    </div>
-
-                    <div className="mt-0.5 text-sm font-medium text-slate-700">
-                      {formatNumber(
-                        item.planned
-                      )}{" "}
-                      บาท
-                    </div>
-                  </div>
+                <div
+                  className={[
+                    "text-right text-sm font-medium tabular-nums",
+                    item.planned >
+                    item.current
+                      ? "text-blue-700"
+                      : "text-slate-700",
+                  ].join(" ")}
+                >
+                  {formatNumber(
+                    item.planned
+                  )}
                 </div>
               </div>
             )
@@ -223,94 +216,227 @@ export default function ResultsPage() {
 
   const deductionDetails: DeductionDetail[] = [
     {
-        label: "ค่าลดหย่อนส่วนตัว",
-        current:
+      label: "ค่าลดหย่อนส่วนตัว",
+      current:
         currentResult.familyAllowances
-            .taxpayer,
-        planned:
+          .taxpayer,
+      planned:
         plannedResult.familyAllowances
-            .taxpayer,
+          .taxpayer,
     },
     {
-        label: "คู่สมรส",
-        current:
+      label: "คู่สมรส",
+      current:
         currentResult.familyAllowances
-            .spouse,
-        planned:
+          .spouse,
+      planned:
         plannedResult.familyAllowances
-            .spouse,
+          .spouse,
     },
     {
-        label: "บุตร",
-        current:
+      label: "บุตร",
+      current:
         currentResult.familyAllowances
-            .children,
-        planned:
+          .children,
+      planned:
         plannedResult.familyAllowances
-            .children,
+          .children,
     },
     {
-        label: "บิดามารดา",
-        current:
+      label: "บิดามารดา",
+      current:
         currentResult.familyAllowances
-            .parents,
-        planned:
+          .parents,
+      planned:
         plannedResult.familyAllowances
-            .parents,
+          .parents,
     },
     {
-        label: "ผู้พิการหรือทุพพลภาพ",
-        current:
+      label: "ผู้พิการหรือทุพพลภาพ",
+      current:
         currentResult.familyAllowances
-            .disabledDependents,
-        planned:
+          .disabledDependents,
+      planned:
         plannedResult.familyAllowances
-            .disabledDependents,
+          .disabledDependents,
     },
+
     {
-        label: "ประกันชีวิตและสุขภาพ",
-        current:
+      label: "ประกันชีวิต",
+      current:
         currentResult.insuranceDeductions
-            .totalAllowed,
-        planned:
+          .lifeInsurance.allowed,
+      planned:
         plannedResult.insuranceDeductions
-            .totalAllowed,
+          .lifeInsurance.allowed,
     },
     {
-        label: "การออมเพื่อเกษียณ",
-        current:
+      label: "ประกันสุขภาพตนเอง",
+      current:
+        currentResult.insuranceDeductions
+          .healthInsuranceSelf.allowed,
+      planned:
+        plannedResult.insuranceDeductions
+          .healthInsuranceSelf.allowed,
+    },
+    {
+      label: "ประกันชีวิตคู่สมรส",
+      current:
+        currentResult.insuranceDeductions
+          .spouseLifeInsurance.allowed,
+      planned:
+        plannedResult.insuranceDeductions
+          .spouseLifeInsurance.allowed,
+    },
+    {
+      label: "ประกันสุขภาพบิดามารดา",
+      current:
+        currentResult.insuranceDeductions
+          .parentHealthInsurance.allowed,
+      planned:
+        plannedResult.insuranceDeductions
+          .parentHealthInsurance.allowed,
+    },
+
+    {
+      label: "ประกันบำนาญ",
+      current:
         currentResult.retirementDeductions
-            .totalAllowed,
-        planned:
+          .pensionInsurance.allowed,
+      planned:
         plannedResult.retirementDeductions
-            .totalAllowed,
+          .pensionInsurance.allowed,
     },
     {
-        label: "ค่าลดหย่อนอื่น",
-        current:
+      label: "กองทุนสำรองเลี้ยงชีพ (PVD)",
+      current:
+        currentResult.retirementDeductions
+          .providentFund.allowed,
+      planned:
+        plannedResult.retirementDeductions
+          .providentFund.allowed,
+    },
+    {
+      label: "กบข. (GPF)",
+      current:
+        currentResult.retirementDeductions
+          .gpf.allowed,
+      planned:
+        plannedResult.retirementDeductions
+          .gpf.allowed,
+    },
+    {
+      label: "กองทุนสงเคราะห์ครูโรงเรียนเอกชน",
+      current:
+        currentResult.retirementDeductions
+          .privateTeacherFund.allowed,
+      planned:
+        plannedResult.retirementDeductions
+          .privateTeacherFund.allowed,
+    },
+    {
+      label: "กอช.",
+      current:
+        currentResult.retirementDeductions
+          .nsf.allowed,
+      planned:
+        plannedResult.retirementDeductions
+          .nsf.allowed,
+    },
+    {
+      label: "RMF",
+      current:
+        currentResult.retirementDeductions
+          .rmf.allowed,
+      planned:
+        plannedResult.retirementDeductions
+          .rmf.allowed,
+    },
+
+    {
+      label: "Thai ESG",
+      current:
         currentResult.generalDeductions
-            .totalAllowed,
-        planned:
+          .thaiEsg.allowed,
+      planned:
         plannedResult.generalDeductions
-            .totalAllowed,
+          .thaiEsg.allowed,
     },
     {
-        label: "ค่าฝากครรภ์และคลอดบุตร",
-        current:
+      label: "Thai ESGX จากการสับเปลี่ยน LTF",
+      current:
+        currentResult.generalDeductions
+          .thaiEsgxTransfer
+          .allowedThisYear,
+      planned:
+        plannedResult.generalDeductions
+          .thaiEsgxTransfer
+          .allowedThisYear,
+    },
+    {
+      label: "ประกันสังคม",
+      current:
+        currentResult.generalDeductions
+          .socialSecurity.allowed,
+      planned:
+        plannedResult.generalDeductions
+          .socialSecurity.allowed,
+    },
+    {
+      label: "ดอกเบี้ยสินเชื่อที่อยู่อาศัย",
+      current:
+        currentResult.generalDeductions
+          .homeLoanInterest.allowed,
+      planned:
+        plannedResult.generalDeductions
+          .homeLoanInterest.allowed,
+    },
+    {
+      label: "ลงทุนในวิสาหกิจเพื่อสังคม",
+      current:
+        currentResult.generalDeductions
+          .socialEnterpriseInvestment.allowed,
+      planned:
+        plannedResult.generalDeductions
+          .socialEnterpriseInvestment.allowed,
+    },
+
+    {
+      label: "ค่าฝากครรภ์และคลอดบุตร",
+      current:
         currentResult.pregnancyDeductions
-            .totalAllowed,
-        planned:
+          .totalAllowed,
+      planned:
         plannedResult.pregnancyDeductions
-            .totalAllowed,
+          .totalAllowed,
+    },
+
+    {
+      label: "เงินบริจาคพรรคการเมือง",
+      current:
+        currentResult.donationDeductions
+          .politicalDonation.allowed,
+      planned:
+        plannedResult.donationDeductions
+          .politicalDonation.allowed,
     },
     {
-        label: "เงินบริจาค",
-        current:
+      label: "เงินบริจาคพิเศษ",
+      current:
         currentResult.donationDeductions
-            .totalAllowed,
-        planned:
+          .specialDonation.allowed,
+      planned:
         plannedResult.donationDeductions
-            .totalAllowed,
+          .specialDonation.allowed,
+    },
+    {
+      label: "เงินบริจาคทั่วไป",
+      current:
+        currentResult.donationDeductions
+          .generalDonation.allowed,
+      planned:
+        plannedResult.donationDeductions
+          .generalDonation.allowed,
     },
   ];
 
@@ -338,7 +464,8 @@ export default function ResultsPage() {
           </p>
         </div>
 
-        <div className="px-5 sm:px-7 md:px-8">
+        <div>
+          <CompareTableHeader />
           <CompareRow
             label="รายได้พึงประเมิน"
             current={`${formatNumber(
@@ -348,6 +475,23 @@ export default function ResultsPage() {
               plannedResult.totalGrossIncome
             )} บาท`}
           />
+
+          {(
+            currentResult.incomeExemptions.total > 0 ||
+            plannedResult.incomeExemptions.total > 0
+          ) && (
+            <CompareRow
+              label="เงินได้ที่ได้รับยกเว้นสำหรับผู้มีอายุ 65 ปีขึ้นไป"
+              current={`${formatNumber(
+                currentResult.incomeExemptions
+                  .seniorResident
+              )} บาท`}
+              planned={`${formatNumber(
+                plannedResult.incomeExemptions
+                  .seniorResident
+              )} บาท`}
+            />
+          )}
 
           <DeductionCompareRow
             current={currentTotalAllowances}

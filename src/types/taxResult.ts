@@ -16,10 +16,30 @@ export interface FamilyAllowanceBreakdown {
   total: number;
 }
 
+export interface IncomeExemptionBreakdown {
+  seniorResident: number;
+
+  total: number;
+}
+
 export interface TaxResult {
   taxYear: number;
 
   totalGrossIncome: number;
+
+  /*
+   * เงินได้ที่ได้รับยกเว้น
+   * ไม่ใช่ค่าลดหย่อน
+   */
+  incomeExemptions:
+    IncomeExemptionBreakdown;
+
+  /*
+   * เงินได้หลังหักเงินได้ที่ได้รับยกเว้น
+   * แต่ก่อนหักค่าใช้จ่าย
+   */
+  incomeAfterExemptions: number;
+
 
   supportedIncome: {
     section40_1: number;

@@ -39,7 +39,7 @@ function deductions(
     rmf: 0,
 
     thaiEsg: 0,
-    thaiEsgxCarryForward: 0,
+    ltfToThaiEsgxTransferAmount: 0,
 
     socialSecurity: 0,
     homeLoanInterest: 0,
@@ -58,7 +58,15 @@ function family(
   values: Partial<FamilyData> = {}
 ): FamilyData {
   return {
-    taxpayerBirthYearBE: null,
+    taxpayerAge65OrOlder: null,
+    isThaiTaxResident: null,
+
+    seniorIncomeExemptionAllocation: {
+      section40_1: 0,
+      section40_2: 0,
+      section40_3Annuity: 0,
+      section40_3Rights: 0,
+    },
 
     isThaiNational: null,
 

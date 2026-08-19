@@ -4,6 +4,8 @@ import {
   useState,
 } from "react";
 
+import { useRouter } from "next/navigation";
+
 import Link from "next/link";
 
 import {
@@ -99,6 +101,8 @@ export default function PlannerPage() {
     state,
     setPlanning,
   } = useTaxPlanner();
+
+  const router = useRouter();
 
   const planning: PlanningData = {
     lifeInsurance:
@@ -467,6 +471,11 @@ export default function PlannerPage() {
 
               <button
                 type="button"
+                onClick={() =>
+                  router.push(
+                    "/planning/results"
+                  )
+                }
                 className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white opacity-50"
                 disabled
               >

@@ -96,10 +96,30 @@ export interface PregnancyExpenseData {
   claimedPreviousYears: number;
 }
 
+export interface SeniorIncomeExemptionAllocation {
+  section40_1: number;
+  section40_2: number;
+
+  section40_3Annuity: number;
+  section40_3Rights: number;
+}
+
 export interface FamilyData {
-  taxpayerBirthYearBE: number | null;
+  /*
+   * อายุของผู้มีเงินได้ในปีภาษี
+   */
+  taxpayerAge65OrOlder: boolean | null;
+
+  /*
+   * อยู่ในประเทศไทยรวม 180 วันขึ้นไป
+   * ในปีภาษีหรือไม่
+   */
+  isThaiTaxResident: boolean | null;
 
   isThaiNational: boolean | null;
+
+  seniorIncomeExemptionAllocation:
+  SeniorIncomeExemptionAllocation;
 
   maritalStatus: MaritalStatus;
 
