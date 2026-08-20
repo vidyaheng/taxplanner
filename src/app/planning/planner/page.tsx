@@ -481,44 +481,34 @@ export default function PlannerPage() {
 
           {/* RIGHT SIDEBAR */}
 
-          <aside>
-
+          <aside className="min-w-0">
             <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 min-[960px]:sticky min-[960px]:top-6">
 
               <div className="text-lg font-semibold text-slate-900">
                 สรุปแผน
               </div>
 
-
               <div className="mt-5 space-y-4">
 
                 <SummaryRow
                   label="ซื้อ / ลงทุนเพิ่ม"
-                  value={
-                    totalPlannedPayment
-                  }
+                  value={totalPlannedPayment}
                 />
 
                 <SummaryRow
                   label="ใช้ลดหย่อนเพิ่มได้"
-                  value={
-                    additionalDeductionAllowed
-                  }
+                  value={additionalDeductionAllowed}
                   highlight
                 />
 
-                {unusedPlannedAmount >
-                  0 && (
+                {unusedPlannedAmount > 0 && (
                   <SummaryRow
                     label="ยอดที่ไม่ช่วยลดภาษีเพิ่ม"
-                    value={
-                      unusedPlannedAmount
-                    }
+                    value={unusedPlannedAmount}
                   />
                 )}
 
               </div>
-
 
               <div className="mt-5 border-t border-slate-100 pt-5">
 
@@ -526,16 +516,14 @@ export default function PlannerPage() {
                   ภาษีปัจจุบัน
                 </div>
 
-                <div className="mt-1 text-xl font-semibold text-slate-900">
+                <div className="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-slate-900">
                   {formatNumber(
-                    currentResult
-                      .taxBeforeCredits
+                    currentResult.taxBeforeCredits
                   )}{" "}
                   บาท
                 </div>
 
               </div>
-
 
               <div className="mt-4">
 
@@ -543,16 +531,14 @@ export default function PlannerPage() {
                   ภาษีหลังวางแผน
                 </div>
 
-                <div className="mt-1 text-2xl font-bold text-blue-700">
+                <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700">
                   {formatNumber(
-                    plannedResult
-                      .taxBeforeCredits
+                    plannedResult.taxBeforeCredits
                   )}{" "}
                   บาท
                 </div>
 
               </div>
-
 
               <div className="mt-5 rounded-2xl bg-blue-50 p-4">
 
@@ -560,7 +546,7 @@ export default function PlannerPage() {
                   ประหยัดภาษีเพิ่ม
                 </div>
 
-                <div className="mt-1 text-2xl sm:text-3xl font-bold text-blue-700">
+                <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700 sm:text-3xl">
                   {formatNumber(
                     additionalTaxSaving
                   )}{" "}
@@ -569,9 +555,7 @@ export default function PlannerPage() {
 
               </div>
 
-
-              {totalPlannedPayment >
-                0 && (
+              {totalPlannedPayment > 0 && (
                 <div className="mt-5 text-xs leading-5 text-slate-400">
                   ระบบคำนวณจากสิทธิที่มีอยู่แล้วรวมกับยอดที่กำลังวางแผน
                   และใช้เพดานค่าลดหย่อนของแต่ละประเภทอัตโนมัติ
@@ -579,7 +563,6 @@ export default function PlannerPage() {
               )}
 
             </div>
-
           </aside>
 
         </div>
@@ -1005,22 +988,21 @@ function SummaryRow({
   highlight?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-
-      <span className="text-slate-500">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+      <span className="min-w-0 text-sm leading-6 text-slate-500">
         {label}
       </span>
 
       <span
-        className={
+        className={[
+          "whitespace-nowrap text-right text-sm tabular-nums",
           highlight
             ? "font-semibold text-blue-700"
-            : "font-medium text-slate-900"
-        }
+            : "font-medium text-slate-900",
+        ].join(" ")}
       >
         {formatNumber(value)} บาท
       </span>
-
     </div>
   );
 }

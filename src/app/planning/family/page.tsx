@@ -1508,16 +1508,14 @@ function Summary({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-
-      <span className="text-slate-500">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+      <div className="min-w-0 text-slate-500">
         {label}
-      </span>
+      </div>
 
-      <span className="font-medium text-slate-900">
+      <div className="whitespace-nowrap text-right tabular-nums text-slate-800">
         {value}
-      </span>
-
+      </div>
     </div>
   );
 }
