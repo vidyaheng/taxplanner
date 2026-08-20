@@ -39,16 +39,16 @@ interface DeductionCompareRowProps {
 
 function CompareTableHeader() {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-900 sm:grid-cols-[minmax(0,1fr)_140px_140px] sm:px-7 md:px-8">
+    <div className="grid grid-cols-[minmax(0,1fr)_120px_120px] gap-3 border-b border-slate-200 px-5 py-3 text-lg text-slate-900 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8">
       <div>
         รายการ
       </div>
 
-      <div className="text-right">
+      <div className="pr-2 text-right">
         ก่อนวางแผน
       </div>
 
-      <div className="text-right">
+      <div className="pr-2 text-right text-blue-700">
         หลังวางแผน
       </div>
     </div>
@@ -63,12 +63,7 @@ function CompareRow({
 }: CompareRowProps) {
   return (
     <div
-      className={[
-        "grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8",
-        emphasize
-          ? "bg-slate-50/70"
-          : "",
-      ].join(" ")}
+      className="grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8"
     >
       <div
         className={[
@@ -83,7 +78,7 @@ function CompareRow({
 
       <div
         className={[
-          "whitespace-nowrap text-right tabular-nums text-slate-800",
+          "whitespace-nowrap pr-2 text-right tabular-nums text-slate-800",
           emphasize
             ? "text-base font-semibold sm:text-lg"
             : "text-sm font-semibold sm:text-base",
@@ -94,7 +89,7 @@ function CompareRow({
 
       <div
         className={[
-          "whitespace-nowrap text-right tabular-nums text-blue-700",
+          "whitespace-nowrap pr-2 text-right tabular-nums text-blue-700",
           emphasize
             ? "text-base font-semibold sm:text-lg"
             : "text-sm font-semibold sm:text-base",
@@ -124,38 +119,40 @@ function DeductionCompareRow({
           ค่าลดหย่อน
         </div>
 
-        <div className="text-right text-sm font-semibold tabular-nums text-slate-800 sm:text-base">
+        <div className="pr-4 text-right text-sm font-semibold tabular-nums text-slate-800 sm:text-base">
           {formatNumber(current)} บาท
         </div>
 
-        <div className="text-right text-sm font-semibold tabular-nums text-blue-700 sm:text-base">
+        <div className="pr-2 text-right text-sm font-semibold tabular-nums text-blue-700 sm:text-base">
           {formatNumber(planned)} บาท
         </div>
       </div>
 
       <details className="group">
-        <summary className="mx-5 mb-4 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600 sm:mx-7 md:mx-8">
-          <span>
-            แสดงรายละเอียดค่าลดหย่อน
-          </span>
+        <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_120px_120px] gap-3 px-5 pb-4 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8">
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
+            <span>
+              แสดงรายละเอียดค่าลดหย่อน
+            </span>
 
-          <span className="text-lg leading-none text-slate-400 transition-transform group-open:rotate-180">
-            ⌄
-          </span>
+            <span className="text-lg leading-none text-slate-400 transition-transform group-open:rotate-180">
+              ⌄
+            </span>
+          </div>
         </summary>
 
-        <div className="border-t border-slate-100 bg-slate-50/50">
+        <div className="border-t border-slate-100">
           {visibleDetails.map(
             (item) => (
               <div
                 key={item.label}
-                className="grid grid-cols-[minmax(0,1fr)_110px_110px] items-center gap-3 border-b border-slate-100 px-5 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_140px_140px] sm:px-7 md:px-8"
+                className="grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8"
               >
                 <div className="min-w-0 pl-2 text-sm text-slate-500">
                   {item.label}
                 </div>
 
-                <div className="text-right text-sm font-medium tabular-nums text-slate-700">
+                <div className="whitespace-nowrap text-right text-sm font-medium tabular-nums text-slate-700">
                   {formatNumber(
                     item.current
                   )}
@@ -163,7 +160,7 @@ function DeductionCompareRow({
 
                 <div
                   className={[
-                    "text-right text-sm font-medium tabular-nums",
+                    "whitespace-nowrap text-right text-sm font-medium tabular-nums",
                     item.planned >
                     item.current
                       ? "text-blue-700"
@@ -464,86 +461,115 @@ export default function ResultsPage() {
           </p>
         </div>
 
-        <div>
-          <CompareTableHeader />
-          <CompareRow
-            label="รายได้พึงประเมิน"
-            current={`${formatNumber(
-              currentResult.totalGrossIncome
-            )} บาท`}
-            planned={`${formatNumber(
-              plannedResult.totalGrossIncome
-            )} บาท`}
-          />
+        <div className="relative">
+          <div
+            className="pointer-events-none absolute inset-0 grid grid-cols-[minmax(0,1fr)_120px_120px] gap-3 px-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8"
+            aria-hidden="true"
+          >
+            <div />
+            <div className="bg-slate-50" />
+            <div className="bg-blue-50" />
+          </div>
 
-          {(
-            currentResult.incomeExemptions.total > 0 ||
-            plannedResult.incomeExemptions.total > 0
-          ) && (
+          <div className="relative z-10">
+            <CompareTableHeader />
+
             <CompareRow
-              label="เงินได้ที่ได้รับยกเว้นสำหรับผู้มีอายุ 65 ปีขึ้นไป"
+              label="รายได้พึงประเมิน"
               current={`${formatNumber(
-                currentResult.incomeExemptions
-                  .seniorResident
+                currentResult.totalGrossIncome
               )} บาท`}
               planned={`${formatNumber(
-                plannedResult.incomeExemptions
-                  .seniorResident
+                plannedResult.totalGrossIncome
               )} บาท`}
             />
-          )}
 
-          <DeductionCompareRow
-            current={currentTotalAllowances}
-            planned={plannedTotalAllowances}
-            details={deductionDetails}
-          />
-
-          <CompareRow
-            label="เงินได้สุทธิ"
-            current={`${formatNumber(
-              currentResult.taxableIncome
-            )} บาท`}
-            planned={`${formatNumber(
-              plannedResult.taxableIncome
-            )} บาท`}
-            emphasize
-          />
-
-          <CompareRow
-            label="อัตราภาษีสูงสุด"
-            current={formatPercent(
-              currentResult.marginalTaxRate
+            {(
+              currentResult.incomeExemptions.total > 0 ||
+              plannedResult.incomeExemptions.total > 0
+            ) && (
+              <CompareRow
+                label="เงินได้ที่ได้รับยกเว้นสำหรับผู้มีอายุ 65 ปีขึ้นไป"
+                current={`${formatNumber(
+                  currentResult.incomeExemptions
+                    .seniorResident
+                )} บาท`}
+                planned={`${formatNumber(
+                  plannedResult.incomeExemptions
+                    .seniorResident
+                )} บาท`}
+              />
             )}
-            planned={formatPercent(
-              plannedResult.marginalTaxRate
-            )}
-          />
 
-          <CompareRow
-            label="ภาษีที่ต้องเสีย"
-            current={`${formatNumber(
-              currentResult.taxBeforeCredits
-            )} บาท`}
-            planned={`${formatNumber(
-              plannedResult.taxBeforeCredits
-            )} บาท`}
-            emphasize
-          />
+            <DeductionCompareRow
+              current={currentTotalAllowances}
+              planned={plannedTotalAllowances}
+              details={deductionDetails}
+            />
 
-          <CompareRow
-            label="อัตราภาษีที่แท้จริง"
-            current={formatPercent(
-              currentResult.effectiveTaxRate
-            )}
-            planned={formatPercent(
-              plannedResult.effectiveTaxRate
-            )}
-          />
+            <CompareRow
+              label="เงินได้สุทธิ"
+              current={`${formatNumber(
+                currentResult.taxableIncome
+              )} บาท`}
+              planned={`${formatNumber(
+                plannedResult.taxableIncome
+              )} บาท`}
+              emphasize
+            />
+
+            <details className="group">
+              <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8">
+                <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-600">
+                  <span>
+                    อัตราภาษีสูงสุด
+                  </span>
+
+                  <span className="text-lg leading-none text-slate-400 transition-transform group-open:rotate-180">
+                    ⌄
+                  </span>
+                </div>
+
+                <div className="whitespace-nowrap pr-3 text-right text-sm font-semibold tabular-nums text-slate-800 sm:text-base">
+                  {formatPercent(
+                    currentResult.marginalTaxRate
+                  )}
+                </div>
+
+                <div className="whitespace-nowrap pr-3 text-right text-sm font-semibold tabular-nums text-blue-700 sm:text-base">
+                  {formatPercent(
+                    plannedResult.marginalTaxRate
+                  )}
+                </div>
+              </summary>
+
+              <CompareRow
+                label="อัตราภาษีที่แท้จริง"
+                current={formatPercent(
+                  currentResult.effectiveTaxRate
+                )}
+                planned={formatPercent(
+                  plannedResult.effectiveTaxRate
+                )}
+              />
+            </details>
+
+            <CompareRow
+              label="ภาษีที่ต้องเสีย"
+              current={`${formatNumber(
+                currentResult.taxBeforeCredits
+              )} บาท`}
+              planned={`${formatNumber(
+                plannedResult.taxBeforeCredits
+              )} บาท`}
+              emphasize
+            />
+            
+          </div>
         </div>
 
-        <div className="m-4 rounded-3xl bg-slate-900 p-5 text-white sm:m-6 sm:p-7 md:m-8">
-          <div className="text-sm text-slate-300">
+        <div className="m-4 rounded-3xl bg-blue-500 p-5 text-white sm:m-6 sm:p-7 md:m-8">
+          <div className="text-sm text-white/80">
             จากแผนที่คุณเลือก
           </div>
 
@@ -552,7 +578,7 @@ export default function ResultsPage() {
             {formatNumber(taxSavings)} บาท
           </div>
 
-          <div className="mt-3 text-sm leading-6 text-slate-300">
+          <div className="mt-3 text-sm leading-6 text-white/80">
             ภาษีลดจาก{" "}
             {formatNumber(
               currentResult.taxBeforeCredits
