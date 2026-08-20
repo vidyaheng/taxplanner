@@ -461,7 +461,6 @@ export default function PlannerPage() {
             {/* NAV */}
 
             <div className="flex items-center justify-between pt-2">
-
               <Link
                 href="/planning/deductions"
                 className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -469,19 +468,12 @@ export default function PlannerPage() {
                 ← ย้อนกลับ
               </Link>
 
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(
-                    "/planning/results"
-                  )
-                }
-                className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white opacity-50"
-                disabled
+              <Link
+                href="/planning/results"
+                className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700"
               >
                 ดูผลสรุป →
-              </button>
-
+              </Link>
             </div>
 
           </div>
