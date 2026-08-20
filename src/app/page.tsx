@@ -80,12 +80,6 @@ export default function Home() {
                 <div className="mt-2 text-2xl font-semibold text-slate-900">
                   {EVENT_CONFIG.company}
                 </div>
-
-                <div className="mt-3 text-sm leading-6 text-slate-500">
-                  {EVENT_CONFIG.active
-                    ? `เปิดให้ทดลองใช้งานถึงวันที่ ${EVENT_CONFIG.expires}`
-                    : "สิทธิ์ทดลองใช้งานสำหรับกิจกรรมนี้สิ้นสุดแล้ว"}
-                </div>
               </div>
 
               <div className="mt-6 space-y-5">
