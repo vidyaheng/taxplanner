@@ -59,6 +59,21 @@ export default function Home() {
                   </div>
                 )}
               </div>
+
+              <div className="mt-3">
+                <Link
+                  href="/team"
+                  className="text-sm font-medium text-slate-500 transition hover:text-blue-700"
+                >
+                  สำหรับทีมงาน →
+                </Link>
+              </div>
+
+              <p className="mt-4 text-sm text-slate-400">
+                {EVENT_CONFIG.active
+                  ? `เปิดให้ทดลองใช้งานถึงวันที่ ${EVENT_CONFIG.expires}`
+                  : "ขอบคุณที่เข้าร่วมกิจกรรม"}
+              </p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
