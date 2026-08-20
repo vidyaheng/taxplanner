@@ -39,7 +39,7 @@ interface DeductionCompareRowProps {
 
 function CompareTableHeader() {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs text-slate-400 sm:grid-cols-[minmax(0,1fr)_140px_140px] sm:px-7 md:px-8">
+    <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-900 sm:grid-cols-[minmax(0,1fr)_140px_140px] sm:px-7 md:px-8">
       <div>
         รายการ
       </div>
