@@ -256,321 +256,318 @@ export default function PlannerPage() {
 
 
   return (
-    <main className="min-h-screen bg-slate-50">
+  <main className="min-h-screen bg-slate-50">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* HEADER */}
 
-        {/* HEADER */}
-
-        <div className="mb-8">
-
-          <div className="text-sm font-medium text-blue-600">
-            ขั้นตอนที่ 4 จาก 5
-          </div>
-
-          <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            วางแผนลดภาษี
-          </h1>
-
-          <p className="mt-2 max-w-3xl text-slate-500">
-            ทดลองเพิ่มประกันและเงินลงทุน
-            โดยไม่เปลี่ยนข้อมูลสิทธิที่คุณมีอยู่แล้ว
-            ระบบจะแสดงผลภาษีของแผนใหม่แบบทันที
-          </p>
-
+      <div className="mb-8">
+        <div className="text-sm font-medium text-blue-600">
+          ขั้นตอนที่ 4 จาก 5
         </div>
 
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          วางแผนลดภาษี
+        </h1>
 
-        <div className="grid gap-6 min-[960px]:grid-cols-[minmax(0,1fr)_320px] min-[960px]:gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
+        <p className="mt-2 max-w-3xl text-slate-500">
+          ทดลองเพิ่มประกันและเงินลงทุน
+          โดยไม่เปลี่ยนข้อมูลสิทธิที่คุณมีอยู่แล้ว
+          ระบบจะแสดงผลภาษีของแผนใหม่แบบทันที
+        </p>
+      </div>
 
-          {/* LEFT */}
 
-          <div className="min-w-0 space-y-6">
+      {/* MAIN 2 COLUMNS */}
 
-            {/* COMPARISON */}
+      <div className="grid gap-6 min-[960px]:grid-cols-[minmax(0,1fr)_320px] min-[960px]:items-start xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
 
-            <div className="grid gap-4 md:grid-cols-2">
+        {/* LEFT */}
 
-              <TaxCard
-                title="สถานะปัจจุบัน"
-                tax={
-                  currentResult
-                    .taxBeforeCredits
-                }
-                taxableIncome={
-                  currentResult
-                    .taxableIncome
-                }
-                deductions={
-                  currentResult
-                    .totalCurrentDeductions
-                }
-              />
+        <div className="min-w-0 space-y-6">
 
-              <TaxCard
-                title="หลังวางแผน"
-                tax={
-                  plannedResult
-                    .taxBeforeCredits
-                }
-                taxableIncome={
-                  plannedResult
-                    .taxableIncome
-                }
-                deductions={
-                  plannedResult
-                    .totalCurrentDeductions
-                }
-                highlight
-              />
+          {/* INPUTS */}
+
+          <div className="rounded-3xl border border-slate-200 bg-white">
+
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
+
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  สิ่งที่กำลังพิจารณาเพิ่ม
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  กรอกเฉพาะยอดที่คิดว่าจะซื้อหรือลงทุนเพิ่มจากของเดิม
+                </p>
+              </div>
+
+              {totalPlannedPayment > 0 && (
+                <button
+                  type="button"
+                  onClick={clearPlanning}
+                  className="shrink-0 text-sm font-medium text-slate-400 hover:text-red-600"
+                >
+                  ล้างแผน
+                </button>
+              )}
 
             </div>
 
 
-            {/* SAVING HERO */}
+            <div className="divide-y divide-slate-100">
 
-            <div className="rounded-3xl bg-blue-600 p-4 text-white sm:p-6">
+              {planningFields.map((field) => (
+                <PlannerInput
+                  key={field.key}
+                  label={field.label}
+                  description={field.description}
+                  value={planning[field.key]}
+                  allowed={
+                    planningDetails[field.key]
+                      .allowedAdditional
+                  }
+                  capacity={
+                    planningCapacity[field.key]
+                  }
+                  reasons={
+                    planningDetails[field.key]
+                      .reasons
+                  }
+                  onChange={(value) =>
+                    setPlanning({
+                      [field.key]: value,
+                    })
+                  }
+                />
+              ))}
 
-              <div className="text-sm text-blue-100">
-                หากทำตามแผนนี้
+            </div>
+
+          </div>
+
+
+          {/* WARNINGS */}
+
+          {plannedResult.warnings.length > 0 && (
+            <div className="space-y-2">
+
+              {plannedResult.warnings.map(
+                (warning, index) => (
+                  <div
+                    key={index}
+                    className="rounded-2xl bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
+                  >
+                    {warning}
+                  </div>
+                )
+              )}
+
+            </div>
+          )}
+
+
+          {/* RESULT TITLE */}
+
+          <div className="pt-2">
+
+            <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">
+              ผลจากแผนที่คุณเลือก
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              ตัวเลขจะเปลี่ยนตามยอดที่คุณกรอกด้านบนแบบทันที
+            </p>
+
+          </div>
+
+
+          {/* COMPARISON */}
+
+          <div className="grid gap-4 md:grid-cols-2">
+
+            <TaxCard
+              title="สถานะปัจจุบัน"
+              tax={
+                currentResult.taxBeforeCredits
+              }
+              taxableIncome={
+                currentResult.taxableIncome
+              }
+              deductions={
+                currentResult.totalCurrentDeductions
+              }
+            />
+
+            <TaxCard
+              title="หลังวางแผน"
+              tax={
+                plannedResult.taxBeforeCredits
+              }
+              taxableIncome={
+                plannedResult.taxableIncome
+              }
+              deductions={
+                plannedResult.totalCurrentDeductions
+              }
+              highlight
+            />
+
+          </div>
+
+
+          {/* SAVING HERO */}
+
+          <div className="rounded-3xl bg-blue-600 p-4 text-white sm:p-6">
+
+            <div className="text-sm text-blue-100">
+              หากทำตามแผนนี้
+            </div>
+
+            <div className="mt-2 text-2xl font-bold leading-tight sm:text-4xl">
+              ประหยัดภาษีเพิ่ม{" "}
+              {formatNumber(
+                additionalTaxSaving
+              )}{" "}
+              บาท
+            </div>
+
+            <div className="mt-3 text-sm text-blue-100">
+              จากภาษี{" "}
+              {formatNumber(
+                currentResult.taxBeforeCredits
+              )}{" "}
+              บาท เหลือ{" "}
+              {formatNumber(
+                plannedResult.taxBeforeCredits
+              )}{" "}
+              บาท
+            </div>
+
+          </div>
+
+
+          {/* NAV */}
+
+          <div className="flex items-center justify-between pt-2">
+
+            <Link
+              href="/planning/deductions"
+              className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              ← ย้อนกลับ
+            </Link>
+
+            <Link
+              href="/planning/results"
+              className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              ดูผลสรุป →
+            </Link>
+
+          </div>
+
+        </div>
+
+
+        {/* RIGHT SIDEBAR */}
+
+        <aside className="min-w-0">
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 min-[960px]:sticky min-[960px]:top-6">
+
+            <div className="text-lg font-semibold text-slate-900">
+              สรุปแผน
+            </div>
+
+
+            <div className="mt-5 space-y-4">
+
+              <SummaryRow
+                label="ซื้อ / ลงทุนเพิ่ม"
+                value={totalPlannedPayment}
+              />
+
+              <SummaryRow
+                label="ใช้ลดหย่อนเพิ่มได้"
+                value={additionalDeductionAllowed}
+                highlight
+              />
+
+              {unusedPlannedAmount > 0 && (
+                <SummaryRow
+                  label="ยอดที่ไม่ช่วยลดภาษีเพิ่ม"
+                  value={unusedPlannedAmount}
+                />
+              )}
+
+            </div>
+
+
+            <div className="mt-5 border-t border-slate-100 pt-5">
+
+              <div className="text-sm text-slate-500">
+                ภาษีปัจจุบัน
               </div>
 
-              <div className="mt-2 text-2xl font-bold leading-tight sm:text-4xl">
-                ประหยัดภาษีเพิ่ม{" "}
+              <div className="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-slate-900">
+                {formatNumber(
+                  currentResult.taxBeforeCredits
+                )}{" "}
+                บาท
+              </div>
+
+            </div>
+
+
+            <div className="mt-4">
+
+              <div className="text-sm text-slate-500">
+                ภาษีหลังวางแผน
+              </div>
+
+              <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700">
+                {formatNumber(
+                  plannedResult.taxBeforeCredits
+                )}{" "}
+                บาท
+              </div>
+
+            </div>
+
+
+            <div className="mt-5 rounded-2xl bg-blue-50 p-4">
+
+              <div className="text-sm text-blue-700">
+                ประหยัดภาษีเพิ่ม
+              </div>
+
+              <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700 sm:text-3xl">
                 {formatNumber(
                   additionalTaxSaving
                 )}{" "}
                 บาท
               </div>
 
-              <div className="mt-3 text-sm text-blue-100">
-                จากภาษี{" "}
-                {formatNumber(
-                  currentResult
-                    .taxBeforeCredits
-                )}{" "}
-                บาท เหลือ{" "}
-                {formatNumber(
-                  plannedResult
-                    .taxBeforeCredits
-                )}{" "}
-                บาท
-              </div>
-
             </div>
 
 
-            {/* INPUTS */}
-
-            <div className="rounded-3xl border border-slate-200 bg-white">
-
-              <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
-
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    สิ่งที่กำลังพิจารณาเพิ่ม
-                  </h2>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    กรอกเฉพาะยอดที่คิดว่าจะซื้อหรือลงทุนเพิ่มจากของเดิม
-                  </p>
-                </div>
-
-                {totalPlannedPayment > 0 && (
-                  <button
-                    type="button"
-                    onClick={
-                      clearPlanning
-                    }
-                    className="shrink-0 text-sm font-medium text-slate-400 hover:text-red-600"
-                  >
-                    ล้างแผน
-                  </button>
-                )}
-
-              </div>
-
-
-              <div className="divide-y divide-slate-100">
-
-                {planningFields.map(
-                  (field) => (
-                    <PlannerInput
-                      key={field.key}
-                      label={field.label}
-                      description={
-                        field.description
-                      }
-                      value={
-                        planning[field.key]
-                      }
-                      allowed={
-                        planningDetails[
-                          field.key
-                        ].allowedAdditional
-                      }
-                      capacity={
-                        planningCapacity[
-                          field.key
-                        ]
-                      }
-                      reasons={
-                        planningDetails[
-                          field.key
-                        ].reasons
-                      }
-                      onChange={(value) =>
-                        setPlanning({
-                          [field.key]:
-                            value,
-                        })
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-
-
-            {/* WARNINGS */}
-
-            {plannedResult.warnings.length >
-              0 && (
-              <div className="space-y-2">
-
-                {plannedResult.warnings.map(
-                  (
-                    warning,
-                    index
-                  ) => (
-                    <div
-                      key={index}
-                      className="rounded-2xl bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
-                    >
-                      {warning}
-                    </div>
-                  )
-                )}
-
+            {totalPlannedPayment > 0 && (
+              <div className="mt-5 text-xs leading-5 text-slate-400">
+                ระบบคำนวณจากสิทธิที่มีอยู่แล้วรวมกับยอดที่กำลังวางแผน
+                และใช้เพดานค่าลดหย่อนของแต่ละประเภทอัตโนมัติ
               </div>
             )}
 
-
-            {/* NAV */}
-
-            <div className="flex items-center justify-between pt-2">
-              <Link
-                href="/planning/deductions"
-                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                ← ย้อนกลับ
-              </Link>
-
-              <Link
-                href="/planning/results"
-                className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                ดูผลสรุป →
-              </Link>
-            </div>
-
           </div>
 
-
-          {/* RIGHT SIDEBAR */}
-
-          <aside className="min-w-0">
-            <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 min-[960px]:sticky min-[960px]:top-6">
-
-              <div className="text-lg font-semibold text-slate-900">
-                สรุปแผน
-              </div>
-
-              <div className="mt-5 space-y-4">
-
-                <SummaryRow
-                  label="ซื้อ / ลงทุนเพิ่ม"
-                  value={totalPlannedPayment}
-                />
-
-                <SummaryRow
-                  label="ใช้ลดหย่อนเพิ่มได้"
-                  value={additionalDeductionAllowed}
-                  highlight
-                />
-
-                {unusedPlannedAmount > 0 && (
-                  <SummaryRow
-                    label="ยอดที่ไม่ช่วยลดภาษีเพิ่ม"
-                    value={unusedPlannedAmount}
-                  />
-                )}
-
-              </div>
-
-              <div className="mt-5 border-t border-slate-100 pt-5">
-
-                <div className="text-sm text-slate-500">
-                  ภาษีปัจจุบัน
-                </div>
-
-                <div className="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-slate-900">
-                  {formatNumber(
-                    currentResult.taxBeforeCredits
-                  )}{" "}
-                  บาท
-                </div>
-
-              </div>
-
-              <div className="mt-4">
-
-                <div className="text-sm text-slate-500">
-                  ภาษีหลังวางแผน
-                </div>
-
-                <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700">
-                  {formatNumber(
-                    plannedResult.taxBeforeCredits
-                  )}{" "}
-                  บาท
-                </div>
-
-              </div>
-
-              <div className="mt-5 rounded-2xl bg-blue-50 p-4">
-
-                <div className="text-sm text-blue-700">
-                  ประหยัดภาษีเพิ่ม
-                </div>
-
-                <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700 sm:text-3xl">
-                  {formatNumber(
-                    additionalTaxSaving
-                  )}{" "}
-                  บาท
-                </div>
-
-              </div>
-
-              {totalPlannedPayment > 0 && (
-                <div className="mt-5 text-xs leading-5 text-slate-400">
-                  ระบบคำนวณจากสิทธิที่มีอยู่แล้วรวมกับยอดที่กำลังวางแผน
-                  และใช้เพดานค่าลดหย่อนของแต่ละประเภทอัตโนมัติ
-                </div>
-              )}
-
-            </div>
-          </aside>
-
-        </div>
+        </aside>
 
       </div>
 
-    </main>
-  );
+    </div>
+  </main>
+);
 }
 
 
