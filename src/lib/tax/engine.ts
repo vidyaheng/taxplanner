@@ -2,6 +2,13 @@ import { IncomeData } from "@/types/income";
 import { FamilyData, ChildData } from "@/types/family";
 import { TaxResult } from "@/types/taxResult";
 
+import {
+  calculateSection40_4Interest,
+} from "./interest-income";
+import {
+  calculateSection40_4Dividend,
+} from "./dividend-income";
+
 import { TAX_RULES_2569 } from "@/tax-rules/2569";
 import { TaxRuleSet } from "@/tax-rules/types";
 
@@ -20,6 +27,31 @@ import {
 import {
   calculateSeniorIncomeExemption,
 } from "./income-exemption";
+
+import {
+  calculateEnergyEfficientInvestment,
+} from "./energy-efficient-investment";
+
+import {
+  partitionForeignIncome,
+} from "./foreign-income-partition";
+
+import {
+  aggregateForeignIncome,
+} from "./foreign-income-aggregate";
+
+import {
+  buildForeignTaxCreditEligibilityDecisions,
+  calculateForeignTaxCredit,
+} from "./foreign-tax-credit";
+
+import {
+  calculateSection40_3RightsExpense,
+  calculateSection40_5RentalExpense,
+  calculateSection40_6ProfessionalExpense,
+  calculateSection40_7ContractExpense,
+  calculateSection40_8BusinessExpense,
+} from "./income-expense";
 
 interface CalculateTaxInput {
   taxYear: number;
@@ -52,6 +84,49 @@ function sum(
     (total, value) =>
       total + value,
     0
+  );
+}
+
+function resolveSpouseAssessableIncome(
+  family: FamilyData
+): boolean | null {
+  if (
+    family.spouseHasAssessableIncome !==
+    undefined
+  ) {
+    return family.spouseHasAssessableIncome;
+  }
+
+  /*
+   * legacy localStorage
+   */
+  return family.spouseHasIncome;
+}
+
+function canClaimSpouseParentAllowance(
+  family: FamilyData
+): boolean {
+  const spouseHasAssessableIncome =
+    resolveSpouseAssessableIncome(
+      family
+    );
+
+  const currentSpouseQualifies =
+    family.maritalStatus === "married" &&
+    spouseHasAssessableIncome === false;
+
+  const formerSpouseQualifies =
+    (
+      family.maritalStatus === "divorced" ||
+      family.maritalStatus === "widowed"
+    ) &&
+    family.marriageEndedThisTaxYear === true &&
+    family.formerSpouseHadAssessableIncomeThisTaxYear ===
+      false;
+
+  return (
+    currentSpouseQualifies ||
+    formerSpouseQualifies
   );
 }
 
@@ -136,10 +211,21 @@ function childMeetsBasicEligibility(
   child: ChildData,
   taxYear: number,
   incomeLimit: number,
+  taxpayerIsThaiTaxResident:
+    boolean | null,
   warnings: string[]
 ) {
   if (
     !child.supportedByTaxpayer
+  ) {
+    return false;
+  }
+
+  if (
+    taxpayerIsThaiTaxResident ===
+      false &&
+    child.stayedInThailand180Days !==
+      true
   ) {
     return false;
   }
@@ -229,6 +315,7 @@ function calculateChildAllowance(
           taxYear,
           rules.eligibility
             .childIncomeLimitExclusive,
+          family.isThaiTaxResident,
           warnings
         )
       ) {
@@ -283,6 +370,7 @@ function calculateChildAllowance(
           taxYear,
           rules.eligibility
             .childIncomeLimitExclusive,
+          family.isThaiTaxResident,
           warnings
         )
       )
@@ -317,6 +405,11 @@ function calculateParentAllowance(
 ) {
   let allowance = 0;
 
+  const spouseParentAllowanceEligible =
+    canClaimSpouseParentAllowance(
+      family
+    );
+
   for (
     const parent of
     family.parents
@@ -328,27 +421,30 @@ function calculateParentAllowance(
     }
 
     if (
-      parent.claimedByOtherTaxpayer
+      parent.claimedByOtherTaxpayer !==
+      false
     ) {
       continue;
     }
 
     if (
-      parent.birthYearBE ===
-      null
+      family.isThaiTaxResident === false &&
+      parent.isInThailand !== true &&
+      parent.isInThailand !== undefined
     ) {
       continue;
     }
 
-    const age =
-      taxYear -
-      parent.birthYearBE;
+    const meetsParentAgeRequirement =
+      parent.age60OrOlder === true ||
+      (
+        parent.age60OrOlder === undefined &&
+        parent.birthYearBE !== null &&
+        taxYear - parent.birthYearBE >=
+          rules.eligibility.parentMinAge
+      );
 
-    if (
-      age <
-      rules.eligibility
-        .parentMinAge
-    ) {
+    if (!meetsParentAgeRequirement) {
       continue;
     }
 
@@ -360,19 +456,9 @@ function calculateParentAllowance(
       continue;
     }
 
-    /*
-     * บิดา/มารดาของคู่สมรส
-     * ใช้สิทธิใน calculation นี้
-     * เฉพาะคู่สมรสไม่มีเงินได้
-     */
     if (
-      parent.owner ===
-        "spouse" &&
-      (
-        family.maritalStatus !==
-          "married" ||
-        family.spouseHasIncome
-      )
+      parent.owner === "spouse" &&
+      !spouseParentAllowanceEligible
     ) {
       continue;
     }
@@ -386,7 +472,9 @@ function calculateParentAllowance(
 
 function calculateDisabledAllowance(
   family: FamilyData,
-  rules: TaxRuleSet
+  rules: TaxRuleSet,
+  taxpayerIsThaiTaxResident:
+    boolean | null
 ) {
   let allowance = 0;
   let otherDependentCount = 0;
@@ -398,6 +486,22 @@ function calculateDisabledAllowance(
     if (
       !dependent
         .supportedByTaxpayer
+    ) {
+      continue;
+    }
+
+    if (
+      dependent.claimedByOtherTaxpayer !==
+      false
+    ) {
+      continue;
+    }
+
+    if (
+      taxpayerIsThaiTaxResident ===
+        false &&
+      dependent.stayedInThailand180Days !==
+        true
     ) {
       continue;
     }
@@ -448,7 +552,7 @@ function calculateDisabledAllowance(
 
 export function calculateTax({
   taxYear,
-  income,
+  income: rawIncome,
   family,
   deductions,
 }: CalculateTaxInput): TaxResult {
@@ -457,6 +561,53 @@ export function calculateTax({
 
   const warnings: string[] =
     [];
+
+  const spouseHasAssessableIncome =
+    resolveSpouseAssessableIncome(
+      family
+    );
+
+  const spouseParentAllowanceEligible =
+    canClaimSpouseParentAllowance(
+      family
+    );
+
+  /*
+  * --------------------
+  * FOREIGN INCOME
+  * --------------------
+  *
+  * แปลง foreign-source income
+  * ให้เหลือเฉพาะยอดที่ต้องนำมา
+  * คำนวณภาษีในปีนี้
+  *
+  * หลังจากจุดนี้ Engine ใช้
+  * income ที่ normalize แล้ว
+  */
+  const foreignIncomePartition =
+    partitionForeignIncome({
+      income: rawIncome,
+      filingTaxYear: taxYear,
+    });
+
+  warnings.push(
+    ...foreignIncomePartition.warnings
+  );
+
+  const foreignAggregate =
+    aggregateForeignIncome({
+      income: rawIncome,
+      filingTaxYear: taxYear,
+    });
+
+  const foreignTaxCreditEligibility =
+    buildForeignTaxCreditEligibilityDecisions(
+      foreignAggregate
+    );
+
+  const income =
+    foreignIncomePartition
+      .incomeForTaxEngine;
 
   /*
    * --------------------
@@ -487,32 +638,167 @@ export function calculateTax({
           .commission
       : 0;
 
+  const section40_3Items =
+    income.hasOtherIncome
+      ? income.detailedOtherIncome
+          .section40_3
+      : [];
+
+  const section40_3Annuity =
+    section40_3Items.reduce(
+      (sum, item) =>
+        item.incomeType === "annuity"
+          ? sum + Math.max(0, item.amount)
+          : sum,
+      0
+    );
+
+  const section40_3Rights =
+    section40_3Items.reduce(
+      (sum, item) =>
+        item.incomeType === "rights"
+          ? sum + Math.max(0, item.amount)
+          : sum,
+      0
+    );
+
+  const section40_4InterestResult =
+    calculateSection40_4Interest(
+      income.hasOtherIncome
+        ? income.detailedOtherIncome
+            .section40_4Interest
+        : []
+    );
+
+  const section40_4Interest =
+    section40_4InterestResult
+      .includedIncome;
+
+  const section40_4DividendResult =
+    calculateSection40_4Dividend(
+      income.hasOtherIncome
+        ? income.detailedOtherIncome
+            .section40_4Dividend
+        : []
+    );
+
+  const section40_4Dividend =
+    section40_4DividendResult
+      .includedAssessableIncome;
+
+  const section40_5Items =
+    income.hasOtherIncome
+      ? income.detailedOtherIncome
+          .section40_5
+      : [];
+
+  const section40_5 =
+    section40_5Items.reduce(
+      (sum, item) =>
+        sum +
+        Math.max(0, item.amount),
+      0
+    );
+
+  const section40_6Items =
+    income.hasOtherIncome
+      ? income.detailedOtherIncome
+          .section40_6
+      : [];
+
+  const section40_6 =
+    section40_6Items.reduce(
+      (sum, item) =>
+        sum +
+        Math.max(0, item.amount),
+      0
+    );
+
+  const section40_7Items =
+    income.hasOtherIncome
+      ? income.detailedOtherIncome
+          .section40_7
+      : [];
+
+  const section40_7 =
+    section40_7Items.reduce(
+      (sum, item) =>
+        sum +
+        Math.max(0, item.amount),
+      0
+    );
+
+  const section40_8Items =
+    income.hasOtherIncome
+      ? income.detailedOtherIncome
+          .section40_8
+      : [];
+
+  const section40_8 =
+    section40_8Items.reduce(
+      (sum, item) =>
+        sum +
+        Math.max(0, item.amount),
+      0
+    );
+
+  const legacyInvestmentIncome =
+    income.hasOtherIncome
+      ? Math.max(
+          0,
+          income.otherIncome.investment
+        )
+      : 0;
+
+  const legacyRentIncome =
+    income.hasOtherIncome
+      ? Math.max(
+          0,
+          income.otherIncome.rent
+        )
+      : 0; 
+      
+  const legacyProfessionalIncome =
+    income.hasOtherIncome
+      ? Math.max(
+          0,
+          income.otherIncome.professional
+        )
+      : 0;
+
+  const legacyBusinessIncome =
+    income.hasOtherIncome
+      ? Math.max(
+          0,
+          income.otherIncome.business
+        )
+      : 0;
+
   const unsupportedOtherIncome =
     income.hasOtherIncome
-      ? sum([
-          income.otherIncome
-            .rent,
-
-          income.otherIncome
-            .professional,
-
-          income.otherIncome
-            .business,
-
-          income.otherIncome
-            .investment,
-
-          income.otherIncome
-            .other,
-        ])
+      ? Math.max(
+          0,
+          income.otherIncome.other
+        )
       : 0;
 
   const supportedIncome =
     section40_1 +
-    section40_2;
+    section40_2 +
+    section40_3Annuity +
+    section40_3Rights +
+    section40_4Interest +
+    section40_4Dividend +
+    section40_5 +
+    section40_6 +
+    section40_7 +
+    section40_8;
 
   const totalGrossIncome =
     supportedIncome +
+    legacyRentIncome +
+    legacyProfessionalIncome +
+    legacyBusinessIncome +
     unsupportedOtherIncome;
 
   /*
@@ -538,10 +824,14 @@ export function calculateTax({
       income: {
         section40_1,
         section40_2,
-
-        // 40(3) ยังไม่ได้เสียบเข้า Engine ตอนนี้
-        section40_3Annuity: 0,
-        section40_3Rights: 0,
+        section40_3Annuity,
+        section40_3Rights,
+        section40_4Interest,
+        section40_4Dividend,
+        section40_5,
+        section40_6,
+        section40_7,
+        section40_8,
       },
 
       requested:
@@ -568,6 +858,73 @@ export function calculateTax({
           .allocation.section40_2
     );
 
+  const section40_3AnnuityAfterExemptions =
+    Math.max(
+      0,
+      section40_3Annuity -
+        seniorIncomeExemption
+          .allocation.section40_3Annuity
+    );
+
+  const section40_3RightsAfterExemptions =
+    Math.max(
+      0,
+      section40_3Rights -
+        seniorIncomeExemption
+          .allocation.section40_3Rights
+    );
+
+  const section40_4InterestAfterExemptions =
+  Math.max(
+    0,
+    section40_4Interest -
+      seniorIncomeExemption
+        .allocation.section40_4Interest
+  );
+
+  const section40_4DividendAfterExemptions =
+    Math.max(
+      0,
+      section40_4Dividend -
+        seniorIncomeExemption
+          .allocation.section40_4Dividend
+    );
+
+  const section40_5AfterExemptions =
+    Math.max(
+      0,
+      section40_5 -
+        seniorIncomeExemption
+          .allocation.section40_5
+    );
+
+  const section40_6AfterExemptions =
+    Math.max(
+      0,
+      section40_6 -
+        seniorIncomeExemption
+          .allocation.section40_6
+    );
+
+  const section40_7AfterExemptions =
+    Math.max(
+      0,
+      section40_7 -
+        seniorIncomeExemption
+          .allocation.section40_7
+    );
+
+  const section40_8AfterExemptions =
+    Math.max(
+      0,
+      section40_8 -
+        (
+          seniorIncomeExemption
+            .allocation.section40_8 ??
+          0
+        )
+    );
+
   const supportedIncomeAfterExemptions =
     section40_1AfterExemptions +
     section40_2AfterExemptions;
@@ -578,16 +935,6 @@ export function calculateTax({
       totalGrossIncome -
         seniorResidentExemption
     );
-
-  const isComplete =
-    unsupportedOtherIncome ===
-    0;
-
-  if (!isComplete) {
-    warnings.push(
-      "มีรายได้ 40(3)-40(8) ที่ยังไม่ได้คำนวณค่าใช้จ่าย ระบบจึงแสดงผลภาษีแบบ Preliminary เท่านั้น"
-    );
-  }
 
   /*
    * --------------------
@@ -606,12 +953,872 @@ export function calculateTax({
         .max
     );
 
+  let remainingSection40_3RightsExemption =
+    seniorIncomeExemption
+      .allocation.section40_3Rights;
+
+  const section40_3ItemsAfterExemptions =
+    section40_3Items.map((item) => {
+      if (item.incomeType !== "rights") {
+        return item;
+      }
+
+      const amount =
+        Math.max(0, item.amount);
+
+      const exemptedAmount =
+        Math.min(
+          amount,
+          remainingSection40_3RightsExemption
+        );
+
+      remainingSection40_3RightsExemption =
+        Math.max(
+          0,
+          remainingSection40_3RightsExemption -
+            exemptedAmount
+        );
+
+      return {
+        ...item,
+        amount:
+          amount -
+          exemptedAmount,
+      };
+    });
+
+  const section40_3RightsExpense =
+    calculateSection40_3RightsExpense(
+      section40_3ItemsAfterExemptions,
+      rules.otherIncomeExpenses
+        .section40_3Rights
+    );
+
+  const section40_3RightsIncomeAfterExpenses =
+    Math.max(
+      0,
+      section40_3RightsAfterExemptions -
+        section40_3RightsExpense
+          .deductibleExpense
+    );
+
+  let remainingSection40_5Exemption =
+    seniorIncomeExemption
+      .allocation.section40_5;
+
+  const section40_5ItemsAfterExemptions =
+    section40_5Items.map((item) => {
+      const amount =
+        Math.max(0, item.amount);
+
+      const exemptedAmount =
+        Math.min(
+          amount,
+          remainingSection40_5Exemption
+        );
+
+      remainingSection40_5Exemption =
+        Math.max(
+          0,
+          remainingSection40_5Exemption -
+            exemptedAmount
+        );
+
+      return {
+        ...item,
+        amount:
+          amount -
+          exemptedAmount,
+      };
+    });
+
+  const section40_5RentalExpense =
+    calculateSection40_5RentalExpense(
+      section40_5ItemsAfterExemptions,
+      rules.otherIncomeExpenses
+        .section40_5Rental
+    );
+
+  const section40_5IncomeAfterExpenses =
+    Math.max(
+      0,
+      section40_5AfterExemptions -
+        section40_5RentalExpense
+          .deductibleExpense
+    );
+
+  let remainingSection40_6Exemption =
+    seniorIncomeExemption
+      .allocation.section40_6;
+
+  const section40_6ItemsAfterExemptions =
+    section40_6Items.map((item) => {
+      const amount =
+        Math.max(0, item.amount);
+
+      const exemptedAmount =
+        Math.min(
+          amount,
+          remainingSection40_6Exemption
+        );
+
+      remainingSection40_6Exemption =
+        Math.max(
+          0,
+          remainingSection40_6Exemption -
+            exemptedAmount
+        );
+
+      return {
+        ...item,
+        amount:
+          amount -
+          exemptedAmount,
+      };
+    });
+
+  let remainingSection40_7Exemption =
+    seniorIncomeExemption
+      .allocation.section40_7;
+
+  const section40_7ItemsAfterExemptions =
+    section40_7Items.map((item) => {
+      const amount =
+        Math.max(0, item.amount);
+
+      const exemptedAmount =
+        Math.min(
+          amount,
+          remainingSection40_7Exemption
+        );
+
+      remainingSection40_7Exemption =
+        Math.max(
+          0,
+          remainingSection40_7Exemption -
+            exemptedAmount
+        );
+
+      return {
+        ...item,
+        amount:
+          amount -
+          exemptedAmount,
+      };
+    });
+
+  let remainingSection40_8Exemption =
+    Math.max(
+      0,
+      seniorIncomeExemption
+        .allocation.section40_8 ??
+        0
+    );
+
+  const section40_8ItemsAfterExemptions =
+    section40_8Items.map((item) => {
+      const amount =
+        Math.max(0, item.amount);
+
+      const exemptedAmount =
+        Math.min(
+          amount,
+          remainingSection40_8Exemption
+        );
+
+      remainingSection40_8Exemption =
+        Math.max(
+          0,
+          remainingSection40_8Exemption -
+            exemptedAmount
+        );
+
+      return {
+        ...item,
+        amount:
+          amount -
+          exemptedAmount,
+      };
+    });
+
+  const section40_6ProfessionalExpense =
+    calculateSection40_6ProfessionalExpense(
+      section40_6ItemsAfterExemptions,
+      rules.otherIncomeExpenses
+        .section40_6Professional
+    );
+
+  const section40_6IncomeAfterExpenses =
+    Math.max(
+      0,
+      section40_6AfterExemptions -
+        section40_6ProfessionalExpense
+          .deductibleExpense
+    );
+
+  const section40_7ContractExpense =
+    calculateSection40_7ContractExpense(
+      section40_7ItemsAfterExemptions,
+      rules.otherIncomeExpenses
+        .section40_7Contract
+    );
+
+  const section40_7IncomeAfterExpenses =
+    Math.max(
+      0,
+      section40_7AfterExemptions -
+        section40_7ContractExpense
+          .deductibleExpense
+    );
+
+  const section40_8BusinessExpense =
+    calculateSection40_8BusinessExpense(
+      section40_8ItemsAfterExemptions,
+      rules.otherIncomeExpenses
+        .section40_8Business
+    );
+
+  const section40_8IncomeAfterExpenses =
+    Math.max(
+      0,
+      section40_8AfterExemptions -
+        section40_8BusinessExpense
+          .deductibleExpense
+    );
+    
   const incomeAfterExpenses =
     Math.max(
       0,
       supportedIncomeAfterExemptions -
-        employmentExpense
+        employmentExpense +
+        section40_3AnnuityAfterExemptions +
+        section40_3RightsIncomeAfterExpenses +
+        section40_4InterestAfterExemptions +
+        section40_4DividendAfterExemptions +
+        section40_5IncomeAfterExpenses +
+        section40_6IncomeAfterExpenses +
+        section40_7IncomeAfterExpenses +
+        section40_8IncomeAfterExpenses
     );
+
+  /*
+  * --------------------
+  * ENERGY-EFFICIENT INVESTMENT
+  * พ.ร.ฎ. 805
+  *
+  * เป็นสิทธิยกเว้นเพิ่มเติม 50%
+  * หลังหักค่าใช้จ่ายปกติ
+  * --------------------
+  */
+  const energyEfficientInvestment =
+    calculateEnergyEfficientInvestment({
+      section40_5:
+        section40_5Items,
+
+      section40_6:
+        section40_6Items,
+
+      section40_7:
+        section40_7Items,
+
+      section40_8:
+        section40_8Items,
+
+      exemptionRate:
+        rules.incomeExemptions
+          .energyEfficientInvestmentRate,
+    });
+
+  const energyEfficientInvestmentExemption =
+    energyEfficientInvestment
+      .totalAdditionalExemption;
+
+  const incomeAfterEnergyEfficientInvestmentExemption =
+    Math.max(
+      0,
+      incomeAfterExpenses -
+        energyEfficientInvestmentExemption
+    );
+
+  const hasIncompleteParentAge =
+    family.parents.some((parent) => {
+      if (!parent.supportedByTaxpayer) {
+        return false;
+      }
+
+      if (
+        parent.annualAssessableIncome >
+        rules.eligibility
+          .parentIncomeLimitInclusive
+      ) {
+        return false;
+      }
+
+      if (
+        parent.claimedByOtherTaxpayer ===
+        true
+      ) {
+        return false;
+      }
+
+      if (
+        parent.owner === "spouse" &&
+        !spouseParentAllowanceEligible
+      ) {
+        return false;
+      }
+
+      if (parent.age60OrOlder === null) {
+        return true;
+      }
+
+      if (
+        parent.age60OrOlder !==
+        undefined
+      ) {
+        return false;
+      }
+
+      return parent.birthYearBE === null;
+    });
+
+  if (hasIncompleteParentAge) {
+    warnings.push(
+      "กรุณาระบุว่าบิดาหรือมารดาอายุ 60 ปีขึ้นไปหรือไม่"
+    );
+  }
+
+  const hasIncompleteParentOtherClaim =
+    family.parents.some((parent) => {
+      if (!parent.supportedByTaxpayer) {
+        return false;
+      }
+
+      const meetsParentAgeRequirement =
+        parent.age60OrOlder === true ||
+        (
+          parent.age60OrOlder ===
+            undefined &&
+          parent.birthYearBE !== null &&
+          taxYear - parent.birthYearBE >=
+            rules.eligibility.parentMinAge
+        );
+
+      if (!meetsParentAgeRequirement) {
+        return false;
+      }
+
+      if (
+        parent.annualAssessableIncome >
+        rules.eligibility
+          .parentIncomeLimitInclusive
+      ) {
+        return false;
+      }
+
+      if (
+        parent.owner === "spouse" &&
+        !spouseParentAllowanceEligible
+      ) {
+        return false;
+      }
+
+      return (
+        parent.claimedByOtherTaxpayer ==
+        null
+      );
+    });
+
+  /*
+  * --------------------
+  * PARENT THAILAND RESIDENCE
+  * --------------------
+  *
+  * ใช้ทั้ง
+  * - ค่าลดหย่อนบุพการีปกติ
+  * - เบี้ยประกันสุขภาพบิดา / มารดา
+  *
+  * เฉพาะกรณีผู้มีเงินได้
+  * มิได้เป็นผู้อยู่ในประเทศไทย
+  */
+
+  /*
+  * สิทธิลดหย่อนบุพการี 30,000
+  */
+  const hasIncompleteBasicParentThailandResidence =
+    family.isThaiTaxResident === false &&
+    family.parents.some((parent) => {
+      if (!parent.supportedByTaxpayer) {
+        return false;
+      }
+
+      const meetsParentAgeRequirement =
+        parent.age60OrOlder === true ||
+        (
+          parent.age60OrOlder ===
+            undefined &&
+          parent.birthYearBE !== null &&
+          taxYear - parent.birthYearBE >=
+            rules.eligibility.parentMinAge
+        );
+
+      if (!meetsParentAgeRequirement) {
+        return false;
+      }
+
+      if (
+        parent.annualAssessableIncome >
+        rules.eligibility
+          .parentIncomeLimitInclusive
+      ) {
+        return false;
+      }
+
+      if (
+        parent.claimedByOtherTaxpayer !==
+        false
+      ) {
+        return false;
+      }
+
+      if (
+        parent.owner === "spouse" &&
+        !spouseParentAllowanceEligible
+      ) {
+        return false;
+      }
+
+      /*
+      * null = ผู้ใช้ใหม่ยังไม่ได้ตอบ
+      *
+      * undefined = legacy localStorage
+      * ไม่บังคับให้ incomplete
+      */
+      return (
+        parent.isInThailand === null
+      );
+    });
+
+  /*
+  * เบี้ยประกันสุขภาพบิดา / มารดา
+  *
+  * ไม่ใช้เงื่อนไขอายุ 60 ปี
+  * และไม่ใช้ claimedByOtherTaxpayer
+  *
+  * ตรวจเฉพาะ detailed policy
+  * เพราะ undefined คือ legacy data
+  */
+  const hasIncompleteParentHealthThailandResidence =
+    family.isThaiTaxResident === false &&
+    deductions.parentHealthInsurancePolicies !==
+      undefined &&
+    deductions.parentHealthInsurancePolicies.some(
+      (policy) => {
+        const premiumPaid =
+          Math.max(
+            0,
+            policy.premiumPaidThisYear
+          );
+
+        /*
+        * ไม่มีเบี้ยจริง
+        * ไม่ต้องบังคับตอบ
+        */
+        if (premiumPaid <= 0) {
+          return false;
+        }
+
+        /*
+        * parentId ที่ว่าง / หาไม่เจอ
+        * จะถูก completeness อีกตัวจัดการ
+        */
+        if (
+          !policy.parentId ||
+          policy.parentId.trim() === ""
+        ) {
+          return false;
+        }
+
+        const parent =
+          family.parents.find(
+            (item) =>
+              item.id ===
+              policy.parentId
+          );
+
+        if (!parent) {
+          return false;
+        }
+
+        /*
+        * false = ตอบครบแล้วแต่ไม่มีสิทธิ
+        * true  = ตอบครบและอาจมีสิทธิ
+        * null  = ยังตอบไม่ครบ
+        * undefined = legacy parent data
+        */
+        return (
+          parent.isInThailand === null
+        );
+      }
+    );
+
+  const hasIncompleteParentThailandResidence =
+    hasIncompleteBasicParentThailandResidence ||
+    hasIncompleteParentHealthThailandResidence;
+
+  if (
+    hasIncompleteParentThailandResidence
+  ) {
+    warnings.push(
+      "กรุณาระบุว่าบิดาหรือมารดาอยู่ในประเทศไทยหรือไม่"
+    );
+  }
+  
+  /*
+  * --------------------
+  * PARENT HEALTH POLICY
+  * COMPLETENESS
+  * --------------------
+  *
+  * ตรวจเฉพาะ detailed data
+  *
+  * undefined =
+  * legacy parentHealthInsurance
+  * จึงไม่บังคับข้อมูลใหม่ย้อนหลัง
+  */
+  const hasIncompleteParentHealthPolicyDetails =
+    deductions.parentHealthInsurancePolicies !==
+      undefined &&
+    deductions.parentHealthInsurancePolicies.some(
+      (policy) => {
+        const premiumPaid =
+          Math.max(
+            0,
+            policy.premiumPaidThisYear
+          );
+
+        /*
+        * ไม่มีเบี้ยจริง
+        * ไม่ถือว่าเป็นรายการที่ต้องกรอกให้ครบ
+        */
+        if (premiumPaid <= 0) {
+          return false;
+        }
+
+        /*
+        * ต้องรู้จำนวนผู้ร่วมจ่าย
+        * เพื่อคำนวณส่วนของ taxpayer
+        */
+        if (
+          policy.jointPayerCount === null ||
+          !Number.isInteger(
+            policy.jointPayerCount
+          ) ||
+          policy.jointPayerCount < 1
+        ) {
+          return true;
+        }
+
+        /*
+        * ต้องเลือกว่าเป็นกรมธรรม์
+        * ของบิดา / มารดาคนใด
+        */
+        if (
+          !policy.parentId ||
+          policy.parentId.trim() === ""
+        ) {
+          return true;
+        }
+
+        /*
+        * parent อาจถูกลบออกจาก Family
+        * หลังจากสร้าง policy ไปแล้ว
+        */
+        const parentExists =
+          family.parents.some(
+            (parent) =>
+              parent.id ===
+              policy.parentId
+          );
+
+        if (!parentExists) {
+          return true;
+        }
+
+        return false;
+      }
+    );
+
+  if (
+    hasIncompleteParentHealthPolicyDetails
+  ) {
+    warnings.push(
+      "กรุณากรอกข้อมูลเบี้ยประกันสุขภาพบิดา/มารดาให้ครบ โดยเลือกบิดาหรือมารดาและระบุจำนวนผู้มีเงินได้ที่ร่วมจ่าย"
+    );
+  }
+
+  if (hasIncompleteParentOtherClaim) {
+    warnings.push(
+      "กรุณาระบุว่ามีผู้มีเงินได้คนอื่นใช้สิทธิลดหย่อนบุพการีคนนี้แล้วหรือไม่"
+    );
+  }
+
+  const hasIncompleteChildThailandStay =
+    family.isThaiTaxResident === false &&
+    family.children.some((child) => {
+      if (!child.supportedByTaxpayer) {
+        return false;
+      }
+
+      if (
+        child.annualAssessableIncome >=
+        rules.eligibility
+          .childIncomeLimitExclusive
+      ) {
+        return false;
+      }
+
+      if (child.birthYearBE === null) {
+        return false;
+      }
+
+      const ageByYear =
+        taxYear - child.birthYearBE;
+
+      const potentiallyEligibleByAge =
+        ageByYear < 20 ||
+        (
+          ageByYear <= 25 &&
+          child.studyingHigherEducation
+        );
+
+      return (
+        potentiallyEligibleByAge &&
+        child.stayedInThailand180Days ==
+          null
+      );
+    });
+
+  if (hasIncompleteChildThailandStay) {
+    warnings.push(
+      "กรุณาระบุว่าบุตรอยู่ในประเทศไทยตั้งแต่ 180 วันขึ้นไปหรือไม่"
+    );
+  }
+
+  const hasIncompleteDisabledThailandStay =
+    family.isThaiTaxResident === false &&
+    family.disabledDependents.some(
+      (dependent) =>
+        dependent.supportedByTaxpayer &&
+        dependent.hasRequiredEvidence &&
+        dependent.annualAssessableIncome <=
+          rules.eligibility
+            .disabledIncomeLimitInclusive &&
+        dependent.stayedInThailand180Days ==
+          null
+    );
+
+  if (hasIncompleteDisabledThailandStay) {
+    warnings.push(
+      "กรุณาระบุว่าผู้พิการหรือทุพพลภาพที่อยู่ในความอุปการะอยู่ในประเทศไทยตั้งแต่ 180 วันขึ้นไปหรือไม่"
+    );
+  }
+
+  const hasIncompleteDisabledEvidence =
+    family.disabledDependents.some(
+      (dependent) =>
+        dependent.supportedByTaxpayer &&
+        dependent.annualAssessableIncome <=
+          rules.eligibility
+            .disabledIncomeLimitInclusive &&
+        dependent.claimedByOtherTaxpayer !==
+          true &&
+        (
+          family.isThaiTaxResident !== false ||
+          dependent.stayedInThailand180Days !==
+            false
+        ) &&
+        dependent.hasRequiredEvidence ==
+          null
+    );
+
+  if (hasIncompleteDisabledEvidence) {
+    warnings.push(
+      "กรุณาระบุว่าผู้พิการหรือทุพพลภาพมีหลักฐานสำหรับใช้สิทธิลดหย่อนครบตามเงื่อนไขหรือไม่"
+    );
+  }
+
+  const hasIncompleteDisabledOtherClaim =
+    family.disabledDependents.some(
+      (dependent) =>
+        dependent.supportedByTaxpayer &&
+        dependent.hasRequiredEvidence &&
+        dependent.annualAssessableIncome <=
+          rules.eligibility
+            .disabledIncomeLimitInclusive &&
+        (
+          family.isThaiTaxResident !== false ||
+          dependent.stayedInThailand180Days ===
+            true
+        ) &&
+        dependent.claimedByOtherTaxpayer ==
+          null
+    );
+
+  if (hasIncompleteDisabledOtherClaim) {
+    warnings.push(
+      "กรุณาระบุว่ามีผู้มีเงินได้คนอื่นใช้สิทธิลดหย่อนผู้พิการหรือทุพพลภาพบุคคลนี้แล้วหรือไม่"
+    );
+  }
+
+  const hasIncompleteSpouseIncome =
+    family.maritalStatus === "married" &&
+    family.spouseHasAssessableIncome === null;
+
+  if (hasIncompleteSpouseIncome) {
+    warnings.push(
+      "กรุณาระบุว่าคู่สมรสมีเงินได้พึงประเมินหรือไม่"
+    );
+  }
+
+  const hasIncompleteSpouseMarriageDuration =
+    deductions.spouseLifeInsurance > 0 &&
+    family.maritalStatus === "married" &&
+    spouseHasAssessableIncome === false &&
+    family.marriedFullTaxYear === null;
+
+  if (hasIncompleteSpouseMarriageDuration) {
+    warnings.push(
+      "กรุณาระบุว่ามีสถานะสมรสตลอดปีภาษีนี้หรือไม่ เพื่อคำนวณสิทธิเบี้ยประกันชีวิตคู่สมรส"
+    );
+  }
+
+  const hasIncompleteMarriageEndTiming =
+    (
+      family.maritalStatus === "divorced" ||
+      family.maritalStatus === "widowed"
+    ) &&
+    family.marriageEndedThisTaxYear == null;
+
+  if (hasIncompleteMarriageEndTiming) {
+    warnings.push(
+      "กรุณาระบุว่าการสมรสสิ้นสุดภายในปีภาษีนี้หรือไม่"
+    );
+  }
+
+  const hasIncompleteFormerSpouseIncome =
+    (
+      family.maritalStatus === "divorced" ||
+      family.maritalStatus === "widowed"
+    ) &&
+    family.marriageEndedThisTaxYear === true &&
+    family.formerSpouseHadAssessableIncomeThisTaxYear ==
+      null;
+
+  if (hasIncompleteFormerSpouseIncome) {
+    warnings.push(
+      "กรุณาระบุว่าอดีตคู่สมรสมีเงินได้พึงประเมินในปีภาษีนี้หรือไม่"
+    );
+  }
+
+  const baseIsComplete =
+    !hasIncompleteSpouseIncome &&
+    !hasIncompleteSpouseMarriageDuration &&
+    !hasIncompleteMarriageEndTiming &&
+    !hasIncompleteFormerSpouseIncome &&
+    !hasIncompleteParentAge &&
+    !hasIncompleteParentOtherClaim &&
+    !hasIncompleteParentThailandResidence &&
+    !hasIncompleteParentHealthPolicyDetails &&
+    !hasIncompleteChildThailandStay &&
+    !hasIncompleteDisabledThailandStay &&
+    !hasIncompleteDisabledEvidence &&
+    !hasIncompleteDisabledOtherClaim &&
+    foreignIncomePartition.isComplete &&
+    legacyInvestmentIncome === 0 &&
+    legacyRentIncome === 0 &&
+    legacyProfessionalIncome === 0 &&
+    legacyBusinessIncome === 0 &&
+    unsupportedOtherIncome === 0 &&
+    section40_3RightsExpense.isComplete &&
+    section40_4InterestResult.isComplete &&
+    section40_4DividendResult.isComplete &&
+    section40_5RentalExpense.isComplete &&
+    section40_6ProfessionalExpense.isComplete &&
+    section40_7ContractExpense.isComplete &&
+    section40_8BusinessExpense.isComplete;
+
+  if (legacyInvestmentIncome > 0) {
+    warnings.push(
+      "พบรายได้จากการลงทุนที่บันทึกไว้จากระบบเวอร์ชันเดิม ระบบจะไม่นำยอดนี้มาคำนวณภาษีอัตโนมัติ กรุณาจัดประเภทรายได้ใหม่ในรายการที่ถูกต้อง"
+    );
+  }
+
+  if (legacyRentIncome > 0) {
+    warnings.push(
+      "พบรายได้ค่าเช่าที่บันทึกไว้จากระบบเวอร์ชันเดิม ระบบยังไม่ทราบประเภททรัพย์สินและวิธีหักค่าใช้จ่าย จึงยังไม่สามารถคำนวณรายได้ 40(5) นี้ได้อย่างสมบูรณ์ กรุณากรอกใหม่ในรายการค่าเช่า 40(5)"
+    );
+  }
+
+  if (legacyProfessionalIncome > 0) {
+    warnings.push(
+      "พบรายได้วิชาชีพอิสระที่บันทึกไว้จากระบบเวอร์ชันเดิม ระบบยังไม่ทราบประเภทวิชาชีพและวิธีหักค่าใช้จ่าย จึงยังไม่สามารถคำนวณรายได้ 40(6) ได้อย่างสมบูรณ์ กรุณากรอกใหม่ในรายการวิชาชีพอิสระ 40(6)"
+    );
+  }
+
+  if (legacyBusinessIncome > 0) {
+    warnings.push(
+      "พบรายได้ธุรกิจหรือค้าขายที่บันทึกไว้จากระบบเวอร์ชันเดิม ระบบยังไม่ทราบประเภทกิจการและวิธีหักค่าใช้จ่าย จึงยังไม่สามารถคำนวณรายได้ 40(8) นี้ได้อย่างสมบูรณ์ กรุณากรอกใหม่ในรายการ 40(8)"
+    );
+  }
+
+  if (unsupportedOtherIncome > 0) {
+    warnings.push(
+      "มีรายได้อื่นที่ยังไม่ได้จัดประเภทหรือยังไม่รองรับการคำนวณ ระบบจึงแสดงผลภาษีแบบ Preliminary เท่านั้น"
+    );
+  }
+
+  if (!section40_3RightsExpense.isComplete) {
+    warnings.push(
+      "รายได้มาตรา 40(3) ประเภทสิทธิใช้วิธีหักค่าใช้จ่ายไม่ตรงกัน กรุณาเลือกวิธีเดียวกันก่อนคำนวณ"
+    );
+  }
+
+  if (!section40_4InterestResult.isComplete) {
+    warnings.push(
+      "รายการดอกเบี้ย 40(4)(ก) เลือกวิธีเสียภาษีไม่สอดคล้องกัน กรุณาตรวจสอบก่อนคำนวณ"
+    );
+  }
+
+  if (!section40_4DividendResult.isComplete) {
+    warnings.push(
+      "รายการเงินปันผล 40(4)(ข) เลือกวิธีเสียภาษีไม่สอดคล้องกัน กรุณาตรวจสอบก่อนคำนวณ"
+    );
+  }
+
+  if (!section40_5RentalExpense.isComplete) {
+    warnings.push(
+      "รายได้ค่าเช่า 40(5) ยังระบุประเภททรัพย์สินหรือวิธีหักค่าใช้จ่ายไม่ครบหรือไม่สอดคล้องกัน กรุณาตรวจสอบก่อนคำนวณ"
+    );
+  }
+
+  if (!section40_6ProfessionalExpense.isComplete) {
+    warnings.push(
+      "รายได้มาตรา 40(6) ยังระบุประเภทวิชาชีพหรือวิธีหักค่าใช้จ่ายไม่ครบ หรือใช้วิธีหักค่าใช้จ่ายไม่สอดคล้องกัน กรุณาตรวจสอบก่อนคำนวณ"
+    );
+  }
+
+  if (!section40_7ContractExpense.isComplete) {
+    warnings.push(
+      "รายได้มาตรา 40(7) เลือกวิธีหักค่าใช้จ่ายไม่สอดคล้องกัน กรุณาเลือกวิธีเดียวกันก่อนคำนวณ"
+    );
+  }
+
+  if (!section40_8BusinessExpense.isComplete) {
+    warnings.push(
+      "รายได้มาตรา 40(8) ยังระบุประเภทกิจการหรือวิธีหักค่าใช้จ่ายไม่ครบ หรือใช้วิธีหักค่าใช้จ่ายไม่สอดคล้องกัน กรุณาตรวจสอบก่อนคำนวณ"
+    );
+  }
 
   /*
    * --------------------
@@ -622,12 +1829,23 @@ export function calculateTax({
   const taxpayerAllowance =
     rules.allowances.taxpayer;
 
+  const currentSpouseQualifies =
+    family.maritalStatus === "married" &&
+    spouseHasAssessableIncome === false;
+
+  const formerSpouseQualifies =
+    (
+      family.maritalStatus === "divorced" ||
+      family.maritalStatus === "widowed"
+    ) &&
+    family.marriageEndedThisTaxYear === true &&
+    family.formerSpouseHadAssessableIncomeThisTaxYear ===
+      false;
+
   const spouseAllowance =
-    family.maritalStatus ===
-      "married" &&
-    !family.spouseHasIncome
-      ? rules.allowances
-          .spouse
+    currentSpouseQualifies ||
+    formerSpouseQualifies
+      ? rules.allowances.spouse
       : 0;
 
   const childAllowance =
@@ -648,7 +1866,8 @@ export function calculateTax({
   const disabledAllowance =
     calculateDisabledAllowance(
       family,
-      rules
+      rules,
+      family.isThaiTaxResident
     );
 
   const totalFamilyAllowances =
@@ -665,11 +1884,11 @@ export function calculateTax({
    */
 
    const incomeAfterFamilyAllowances =
-     Math.max(
-       0,
-       incomeAfterExpenses -
-         totalFamilyAllowances
-     );
+      Math.max(
+        0,
+        incomeAfterEnergyEfficientInvestmentExemption -
+          totalFamilyAllowances
+      );
 
   /*
    * --------------------
@@ -852,8 +2071,19 @@ export function calculateTax({
   */
 
   const nonEmploymentIncome =
-  section40_2AfterExemptions +
-  unsupportedOtherIncome;
+    section40_2AfterExemptions +
+    section40_3AnnuityAfterExemptions +
+    section40_3RightsAfterExemptions +
+    section40_4InterestAfterExemptions +
+    section40_4DividendAfterExemptions +
+    section40_5AfterExemptions +
+    section40_6AfterExemptions +
+    section40_7AfterExemptions +
+    section40_8AfterExemptions +
+    legacyRentIncome +
+    legacyProfessionalIncome +
+    legacyBusinessIncome +
+    unsupportedOtherIncome;
 
   let method2Tax = 0;
 
@@ -883,7 +2113,6 @@ export function calculateTax({
       method1BeforeCurrentDeductions,
       method2Tax
     );
-
   /*
   * ภาษีหลังใช้ deduction ปัจจุบัน
   */
@@ -892,6 +2121,155 @@ export function calculateTax({
       method1Tax,
       method2Tax
     );
+
+  const foreignTaxCredit =
+    calculateForeignTaxCredit({
+      foreignAggregate,
+
+      totalGrossIncome,
+
+      thaiTaxForCreditLimitation:
+        taxBeforeCredits,
+
+      eligibility:
+        foreignTaxCreditEligibility,
+    });
+
+  /*
+  * --------------------
+  * TAX CREDITS
+  * --------------------
+  *
+  * ภาษีหัก ณ ที่จ่ายใช้ยอดที่ถูกหักจริง
+  * ตามหนังสือรับรอง
+  *
+  * ไม่คำนวณอัตราหัก ณ ที่จ่ายจากประเภท
+  * เงินได้ภายใน Tax Engine
+  */
+
+  const section40_1WithholdingTaxCredit =
+    Math.max(
+      0,
+      income.section40_1TaxWithheld ?? 0
+    );
+
+  const section40_2WithholdingTaxCredit =
+    income.hasOtherIncome
+      ? Math.max(
+          0,
+          income.section40_2TaxWithheld ?? 0
+        )
+      : 0;
+
+  const section40_3WithholdingTaxCredit =
+    sum(
+      section40_3Items.map(
+        (item) =>
+          Math.max(
+            0,
+            item.taxWithheld ?? 0
+          )
+      )
+    );
+
+  const section40_5WithholdingTaxCredit =
+    sum(
+      section40_5Items.map(
+        (item) =>
+          Math.max(
+            0,
+            item.taxWithheld ?? 0
+          )
+      )
+    );
+
+  const section40_6WithholdingTaxCredit =
+    sum(
+      section40_6Items.map(
+        (item) =>
+          Math.max(
+            0,
+            item.taxWithheld ?? 0
+          )
+      )
+    );
+
+  const section40_7WithholdingTaxCredit =
+    sum(
+      section40_7Items.map(
+        (item) =>
+          Math.max(
+            0,
+            item.taxWithheld ?? 0
+          )
+      )
+    );
+
+  const section40_8WithholdingTaxCredit =
+    sum(
+      section40_8Items.map(
+        (item) =>
+          Math.max(
+            0,
+            item.taxWithheld ?? 0
+          )
+      )
+    );
+
+  const withholdingTaxCredit =
+    section40_1WithholdingTaxCredit +
+    section40_2WithholdingTaxCredit +
+    section40_3WithholdingTaxCredit +
+    section40_4InterestResult
+      .creditableWithholdingTax +
+    section40_4DividendResult
+      .creditableWithholdingTax +
+    section40_5WithholdingTaxCredit +
+    section40_6WithholdingTaxCredit +
+    section40_7WithholdingTaxCredit +
+    section40_8WithholdingTaxCredit;
+
+  const dividendTaxCredit =
+    section40_4DividendResult
+      .creditableDividendTaxCredit;
+
+  const domesticTaxCredits =
+  withholdingTaxCredit +
+  dividendTaxCredit;
+
+  /*
+  * ภ.ง.ด.90:
+  * หัก FTC ก่อน
+  * แล้วจึงหัก WHT / credit อื่น
+  */
+  const taxAfterForeignTaxCredit =
+    Math.max(
+      0,
+      taxBeforeCredits -
+        foreignTaxCredit.totalAllowedCredit
+    );
+
+  const totalTaxCredits =
+    domesticTaxCredits +
+    foreignTaxCredit.totalAllowedCredit;
+
+  const taxPayable =
+    Math.max(
+      0,
+      taxAfterForeignTaxCredit -
+        domesticTaxCredits
+    );
+
+  const taxRefund =
+    Math.max(
+      0,
+      domesticTaxCredits -
+        taxAfterForeignTaxCredit
+    );
+
+  const isComplete =
+    baseIsComplete &&
+    foreignTaxCredit.isComplete;
 
   /*
   * ผลประหยัดภาษี
@@ -940,12 +2318,28 @@ export function calculateTax({
     supportedIncome: {
       section40_1,
       section40_2,
+      section40_3Annuity,
+      section40_3Rights,
+      section40_4Interest,
+      section40_4Dividend,
+      section40_5,
+      section40_6,
+      section40_7,
+      section40_8,
       total: supportedIncome,
     },
 
     employmentExpense,
 
     incomeAfterExpenses,
+
+    energyEfficientInvestmentQualifyingAmount:
+      energyEfficientInvestment
+        .totalQualifyingInvestment,
+
+    energyEfficientInvestmentExemption,
+
+    incomeAfterEnergyEfficientInvestmentExemption,
 
     familyAllowances: {
       taxpayer: taxpayerAllowance,
@@ -979,6 +2373,22 @@ export function calculateTax({
     taxBeforeCurrentDeductions,
 
     taxBeforeCredits,
+
+    taxCredits: {
+      withholdingTax:
+        withholdingTaxCredit,
+
+      dividendTaxCredit,
+
+      foreignTaxCredit,
+
+      total:
+        totalTaxCredits,
+    },
+
+    taxPayable,
+
+    taxRefund,
 
     taxSavingsFromCurrentDeductions,
 

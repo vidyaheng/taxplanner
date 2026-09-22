@@ -13,6 +13,14 @@ export interface TaxRuleSet {
 
   incomeExemptions: {
     seniorResidentMax: number;
+
+    /*
+    * พ.ร.ฎ. 805
+    * ยกเว้นเงินได้เพิ่ม 50%
+    * ของยอดลงทุนอนุรักษ์พลังงาน
+    * ที่เข้าเงื่อนไข
+    */
+    energyEfficientInvestmentRate: number;
   };
 
   allowances: {
@@ -31,6 +39,39 @@ export interface TaxRuleSet {
     section40_3Rights: {
       standardRate: number;
       standardMax: number;
+    };
+
+    section40_5Rental: {
+      standardRates: {
+        building: number;
+        agriculturalLand: number;
+        nonAgriculturalLand: number;
+        vehicle: number;
+        otherProperty: number;
+      };
+    };
+
+    section40_6Professional: {
+      standardRates: {
+        medical: number;
+        fineArts: number;
+        other: number;
+      };
+    };
+
+    section40_7Contract: {
+      standardRate: number;
+    };
+
+    section40_8Business: {
+      standardRate: number;
+
+      performer: {
+        firstTierLimit: number;
+        firstTierRate: number;
+        excessRate: number;
+        maxExpense: number;
+      };
     };
   };
 
@@ -79,6 +120,10 @@ export interface TaxRuleSet {
       homeLoanInterestMax: number;
 
       socialEnterpriseInvestmentMax: number;
+
+      solarRooftopMax: number;
+
+      artPurchaseMax: number;
     };
 
     sustainableInvestment: {

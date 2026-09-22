@@ -16,6 +16,15 @@ export interface ChildData {
   // พ.ศ. เช่น 2560
   birthYearBE: number | null;
 
+  /*
+  * บิดา / มารดา อายุ 60 ปีขึ้นไปหรือไม่
+  *
+  * null / undefined = ยังไม่ได้ตอบ
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  age60OrOlder?: boolean | null;
+
   // ใช้พิจารณากรณีอายุ 20-25 ปี
   studyingHigherEducation: boolean;
 
@@ -24,6 +33,16 @@ export interface ChildData {
 
   // อยู่ในความอุปการะ
   supportedByTaxpayer: boolean;
+
+  /*
+  * บุตรอยู่ในประเทศไทยรวมถึง 180 วัน
+  * ใช้เฉพาะกรณีผู้มีเงินได้
+  * ไม่เป็นผู้อยู่ในประเทศไทย
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  stayedInThailand180Days?: boolean | null;
 }
 
 export type ParentOwner =
@@ -43,12 +62,44 @@ export interface ParentData {
 
   birthYearBE: number | null;
 
+  /*
+  * บิดา / มารดา อายุ 60 ปีขึ้นไปหรือไม่
+  *
+  * null / undefined = ยังไม่ได้ตอบ
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  age60OrOlder?: boolean | null;
+
   annualAssessableIncome: number;
 
   supportedByTaxpayer: boolean;
 
-  // มีบุคคลอื่นใช้สิทธิคนนี้แล้วหรือไม่
-  claimedByOtherTaxpayer: boolean;
+  /*
+  * มีผู้มีเงินได้คนอื่นใช้สิทธิ
+  * บุพการีคนนี้แล้วหรือไม่
+  *
+  * null / undefined = ยังไม่ได้ตอบ
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  claimedByOtherTaxpayer?: boolean | null;
+
+  /*
+  * บิดา / มารดาอยู่ในประเทศไทยหรือไม่
+  *
+  * ใช้เฉพาะกรณีผู้มีเงินได้
+  * มิได้เป็นผู้อยู่ในประเทศไทย
+  *
+  * true = อยู่ในประเทศไทย
+  * false = ไม่ได้อยู่ในประเทศไทย
+  * null = ยังไม่ได้ตอบ
+  * undefined = ข้อมูลเก่าที่ยังไม่มี field นี้
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  isInThailand?: boolean | null;
 }
 
 export type DisabledDependentType =
@@ -76,8 +127,33 @@ export interface DisabledDependentData {
 
   supportedByTaxpayer: boolean;
 
-  // มีหลักฐาน/สถานะตามเกณฑ์หรือไม่
-  hasRequiredEvidence: boolean;
+  /*
+  * มีผู้มีเงินได้คนอื่นใช้สิทธิ
+  * บุคคลนี้แล้วหรือไม่
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  claimedByOtherTaxpayer?: boolean | null;
+
+  /*
+  * อยู่ในประเทศไทยรวมถึง 180 วัน
+  * ใช้เฉพาะกรณีผู้มีเงินได้
+  * ไม่เป็นผู้อยู่ในประเทศไทย
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  stayedInThailand180Days?: boolean | null;
+
+  /*
+  * มีหลักฐานตามเงื่อนไขครบหรือไม่
+  *
+  * null / undefined = ยังไม่ได้ตอบ
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  hasRequiredEvidence?: boolean | null;
 }
 
 export interface PregnancyExpenseData {
@@ -99,9 +175,19 @@ export interface PregnancyExpenseData {
 export interface SeniorIncomeExemptionAllocation {
   section40_1: number;
   section40_2: number;
-
   section40_3Annuity: number;
   section40_3Rights: number;
+  section40_4Interest: number;
+  section40_4Dividend: number;
+  section40_5: number;
+  section40_6: number;
+  section40_7: number;
+
+  /*
+   * optional เพื่อ compatibility
+   * กับข้อมูล localStorage เวอร์ชันเดิม
+   */
+  section40_8?: number;
 }
 
 export interface FamilyData {
@@ -125,7 +211,57 @@ export interface FamilyData {
 
   spouseHasIncome: boolean;
 
-  marriedFullTaxYear: boolean;
+  /*
+  * คู่สมรสมีเงินได้พึงประเมินหรือไม่
+  *
+  * true = มีเงินได้
+  * false = ไม่มีเงินได้
+  * null = ยังไม่ได้ตอบ
+  * undefined = ข้อมูลเก่าที่ยังไม่มี field นี้
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  spouseHasAssessableIncome?:
+    boolean | null;
+
+  /*
+  * มีความเป็นสามีภริยาตลอดปีภาษีหรือไม่
+  *
+  * true = ตลอดปีภาษี
+  * false = ไม่ตลอดปีภาษี
+  * null / undefined = ยังไม่ได้ตอบ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  marriedFullTaxYear?: boolean | null;
+
+  /*
+  * ใช้เมื่อสถานะปัจจุบันเป็นหย่าหรือหม้าย
+  *
+  * true = การสมรสสิ้นสุดภายในปีภาษีนี้
+  * false = การสมรสสิ้นสุดก่อนปีภาษีนี้
+  * null / undefined = ยังไม่ได้ตอบ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  marriageEndedThisTaxYear?: boolean | null;
+
+  /*
+  * ใช้เมื่อสถานะเป็นหย่าหรือหม้าย
+  * และการสมรสสิ้นสุดภายในปีภาษีนี้
+  *
+  * true = อดีตคู่สมรสมีเงินได้พึงประเมินในปีภาษีนี้
+  * false = ไม่มีเงินได้พึงประเมินในปีภาษีนี้
+  * null / undefined = ยังไม่ได้ตอบ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  formerSpouseHadAssessableIncomeThisTaxYear?:
+    boolean | null;
 
   children: ChildData[];
 

@@ -1,3 +1,35 @@
+export interface ParentHealthInsurancePolicyData {
+  id: string;
+
+  /*
+   * parent.id จาก FamilyData.parents
+   *
+   * null = ยังไม่ได้เลือก
+   * ว่ากรมธรรม์นี้ทำให้บิดา/มารดาคนใด
+   */
+  parentId: string | null;
+
+  /*
+   * เบี้ยประกันสุขภาพที่จ่ายจริง
+   * สำหรับกรมธรรม์นี้ในปีภาษี
+   *
+   * ถ้ามีหลายคนร่วมจ่าย
+   * ให้กรอกยอดรวมของกรมธรรม์
+   * ก่อนนำมาเฉลี่ย
+   */
+  premiumPaidThisYear: number;
+
+  /*
+   * จำนวนผู้มีเงินได้ที่ร่วมกัน
+   * จ่ายเบี้ยกรมธรรม์นี้
+   *
+   * 1 = ผู้ใช้จ่ายคนเดียว
+   * มากกว่า 1 = ร่วมจ่าย
+   * null = ยังไม่ได้ตอบ
+   */
+  jointPayerCount: number | null;
+}
+
 export interface DeductionData {
   /*
    * Insurance
@@ -5,9 +37,21 @@ export interface DeductionData {
   lifeInsurance: number;
   healthInsuranceSelf: number;
   spouseLifeInsurance: number;
-  parentHealthInsurance: number;
-  pensionInsurance: number;
 
+  /*
+  * legacy aggregate field
+  */
+  parentHealthInsurance: number;
+
+  /*
+  * รายการแบบละเอียด
+  *
+  * undefined = legacy localStorage
+  */
+  parentHealthInsurancePolicies?:
+    ParentHealthInsurancePolicyData[];
+
+  pensionInsurance: number;
   /*
    * Retirement
    */
@@ -38,6 +82,14 @@ export interface DeductionData {
   homeLoanInterest: number;
   pregnancyAndChildbirth: number;
   socialEnterpriseInvestment: number;
+  /*
+  * Temporary tax measures / exemptions
+  *
+  * optional เพื่อรองรับ localStorage
+  * จาก schema เวอร์ชันเก่า
+  */
+  solarRooftop?: number;
+  artPurchase?: number;
 
   /*
    * Donations
@@ -45,6 +97,20 @@ export interface DeductionData {
   politicalDonation: number;
   specialDonation: number;
   generalDonation: number;
+
+  /*
+  * พ.ร.ฎ. 804
+  * เงินบริจาคให้กองทัพอากาศ
+  * เพื่อโครงการสร้างพระสถูปเจดีย์
+  *
+  * เป็นสิทธิ 1 เท่า และอยู่ในกลุ่ม
+  * เพดานร่วมกับเงินบริจาคทั่วไป
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  airForceStupaDonation?: number;
+
 }
 
 export interface DeductionUsageItem {
@@ -149,6 +215,10 @@ export interface GeneralDeductionResult {
 
   socialEnterpriseInvestment: DeductionUsageItem;
 
+  solarRooftop?: DeductionUsageItem;
+
+  artPurchase?: DeductionUsageItem;
+
   totalPaid: number;
 
   totalAllowed: number;
@@ -163,6 +233,10 @@ export interface GeneralDeductionResult {
     thaiEsgxTransferMax: number;
     thaiEsgxFirstYearMax: number;
     thaiEsgxCarryForwardYears: number;
+
+    solarRooftopMax?: number;
+
+    artPurchaseMax?: number;
   };
 
   warnings: string[];
@@ -214,6 +288,13 @@ export interface DonationDeductionResult {
     SpecialDonationUsageItem;
 
   generalDonation:
+    DeductionUsageItem;
+
+    /*
+  * optional ระหว่าง migration
+  * จนกว่า Engine/UI จะรองรับครบ
+  */
+  airForceStupaDonation?:
     DeductionUsageItem;
 
   /*

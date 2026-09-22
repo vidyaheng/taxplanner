@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
+
 import { useTaxPlanner } from "@/store/TaxPlannerContext";
 import { calculateTax } from "@/lib/tax/engine";
 import { applyPlanningToDeductions } from "@/lib/tax/scenarios";
+import PlanningStepper from "@/components/planning/PlanningStepper";
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("th-TH", {
@@ -114,12 +117,12 @@ function DeductionCompareRow({
 
   return (
     <div className="border-b border-slate-100">
-      <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] items-center gap-3 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_140px_140px] sm:px-7 md:px-8">
+      <div className="grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8">
         <div className="min-w-0 text-sm font-medium text-slate-600">
           ค่าลดหย่อน
         </div>
 
-        <div className="pr-4 text-right text-sm font-semibold tabular-nums text-slate-800 sm:text-base">
+        <div className="pr-2 text-right text-sm font-semibold tabular-nums text-slate-800 sm:text-base">
           {formatNumber(current)} บาท
         </div>
 
@@ -161,14 +164,31 @@ function DeductionCompareRow({
                 <div
                   className={[
                     "whitespace-nowrap text-right text-sm font-medium tabular-nums",
-                    item.planned >
-                    item.current
+                    item.planned > item.current
                       ? "text-blue-700"
-                      : "text-slate-700",
+                      : item.planned < item.current
+                        ? "text-amber-700"
+                        : "text-slate-700",
                   ].join(" ")}
                 >
-                  {formatNumber(
-                    item.planned
+                  <div>
+                    {formatNumber(
+                      item.planned
+                    )}
+                  </div>
+
+                  {item.planned !== item.current && (
+                    <div className="mt-0.5 text-xs font-normal">
+                      {item.planned > item.current
+                        ? `+${formatNumber(
+                            item.planned -
+                              item.current
+                          )}`
+                        : `ลดลง ${formatNumber(
+                            item.current -
+                              item.planned
+                          )}`}
+                    </div>
                   )}
                 </div>
               </div>
@@ -202,6 +222,67 @@ export default function ResultsPage() {
     family: state.family,
     deductions: plannedDeductions,
   });
+
+  const resultWarnings = Array.from(
+    new Set([
+      ...currentResult.warnings,
+      ...plannedResult.warnings,
+    ])
+  );
+
+  const isResultCalculationComplete =
+    currentResult.isComplete &&
+    plannedResult.isComplete;
+
+  const currentNetTaxPosition =
+    currentResult.taxPayable -
+    currentResult.taxRefund;
+
+  const plannedNetTaxPosition =
+    plannedResult.taxPayable -
+    plannedResult.taxRefund;
+
+  const additionalTaxSaving =
+    isResultCalculationComplete
+      ? Math.max(
+          0,
+          currentNetTaxPosition -
+            plannedNetTaxPosition
+        )
+      : 0;
+
+  const taxBeforeCreditsReduction =
+    isResultCalculationComplete
+      ? Math.max(
+          0,
+          currentResult.taxBeforeCredits -
+            plannedResult.taxBeforeCredits
+        )
+      : 0;
+
+  const currentForeignTaxCredit =
+    currentResult.taxCredits
+      .foreignTaxCredit
+      ?.totalAllowedCredit ?? 0;
+
+  const plannedForeignTaxCredit =
+    plannedResult.taxCredits
+      .foreignTaxCredit
+      ?.totalAllowedCredit ?? 0;
+
+  const currentIncomeExpenses =
+    Math.max(
+      0,
+      currentResult.incomeAfterExemptions -
+        currentResult.incomeAfterExpenses
+    );
+
+  const plannedIncomeExpenses =
+    Math.max(
+      0,
+      plannedResult.incomeAfterExemptions -
+        plannedResult.incomeAfterExpenses
+    );
 
   const currentTotalAllowances =
     currentResult.familyAllowances.total +
@@ -399,6 +480,25 @@ export default function ResultsPage() {
     },
 
     {
+      label: "Solar Rooftop บ้านอยู่อาศัย",
+      current:
+        currentResult.generalDeductions
+          .solarRooftop?.allowed ?? 0,
+      planned:
+        plannedResult.generalDeductions
+          .solarRooftop?.allowed ?? 0,
+    },
+    {
+      label: "ค่าซื้องานศิลปะด้านทัศนศิลป์",
+      current:
+        currentResult.generalDeductions
+          .artPurchase?.allowed ?? 0,
+      planned:
+        plannedResult.generalDeductions
+          .artPurchase?.allowed ?? 0,
+    },
+
+    {
       label: "ค่าฝากครรภ์และคลอดบุตร",
       current:
         currentResult.pregnancyDeductions
@@ -435,16 +535,23 @@ export default function ResultsPage() {
         plannedResult.donationDeductions
           .generalDonation.allowed,
     },
+    {
+      label:
+        "เงินบริจาคให้กองทัพอากาศตาม พ.ร.ฎ. 804",
+      current:
+        currentResult.donationDeductions
+          .airForceStupaDonation
+          ?.allowed ?? 0,
+      planned:
+        plannedResult.donationDeductions
+          .airForceStupaDonation
+          ?.allowed ?? 0,
+    },
   ];
-
-  const taxSavings = Math.max(
-    0,
-    currentResult.taxBeforeCredits -
-      plannedResult.taxBeforeCredits
-  );
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <PlanningStepper currentStep={5} />
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-5 sm:p-7 md:p-8">
           <div className="text-sm font-medium text-slate-400">
@@ -461,136 +568,319 @@ export default function ResultsPage() {
           </p>
         </div>
 
-        <div className="relative">
-          <div
-            className="pointer-events-none absolute inset-0 grid grid-cols-[minmax(0,1fr)_120px_120px] gap-3 px-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8"
-            aria-hidden="true"
-          >
-            <div />
-            <div className="bg-slate-50" />
-            <div className="bg-blue-50" />
-          </div>
+        {(
+          !isResultCalculationComplete ||
+          resultWarnings.length > 0
+        ) && (
+          <div className="border-b border-amber-200 bg-amber-50 px-5 py-4 sm:px-7 md:px-8">
+            <div className="font-semibold text-amber-900">
+              {isResultCalculationComplete
+                ? "มีข้อมูลที่ควรตรวจสอบก่อนใช้ผลคำนวณ"
+                : "ยังไม่สามารถสรุปผลการคำนวณได้"}
+            </div>
 
-          <div className="relative z-10">
-            <CompareTableHeader />
-
-            <CompareRow
-              label="รายได้พึงประเมิน"
-              current={`${formatNumber(
-                currentResult.totalGrossIncome
-              )} บาท`}
-              planned={`${formatNumber(
-                plannedResult.totalGrossIncome
-              )} บาท`}
-            />
-
-            {(
-              currentResult.incomeExemptions.total > 0 ||
-              plannedResult.incomeExemptions.total > 0
-            ) && (
-              <CompareRow
-                label="เงินได้ที่ได้รับยกเว้นสำหรับผู้มีอายุ 65 ปีขึ้นไป"
-                current={`${formatNumber(
-                  currentResult.incomeExemptions
-                    .seniorResident
-                )} บาท`}
-                planned={`${formatNumber(
-                  plannedResult.incomeExemptions
-                    .seniorResident
-                )} บาท`}
-              />
+            {!isResultCalculationComplete && (
+              <div className="mt-2 text-sm leading-6 text-amber-800">
+                กรุณาตรวจสอบข้อมูลที่ยังไม่ครบถ้วนก่อน
+                ระบบจึงจะแสดงผลเปรียบเทียบภาษีและผลประหยัดภาษี
+              </div>
             )}
 
-            <DeductionCompareRow
-              current={currentTotalAllowances}
-              planned={plannedTotalAllowances}
-              details={deductionDetails}
-            />
-
-            <CompareRow
-              label="เงินได้สุทธิ"
-              current={`${formatNumber(
-                currentResult.taxableIncome
-              )} บาท`}
-              planned={`${formatNumber(
-                plannedResult.taxableIncome
-              )} บาท`}
-              emphasize
-            />
-
-            <details className="group">
-              <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8">
-                <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-600">
-                  <span>
-                    อัตราภาษีสูงสุด
-                  </span>
-
-                  <span className="text-lg leading-none text-slate-400 transition-transform group-open:rotate-180">
-                    ⌄
-                  </span>
-                </div>
-
-                <div className="whitespace-nowrap pr-3 text-right text-sm font-semibold tabular-nums text-slate-800 sm:text-base">
-                  {formatPercent(
-                    currentResult.marginalTaxRate
-                  )}
-                </div>
-
-                <div className="whitespace-nowrap pr-3 text-right text-sm font-semibold tabular-nums text-blue-700 sm:text-base">
-                  {formatPercent(
-                    plannedResult.marginalTaxRate
-                  )}
-                </div>
-              </summary>
-
-              <CompareRow
-                label="อัตราภาษีที่แท้จริง"
-                current={formatPercent(
-                  currentResult.effectiveTaxRate
+            {resultWarnings.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {resultWarnings.map(
+                  (warning, index) => (
+                    <div
+                      key={`${warning}-${index}`}
+                      className="text-sm leading-6 text-amber-800"
+                    >
+                      • {warning}
+                    </div>
+                  )
                 )}
-                planned={formatPercent(
-                  plannedResult.effectiveTaxRate
+              </div>
+            )}
+          </div>
+        )}
+
+        {isResultCalculationComplete && (
+          <>
+
+            <div className="relative">
+              <div
+                className="pointer-events-none absolute inset-0 grid grid-cols-[minmax(0,1fr)_120px_120px] gap-3 px-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8"
+                aria-hidden="true"
+              >
+                <div />
+                <div className="bg-slate-50" />
+                <div className="bg-blue-50" />
+              </div>
+
+              <div className="relative z-10">
+                <CompareTableHeader />
+
+                <CompareRow
+                  label="รายได้พึงประเมิน"
+                  current={`${formatNumber(
+                    currentResult.totalGrossIncome
+                  )} บาท`}
+                  planned={`${formatNumber(
+                    plannedResult.totalGrossIncome
+                  )} บาท`}
+                />
+
+                {(
+                  currentResult.incomeExemptions.total > 0 ||
+                  plannedResult.incomeExemptions.total > 0
+                ) && (
+                  <CompareRow
+                    label="เงินได้ที่ได้รับยกเว้นสำหรับผู้มีอายุ 65 ปีขึ้นไป"
+                    current={`${formatNumber(
+                      currentResult.incomeExemptions
+                        .seniorResident
+                    )} บาท`}
+                    planned={`${formatNumber(
+                      plannedResult.incomeExemptions
+                        .seniorResident
+                    )} บาท`}
+                  />
                 )}
-              />
-            </details>
 
-            <CompareRow
-              label="ภาษีที่ต้องเสีย"
-              current={`${formatNumber(
-                currentResult.taxBeforeCredits
-              )} บาท`}
-              planned={`${formatNumber(
-                plannedResult.taxBeforeCredits
-              )} บาท`}
-              emphasize
-            />
-            
-          </div>
-        </div>
+                {(
+                  currentIncomeExpenses > 0 ||
+                  plannedIncomeExpenses > 0
+                ) && (
+                  <CompareRow
+                    label="ค่าใช้จ่ายหักจากเงินได้"
+                    current={`${formatNumber(
+                      currentIncomeExpenses
+                    )} บาท`}
+                    planned={`${formatNumber(
+                      plannedIncomeExpenses
+                    )} บาท`}
+                  />
+                )}
 
-        <div className="m-4 rounded-3xl bg-blue-500 p-5 text-white sm:m-6 sm:p-7 md:m-8">
-          <div className="text-sm text-white/80">
-            จากแผนที่คุณเลือก
-          </div>
+                {(
+                  currentResult
+                    .energyEfficientInvestmentQualifyingAmount >
+                    0 ||
+                  plannedResult
+                    .energyEfficientInvestmentQualifyingAmount >
+                    0
+                ) && (
+                  <>
+                    <CompareRow
+                      label="เงินลงทุนอนุรักษ์พลังงานที่เข้าเงื่อนไข พ.ร.ฎ. 805"
+                      current={`${formatNumber(
+                        currentResult
+                          .energyEfficientInvestmentQualifyingAmount
+                      )} บาท`}
+                      planned={`${formatNumber(
+                        plannedResult
+                          .energyEfficientInvestmentQualifyingAmount
+                      )} บาท`}
+                    />
 
-          <div className="mt-2 text-2xl font-semibold sm:text-3xl">
-            ประหยัดภาษีได้{" "}
-            {formatNumber(taxSavings)} บาท
-          </div>
+                    <CompareRow
+                      label="เงินได้ยกเว้นเพิ่มจากการลงทุนอนุรักษ์พลังงาน (50%)"
+                      current={`${formatNumber(
+                        currentResult
+                          .energyEfficientInvestmentExemption
+                      )} บาท`}
+                      planned={`${formatNumber(
+                        plannedResult
+                          .energyEfficientInvestmentExemption
+                      )} บาท`}
+                    />
 
-          <div className="mt-3 text-sm leading-6 text-white/80">
-            ภาษีลดจาก{" "}
-            {formatNumber(
-              currentResult.taxBeforeCredits
-            )}{" "}
-            บาท เหลือ{" "}
-            {formatNumber(
-              plannedResult.taxBeforeCredits
-            )}{" "}
-            บาท
-          </div>
-        </div>
+                    <CompareRow
+                      label="เงินได้หลังหักค่าใช้จ่ายและสิทธิอนุรักษ์พลังงาน"
+                      current={`${formatNumber(
+                        currentResult
+                          .incomeAfterEnergyEfficientInvestmentExemption
+                      )} บาท`}
+                      planned={`${formatNumber(
+                        plannedResult
+                          .incomeAfterEnergyEfficientInvestmentExemption
+                      )} บาท`}
+                    />
+                  </>
+                )}
+
+                <DeductionCompareRow
+                  current={currentTotalAllowances}
+                  planned={plannedTotalAllowances}
+                  details={deductionDetails}
+                />
+
+                <CompareRow
+                  label="เงินได้สุทธิ"
+                  current={`${formatNumber(
+                    currentResult.taxableIncome
+                  )} บาท`}
+                  planned={`${formatNumber(
+                    plannedResult.taxableIncome
+                  )} บาท`}
+                  emphasize
+                />
+
+                <details className="group">
+                  <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8">
+                    <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-600">
+                      <span>
+                        อัตราภาษีขั้นสูงสุด (Marginal Rate)
+                      </span>
+
+                      <span className="text-lg leading-none text-slate-400 transition-transform group-open:rotate-180">
+                        ⌄
+                      </span>
+                    </div>
+
+                    <div className="whitespace-nowrap pr-3 text-right text-sm font-semibold tabular-nums text-slate-800 sm:text-base">
+                      {formatPercent(
+                        currentResult.marginalTaxRate
+                      )}
+                    </div>
+
+                    <div className="whitespace-nowrap pr-3 text-right text-sm font-semibold tabular-nums text-blue-700 sm:text-base">
+                      {formatPercent(
+                        plannedResult.marginalTaxRate
+                      )}
+                    </div>
+                  </summary>
+
+                  <CompareRow
+                    label="อัตราภาษีที่แท้จริง"
+                    current={formatPercent(
+                      currentResult.effectiveTaxRate
+                    )}
+                    planned={formatPercent(
+                      plannedResult.effectiveTaxRate
+                    )}
+                  />
+                </details>
+
+                <CompareRow
+                  label="ภาษีก่อนหักเครดิตภาษี"
+                  current={`${formatNumber(
+                    currentResult.taxBeforeCredits
+                  )} บาท`}
+                  planned={`${formatNumber(
+                    plannedResult.taxBeforeCredits
+                  )} บาท`}
+                />
+
+                <CompareRow
+                  label="เครดิตภาษีหัก ณ ที่จ่าย"
+                  current={`${formatNumber(
+                    currentResult.taxCredits.withholdingTax
+                  )} บาท`}
+                  planned={`${formatNumber(
+                    plannedResult.taxCredits.withholdingTax
+                  )} บาท`}
+                />
+
+                <CompareRow
+                  label="เครดิตภาษีเงินปันผล"
+                  current={`${formatNumber(
+                    currentResult.taxCredits.dividendTaxCredit
+                  )} บาท`}
+                  planned={`${formatNumber(
+                    plannedResult.taxCredits.dividendTaxCredit
+                  )} บาท`}
+                />
+
+                {(
+                  currentForeignTaxCredit > 0 ||
+                  plannedForeignTaxCredit > 0
+                ) && (
+                  <CompareRow
+                    label="เครดิตภาษีเงินได้ต่างประเทศ"
+                    current={`${formatNumber(
+                      currentForeignTaxCredit
+                    )} บาท`}
+                    planned={`${formatNumber(
+                      plannedForeignTaxCredit
+                    )} บาท`}
+                  />
+                )}
+
+                <CompareRow
+                  label="เครดิตภาษีรวม"
+                  current={`${formatNumber(
+                    currentResult.taxCredits.total
+                  )} บาท`}
+                  planned={`${formatNumber(
+                    plannedResult.taxCredits.total
+                  )} บาท`}
+                />
+
+                <CompareRow
+                  label="ภาษีที่ต้องชำระหลังเครดิต"
+                  current={`${formatNumber(
+                    currentResult.taxPayable
+                  )} บาท`}
+                  planned={`${formatNumber(
+                    plannedResult.taxPayable
+                  )} บาท`}
+                  emphasize
+                />
+
+                <CompareRow
+                  label="ภาษีที่ขอคืนได้"
+                  current={`${formatNumber(
+                    currentResult.taxRefund
+                  )} บาท`}
+                  planned={`${formatNumber(
+                    plannedResult.taxRefund
+                  )} บาท`}
+                />
+                
+              </div>
+            </div>
+
+            <div className="m-4 rounded-3xl bg-blue-500 p-5 text-white sm:m-6 sm:p-7 md:m-8">
+              <div className="text-sm text-white/80">
+                จากแผนที่คุณเลือก
+              </div>
+
+              <div className="mt-2 text-2xl font-semibold sm:text-3xl">
+                ประหยัดภาษีสุทธิได้{" "}
+                {formatNumber(
+                  additionalTaxSaving
+                )}{" "}
+                บาท
+              </div>
+
+              <div className="mt-3 text-sm leading-6 text-white/80">
+                ภาษีก่อนเครดิตลดลง{" "}
+                {formatNumber(
+                  taxBeforeCreditsReduction
+                )}{" "}
+                บาท จาก{" "}
+                {formatNumber(
+                  currentResult.taxBeforeCredits
+                )}{" "}
+                บาท เหลือ{" "}
+                {formatNumber(
+                  plannedResult.taxBeforeCredits
+                )}{" "}
+                บาท
+              </div>
+            </div>
+          </>
+        )}
       </section>
+
+      <div className="mt-6 flex justify-start">
+        <Link
+          href="/planning/planner"
+          className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          ← กลับไปวางแผน
+        </Link>
+      </div>
     </main>
   );
 }

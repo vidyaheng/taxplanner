@@ -10,8 +10,9 @@ export const TAX_RULES_2569: TaxRuleSet = {
 
   incomeExemptions: {
     seniorResidentMax: 190_000,
-  },
 
+    energyEfficientInvestmentRate: 0.50,
+  },
   allowances: {
     taxpayer: 60_000,
 
@@ -30,6 +31,39 @@ export const TAX_RULES_2569: TaxRuleSet = {
     section40_3Rights: {
       standardRate: 0.50,
       standardMax: 100_000,
+    },
+
+    section40_5Rental: {
+      standardRates: {
+        building: 0.30,
+        agriculturalLand: 0.20,
+        nonAgriculturalLand: 0.15,
+        vehicle: 0.30,
+        otherProperty: 0.10,
+      },
+    },
+
+    section40_6Professional: {
+      standardRates: {
+        medical: 0.60,
+        fineArts: 0.60,
+        other: 0.30,
+      },
+    },
+
+    section40_7Contract: {
+      standardRate: 0.60,
+    },
+
+    section40_8Business: {
+      standardRate: 0.60,
+
+      performer: {
+        firstTierLimit: 300_000,
+        firstTierRate: 0.60,
+        excessRate: 0.40,
+        maxExpense: 600_000,
+      },
     },
   },
 
@@ -87,6 +121,10 @@ export const TAX_RULES_2569: TaxRuleSet = {
       homeLoanInterestMax: 100_000,
 
       socialEnterpriseInvestmentMax: 100_000,
+
+      solarRooftopMax: 200_000,
+
+      artPurchaseMax: 100_000,
     },
 
     sustainableInvestment: {

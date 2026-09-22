@@ -10,6 +10,118 @@ export type ExpenseMethod =
   | "standard"
   | "actual";
 
+/*
+ * -------------------------
+ * Foreign-source income
+ * มาตรา 41 วรรคสอง
+ * -------------------------
+ *
+ * ใช้กับเงินได้ตามมาตรา 40
+ * ที่เกิดจากแหล่งต่างประเทศ
+ *
+ * จำนวนเงินทั้งหมดเก็บเป็นเงินบาท
+ * หลังแปลงอัตราแลกเปลี่ยนแล้ว
+ */
+
+export interface ForeignTaxCreditDtaReviewData {
+  isEligible: boolean;
+
+  creditableForeignTaxPaidForRemittedIncome?:
+    number | null;
+}
+export interface ForeignIncomeSourceData {
+  /*
+   * ประเทศแหล่งเงินได้
+   */
+  country: string;
+
+  /*
+   * ปีภาษีที่ "เกิดเงินได้"
+   * เช่น 2567, 2568, 2569
+   */
+  incomeTaxYear: number;
+
+  /*
+   * จำนวนจากเงินได้ก้อนนี้
+   * ที่นำเข้าประเทศไทย
+   * ในปีภาษีที่กำลังคำนวณ
+   *
+   * ตัว amount ของ income item
+   * ยังคงหมายถึงเงินได้ทั้งหมด
+   * ที่เกิดในต่างประเทศ
+   */
+  remittedToThailandThisTaxYear:
+    number;
+
+  /*
+   * ภาษีเงินได้ที่ชำระ
+   * ในต่างประเทศของเงินได้ก้อนนี้
+   *
+   * ห้ามนำไปรวมกับ taxWithheld
+   * ของประเทศไทย
+   */
+  foreignIncomeTaxPaid: number;
+
+  /*
+  * ค่าใช้จ่ายที่สัมพันธ์กับ
+  * เงินได้ส่วนที่นำเข้าไทย
+  * และต้องนำมาคำนวณภาษีในปีนี้
+  *
+  * ใช้เฉพาะกรณีที่ประเภทเงินได้
+  * เลือกหักค่าใช้จ่ายตามจริง
+  * หรือกรณีที่ต้องระบุค่าใช้จ่ายจริง
+  *
+  * ไม่ให้ Engine คำนวณสัดส่วนเอง
+  * เพราะต้องอาศัยข้อเท็จจริงของรายการ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  expenseAttributableToRemittance?:
+    number;
+
+  /*
+   * ต้องตรวจ residence
+   * ใน "ปีที่เกิดเงินได้"
+   * ไม่ใช่ปีที่นำเงินเข้าไทย
+   */
+  isThaiTaxResidentInIncomeYear:
+    boolean | null;
+
+  /*
+   * ผลการตรวจสิทธิ Foreign Tax Credit
+   * ตาม DTA ของเงินได้รายการนี้
+   *
+   * undefined = ยังไม่ได้ตรวจ
+   *
+   * optional เพื่อ compatibility
+   * กับ localStorage เดิม
+   */
+  foreignTaxCreditDtaReview?:
+    ForeignTaxCreditDtaReviewData;
+}
+
+export interface Section40_1ForeignIncomeData {
+  id: string;
+
+  /*
+   * เงินได้ทั้งหมดที่เกิด
+   * จากต่างประเทศ
+   */
+  amount: number;
+
+  foreignSource:
+    ForeignIncomeSourceData;
+}
+
+export interface Section40_2ForeignIncomeData {
+  id: string;
+
+  amount: number;
+
+  foreignSource:
+    ForeignIncomeSourceData;
+}
 
 /*
  * -------------------------
@@ -27,12 +139,44 @@ export interface Section40_3RightsIncomeData {
     ExpenseMethod;
 
   actualExpense: number;
+
+  /*
+   * optional เพื่อ compatibility
+   * กับข้อมูล localStorage เวอร์ชันเดิม
+   */
+  taxWithheld?: number;
+
+  /*
+  * มีค่าเมื่อรายการนี้
+  * เป็นเงินได้จากต่างประเทศ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  foreignSource?:
+    ForeignIncomeSourceData;
 }
 
 export interface Section40_3AnnuityIncomeData {
   id: string;
   incomeType: "annuity";
   amount: number;
+
+  /*
+   * optional เพื่อ compatibility
+   * กับข้อมูล localStorage เวอร์ชันเดิม
+   */
+  taxWithheld?: number;
+
+  /*
+  * มีค่าเมื่อรายการนี้
+  * เป็นเงินได้จากต่างประเทศ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  foreignSource?:
+    ForeignIncomeSourceData;
 }
 
 export type Section40_3IncomeData =
@@ -62,6 +206,16 @@ export interface Section40_4InterestIncomeData {
   taxWithheld: number;
 
   /*
+  * มีค่าเมื่อรายการนี้
+  * เป็นเงินได้จากต่างประเทศ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  foreignSource?:
+    ForeignIncomeSourceData;
+
+  /*
    * final =
    * เลือกไม่นำมารวมคำนวณ
    *
@@ -85,6 +239,16 @@ export interface Section40_4DividendIncomeData {
   amount: number;
 
   taxWithheld: number;
+
+  /*
+  * มีค่าเมื่อรายการนี้
+  * เป็นเงินได้จากต่างประเทศ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  foreignSource?:
+    ForeignIncomeSourceData;
 
   /*
    * เครดิตภาษีเงินปันผล
@@ -115,6 +279,34 @@ export type RentalAssetType =
 export interface Section40_5RentalIncomeData {
   id: string;
   amount: number;
+
+  /*
+   * optional เพื่อ compatibility
+   * กับข้อมูล localStorage เวอร์ชันเดิม
+   */
+  taxWithheld?: number;
+  /*
+  * มีค่าเมื่อรายการนี้
+  * เป็นเงินได้จากต่างประเทศ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  foreignSource?:
+    ForeignIncomeSourceData;
+
+  /*
+  * ค่าใช้จ่ายลงทุนในเครื่องจักร /
+  * อุปกรณ์ประสิทธิภาพสูง หรือวัสดุ
+  * เพื่อการอนุรักษ์พลังงาน
+  *
+  * เก็บ "ยอดลงทุนจริงที่เข้าเงื่อนไข"
+  * ไม่รวมสิทธิเพิ่ม 50%
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  energyEfficientInvestment?: number;
 
   assetType:
     RentalAssetType | null;
@@ -149,6 +341,31 @@ export interface Section40_6ProfessionalIncomeData {
   id: string;
   amount: number;
 
+  taxWithheld?: number;
+
+  /*
+  * มีค่าเมื่อรายการนี้
+  * เป็นเงินได้จากต่างประเทศ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  foreignSource?:
+    ForeignIncomeSourceData;
+
+  /*
+  * ค่าใช้จ่ายลงทุนในเครื่องจักร /
+  * อุปกรณ์ประสิทธิภาพสูง หรือวัสดุ
+  * เพื่อการอนุรักษ์พลังงาน
+  *
+  * เก็บ "ยอดลงทุนจริงที่เข้าเงื่อนไข"
+  * ไม่รวมสิทธิเพิ่ม 50%
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  energyEfficientInvestment?: number;
+
   professionalType:
     ProfessionalType | null;
 
@@ -169,6 +386,31 @@ export interface Section40_6ProfessionalIncomeData {
 export interface Section40_7ContractIncomeData {
   id: string;
   amount: number;
+
+  taxWithheld?: number;
+
+  /*
+  * มีค่าเมื่อรายการนี้
+  * เป็นเงินได้จากต่างประเทศ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  foreignSource?:
+    ForeignIncomeSourceData;
+
+  /*
+  * ค่าใช้จ่ายลงทุนในเครื่องจักร /
+  * อุปกรณ์ประสิทธิภาพสูง หรือวัสดุ
+  * เพื่อการอนุรักษ์พลังงาน
+  *
+  * เก็บ "ยอดลงทุนจริงที่เข้าเงื่อนไข"
+  * ไม่รวมสิทธิเพิ่ม 50%
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  energyEfficientInvestment?: number;
 
   expenseMethod:
     ExpenseMethod;
@@ -192,22 +434,102 @@ export type Section40_8Category =
   | "actualOnly";
 
 export interface Section40_8BusinessIncomeData {
+
   id: string;
+
   amount: number;
+
+  /*
+   * ภาษีที่ถูกหัก ณ ที่จ่ายจริง
+   * ตามหนังสือรับรอง
+   *
+   * optional เพื่อ compatibility
+   * กับข้อมูล localStorage เวอร์ชันเดิม
+   */
+  taxWithheld?: number;
+
+  /*
+  * มีค่าเมื่อรายการนี้
+  * เป็นเงินได้จากต่างประเทศ
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  foreignSource?:
+    ForeignIncomeSourceData;
+
+  /*
+  * ค่าใช้จ่ายลงทุนในเครื่องจักร /
+  * อุปกรณ์ประสิทธิภาพสูง หรือวัสดุ
+  * เพื่อการอนุรักษ์พลังงาน
+  *
+  * เก็บ "ยอดลงทุนจริงที่เข้าเงื่อนไข"
+  * ไม่รวมสิทธิเพิ่ม 50%
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เวอร์ชันเดิม
+  */
+  energyEfficientInvestment?: number;
 
   category:
     Section40_8Category | null;
+
+  /*
+   * ระบุชนิดกิจการจริง
+   * ใช้แยกเงินได้ 40(8)
+   * ที่อยู่ใน category เดียวกัน
+   *
+   * optional เพื่อ compatibility
+   * กับข้อมูล localStorage เวอร์ชันเดิม
+   */
+  activityCode?: string | null;
 
   expenseMethod:
     ExpenseMethod;
 
   actualExpense: number;
+
 }
 
 export interface IncomeData {
   monthlySalary: number;
   annualBonus: number;
   otherEmploymentIncome: number;
+
+  /*
+   * ภาษีหัก ณ ที่จ่ายของเงินได้ 40(1)
+   * เช่น เงินเดือน โบนัส ค่าจ้าง
+   *
+   * optional เพื่อ compatibility
+   * กับ localStorage เดิม
+   */
+  section40_1TaxWithheld?: number;
+
+  /*
+   * ภาษีหัก ณ ที่จ่ายของเงินได้ 40(2)
+   *
+   * ตอนนี้ 40(2) ยังใช้โครงสร้าง
+   * commission เดิมของระบบ
+   *
+   * optional เพื่อ compatibility
+   */
+  section40_2TaxWithheld?: number;
+
+  /*
+  * 40(1) และ 40(2) จากต่างประเทศ
+  *
+  * แยกรายการเพราะต้องรู้
+  * ประเทศ + ปีที่เกิดเงินได้
+  * + จำนวนที่นำเข้าไทย
+  *
+  * optional เพื่อ compatibility
+  * กับ localStorage เดิม
+  */
+  section40_1ForeignIncome?:
+    Section40_1ForeignIncomeData[];
+
+  section40_2ForeignIncome?:
+    Section40_2ForeignIncomeData[];
 
   hasOtherIncome: boolean;
 

@@ -120,6 +120,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
           maritalStatus:
             "married" as const,
@@ -251,11 +256,16 @@ describe(
           isThaiNational: null,
 
           seniorIncomeExemptionAllocation: {
-            section40_1: 0,
-            section40_2: 0,
-            section40_3Annuity: 0,
-  section40_3Rights: 0,
-          },
+          section40_1: 0,
+          section40_2: 0,
+          section40_3Annuity: 0,
+          section40_3Rights: 0,
+          section40_4Interest: 0,
+          section40_4Dividend: 0,
+          section40_5: 0,
+          section40_6: 0,
+          section40_7: 0,
+        },
 
           maritalStatus:
             "single" as const,
@@ -325,35 +335,35 @@ describe(
 
         expect(
           details.lifeInsurance
-            .planned
+            .allowedAdditional
         ).toBe(100_000);
 
         expect(
           details.lifeInsurance
-            .allowedAdditional
+            .netDeductionChange
         ).toBe(75_000);
 
         expect(
           details.lifeInsurance
             .excess
-        ).toBe(25_000);
+        ).toBe(0);
+
+        expect(
+          details.lifeInsurance
+            .sideEffects
+        ).toEqual([
+          {
+            key: "healthInsuranceSelf",
+            beforeAllowed: 25_000,
+            afterAllowed: 0,
+            change: -25_000,
+          },
+        ]);
 
         expect(
           details.lifeInsurance
             .reasons
-        ).toEqual([
-          {
-            type:
-              "combined_limit",
-
-            title:
-              "ติดเพดานประกันชีวิตและสุขภาพรวม",
-
-            limit: 100_000,
-            used: 25_000,
-            remaining: 75_000,
-          },
-        ]);
+        ).toEqual([]);
       }
     );
 
@@ -408,6 +418,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
 
           maritalStatus:
@@ -547,7 +562,12 @@ describe(
             section40_1: 0,
             section40_2: 0,
             section40_3Annuity: 0,
-            section40_3Rights: 0,   
+            section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0, 
+            section40_5: 0, 
+            section40_6: 0, 
+            section40_7: 0,
           },
 
           maritalStatus:
@@ -622,38 +642,39 @@ describe(
         expect(
           details
             .pensionInsurance
-            .planned
+            .allowedAdditional
         ).toBe(200_000);
 
         expect(
           details
             .pensionInsurance
-            .allowedAdditional
+            .netDeductionChange
         ).toBe(100_000);
 
         expect(
           details
             .pensionInsurance
             .excess
-        ).toBe(100_000);
+        ).toBe(0);
+
+        expect(
+          details
+            .pensionInsurance
+            .sideEffects
+        ).toEqual([
+          {
+            key: "rmf",
+            beforeAllowed: 500_000,
+            afterAllowed: 400_000,
+            change: -100_000,
+          },
+        ]);
 
         expect(
           details
             .pensionInsurance
             .reasons
-        ).toEqual([
-          {
-            type:
-              "shared_retirement_limit",
-
-            title:
-              "ติดเพดานกลุ่มเกษียณรวม",
-
-            limit: 500_000,
-            used: 500_000,
-            remaining: 0,
-          },
-        ]);
+        ).toEqual([]);
       }
     );
 
@@ -713,6 +734,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
 
           maritalStatus:
@@ -849,6 +875,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
 
           maritalStatus:
@@ -1001,6 +1032,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
           maritalStatus:
             "single" as const,
@@ -1121,6 +1157,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
           maritalStatus:
             "single" as const,
@@ -1248,6 +1289,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
 
           maritalStatus:
@@ -1378,7 +1424,7 @@ describe(
     );
 
     it(
-      "คำนวณสิทธิคงเหลือของ life insurance โดยคำนึงถึง health ที่มีอยู่แล้ว",
+      "คำนวณสิทธิของ life insurance แยกจากผลกระทบต่อ health ที่มีอยู่แล้ว",
       () => {
         const current = {
           ...currentDeductions(),
@@ -1427,6 +1473,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
 
           maritalStatus:
@@ -1455,7 +1506,7 @@ describe(
 
         expect(
           capacity.lifeInsurance
-        ).toBe(75_000);
+        ).toBe(100_000);
       }
     );
 
@@ -1513,6 +1564,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
 
           maritalStatus:
@@ -1596,6 +1652,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
           maritalStatus:
             "single" as const,
@@ -1674,6 +1735,11 @@ describe(
             section40_2: 0,
             section40_3Annuity: 0,
             section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
           },
           maritalStatus:
             "single" as const,
@@ -1702,6 +1768,150 @@ describe(
         expect(
           capacity.thaiEsg
         ).toBe(80_000);
+      }
+    );
+
+    it(
+      "นำรายได้ 40(8) มาคำนวณเพดานตามรายได้ของ Pension, RMF และ Thai ESG",
+      () => {
+        const current = {
+          ...currentDeductions(),
+
+          /*
+          * ใช้ ordinary life room เต็ม
+          * เพื่อให้ capacity ของ Pension
+          * สะท้อนเฉพาะเพดาน 15% ของรายได้
+          */
+          lifeInsurance: 100_000,
+          healthInsuranceSelf: 0,
+
+          pensionInsurance: 0,
+
+          providentFund: 0,
+          gpf: 0,
+          privateTeacherFund: 0,
+          nsf: 0,
+
+          rmf: 0,
+          thaiEsg: 0,
+        };
+
+        const income = {
+          monthlySalary: 0,
+          annualBonus: 0,
+          otherEmploymentIncome: 0,
+
+          hasOtherIncome: true,
+
+          otherIncome: {
+            commission: 0,
+            rent: 0,
+            professional: 0,
+            business: 0,
+            investment: 0,
+            other: 0,
+          },
+
+          detailedOtherIncome: {
+            section40_3: [],
+            section40_4Interest: [],
+            section40_4Dividend: [],
+            section40_5: [],
+            section40_6: [],
+            section40_7: [],
+
+            section40_8: [
+              {
+                id: "business-40-8",
+                amount: 600_000,
+
+                category:
+                  "standard60" as const,
+
+                /*
+                * ใช้ตามจริง = 0
+                * เพื่อให้ test นี้โฟกัสเรื่อง
+                * gross assessable income
+                * สำหรับเพดาน % โดยตรง
+                */
+                expenseMethod:
+                  "actual" as const,
+
+                actualExpense: 0,
+
+                activityCode:
+                  "test-business",
+              },
+            ],
+          },
+        };
+
+        const family = {
+          taxpayerAge65OrOlder: null,
+          isThaiTaxResident: null,
+          isThaiNational: null,
+
+          seniorIncomeExemptionAllocation: {
+            section40_1: 0,
+            section40_2: 0,
+            section40_3Annuity: 0,
+            section40_3Rights: 0,
+            section40_4Interest: 0,
+            section40_4Dividend: 0,
+            section40_5: 0,
+            section40_6: 0,
+            section40_7: 0,
+            section40_8: 0,
+          },
+
+          maritalStatus:
+            "single" as const,
+
+          spouseHasIncome: false,
+          marriedFullTaxYear: false,
+
+          children: [],
+          parents: [],
+          disabledDependents: [],
+          pregnancies: [],
+        };
+
+        const capacity =
+          calculatePlanningCapacity(
+            current,
+            (deductions) =>
+              calculateTax({
+                taxYear: 2569,
+                income,
+                family,
+                deductions,
+              })
+          );
+
+        /*
+        * รายได้พึงประเมิน 40(8)
+        * = 600,000 บาท
+        *
+        * Pension:
+        * 15% = 90,000
+        *
+        * RMF:
+        * 30% = 180,000
+        *
+        * Thai ESG:
+        * 30% = 180,000
+        */
+        expect(
+          capacity.pensionInsurance
+        ).toBe(90_000);
+
+        expect(
+          capacity.rmf
+        ).toBe(180_000);
+
+        expect(
+          capacity.thaiEsg
+        ).toBe(180_000);
       }
     );
   }

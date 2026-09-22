@@ -13,7 +13,7 @@ describe(
   "TaxPlanner localStorage migration",
   () => {
     it(
-      "migrate state รุ่นเก่าที่ไม่มี planning เป็น schema version 3 โดยรักษาข้อมูลเดิม",
+      "migrate state รุ่นเก่าเป็น schema version ปัจจุบันโดยรักษาข้อมูลเดิม",
       () => {
         const oldState = {
           taxYear: 2569,
@@ -36,13 +36,16 @@ describe(
 
         expect(
           migrated.schemaVersion
-        ).toBe(6);
+        ).toBe(14);
 
         expect(
           migrated.income
         ).toEqual({
           monthlySalary:
             100_000,
+
+          section40_1TaxWithheld: 0,
+          section40_2TaxWithheld: 0,
 
           detailedOtherIncome: {
             section40_3: [],
@@ -63,6 +66,9 @@ describe(
 
           ltfToThaiEsgxTransferAmount:
             0,
+
+          solarRooftop: 0,
+          artPurchase: 0,
         });
 
         expect(
@@ -78,7 +84,7 @@ describe(
     );
 
     it(
-      "รักษาค่า planning เดิมและเติม field ที่ขาดเมื่อ migrate เป็น schema version 3",
+      "รักษาค่า planning เดิมและเติม field ที่ขาดเมื่อ migrate เป็น schema version ปัจจุบัน",
       () => {
         const oldState = {
           taxYear: 2569,
@@ -96,7 +102,7 @@ describe(
 
         expect(
           migrated.schemaVersion
-        ).toBe(6);
+        ).toBe(14);
 
         expect(
           migrated.planning
@@ -138,7 +144,7 @@ describe(
 
         expect(
           migrated.schemaVersion
-        ).toBe(6);
+        ).toBe(14);
 
         expect(
           migrated.deductions
@@ -186,7 +192,7 @@ describe(
 
         expect(
           migrated.schemaVersion
-        ).toBe(6);
+        ).toBe(14);
 
         expect(
           migrated.family
@@ -229,7 +235,7 @@ describe(
 
         expect(
           migrated.schemaVersion
-        ).toBe(6);
+        ).toBe(14);
 
         expect(
           migrated.family
@@ -283,7 +289,7 @@ describe(
 
         expect(
           migrated.schemaVersion
-        ).toBe(6);
+        ).toBe(14);
 
         expect(
           migrated.income
@@ -331,7 +337,7 @@ describe(
 
         expect(
           migrated.schemaVersion
-        ).toBe(6);
+        ).toBe(14);
 
         expect(
           migrated.family
@@ -341,6 +347,13 @@ describe(
           section40_2: 0,
           section40_3Annuity: 0,
           section40_3Rights: 0,
+          section40_4Interest: 0,
+          section40_4Dividend: 0,
+          section40_5: 0,
+          section40_6: 0,
+          section40_7: 0,
+          section40_8: 0,
+
         });
       }
     );
@@ -372,7 +385,7 @@ describe(
 
         expect(
           migrated.schemaVersion
-        ).toBe(6);
+        ).toBe(14);
 
         expect(
           migrated.family
@@ -382,7 +395,317 @@ describe(
           section40_2: 60_000,
           section40_3Annuity: 0,
           section40_3Rights: 0,
+          section40_4Interest: 0,
+          section40_4Dividend: 0,
+          section40_5: 0,
+          section40_6: 0,
+          section40_7: 0,
+          section40_8: 0,
         });
+      }
+    );
+
+    it(
+      "migrate schema 6 เป็น 8 โดยเพิ่มการจัดสรรสิทธิผู้สูงอายุสำหรับดอกเบี้ยและเงินปันผล 40(4)",
+      () => {
+        const oldState = {
+          schemaVersion: 6,
+
+          taxYear: 2569,
+
+          family: {
+            taxpayerAge65OrOlder: true,
+            isThaiTaxResident: true,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1: 40_000,
+              section40_2: 50_000,
+              section40_3Annuity: 60_000,
+              section40_3Rights: 40_000,
+            },
+          },
+        };
+
+        const migrated =
+          migrateStoredState(
+            oldState as never
+          );
+
+        expect(
+          migrated.schemaVersion
+        ).toBe(14);
+
+        expect(
+          migrated.family
+            ?.seniorIncomeExemptionAllocation
+        ).toEqual({
+          section40_1: 40_000,
+          section40_2: 50_000,
+          section40_3Annuity: 60_000,
+          section40_3Rights: 40_000,
+
+          /*
+          * schema 6 ยังไม่มี 40(4)
+          * migration จึงเริ่มค่าใหม่ที่ 0
+          */
+          section40_4Interest: 0,
+          section40_4Dividend: 0,
+          section40_5: 0,
+          section40_6: 0,
+          section40_7: 0,
+          section40_8: 0,
+        });
+      }
+    );
+
+    it(
+      "migrate schema 7 เป็น 8 โดยเพิ่มการจัดสรรสิทธิผู้สูงอายุสำหรับเงินปันผล 40(4)",
+      () => {
+        const oldState = {
+          schemaVersion: 7,
+
+          taxYear: 2569,
+
+          family: {
+            taxpayerAge65OrOlder: true,
+            isThaiTaxResident: true,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1: 40_000,
+              section40_2: 50_000,
+              section40_3Annuity: 60_000,
+              section40_3Rights: 20_000,
+              section40_4Interest: 20_000,
+            },
+          },
+        };
+
+        const migrated =
+          migrateStoredState(
+            oldState as never
+          );
+
+        expect(
+          migrated.schemaVersion
+        ).toBe(14);
+
+        expect(
+          migrated.family
+            ?.seniorIncomeExemptionAllocation
+        ).toEqual({
+          section40_1: 40_000,
+          section40_2: 50_000,
+          section40_3Annuity: 60_000,
+          section40_3Rights: 20_000,
+          section40_4Interest: 20_000,
+
+          /*
+          * schema 7 ยังไม่มี allocation
+          * สำหรับเงินปันผล
+          */
+          section40_4Dividend: 0,
+          section40_5: 0,
+          section40_6: 0,
+          section40_7: 0,
+          section40_8: 0,
+        });
+      }
+    );
+
+    it(
+      "migrate schema 11 เป็น 12 โดยเพิ่มการจัดสรรสิทธิผู้สูงอายุสำหรับ 40(8) โดยไม่เดาค่าเดิม",
+      () => {
+        const oldState = {
+          schemaVersion: 11,
+
+          taxYear: 2569,
+
+          family: {
+            taxpayerAge65OrOlder: true,
+            isThaiTaxResident: true,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1: 10_000,
+              section40_2: 20_000,
+              section40_3Annuity: 30_000,
+              section40_3Rights: 40_000,
+              section40_4Interest: 10_000,
+              section40_4Dividend: 20_000,
+              section40_5: 10_000,
+              section40_6: 20_000,
+              section40_7: 30_000,
+            },
+          },
+        };
+
+        const migrated =
+          migrateStoredState(
+            oldState as never
+          );
+
+        expect(
+          migrated.schemaVersion
+        ).toBe(14);
+
+        expect(
+          migrated.family
+            ?.seniorIncomeExemptionAllocation
+        ).toEqual({
+          section40_1: 10_000,
+          section40_2: 20_000,
+          section40_3Annuity: 30_000,
+          section40_3Rights: 40_000,
+          section40_4Interest: 10_000,
+          section40_4Dividend: 20_000,
+          section40_5: 10_000,
+          section40_6: 20_000,
+          section40_7: 30_000,
+
+          /*
+          * schema 11 ยังไม่มี allocation
+          * สำหรับรายได้ 40(8)
+          *
+          * จึงเติม 0 โดยไม่เดาสิทธิให้ผู้ใช้
+          */
+          section40_8: 0,
+        });
+      }
+    );
+
+    it(
+      "migrate schema 12 เป็น 13 โดยเพิ่มภาษีหัก ณ ที่จ่าย 40(1) และ 40(2) โดยไม่เดาค่าเดิม",
+      () => {
+        const oldState = {
+          schemaVersion: 12,
+
+          taxYear: 2569,
+
+          income: {
+            monthlySalary: 100_000,
+            annualBonus: 20_000,
+            otherEmploymentIncome: 0,
+
+            hasOtherIncome: false,
+
+            otherIncome: {
+              commission: 0,
+              rent: 0,
+              professional: 0,
+              business: 0,
+              investment: 0,
+              other: 0,
+            },
+
+            detailedOtherIncome: {
+              section40_3: [],
+              section40_4Interest: [],
+              section40_4Dividend: [],
+              section40_5: [],
+              section40_6: [],
+              section40_7: [],
+              section40_8: [],
+            },
+          },
+        };
+
+        const migrated =
+          migrateStoredState(
+            oldState as never
+          );
+
+        expect(
+          migrated.schemaVersion
+        ).toBe(14);
+
+        expect(
+          migrated.income
+            ?.section40_1TaxWithheld
+        ).toBe(0);
+
+        expect(
+          migrated.income
+            ?.section40_2TaxWithheld
+        ).toBe(0);
+
+        expect(
+          migrated.income
+            ?.monthlySalary
+        ).toBe(100_000);
+
+        expect(
+          migrated.income
+            ?.annualBonus
+        ).toBe(20_000);
+      }
+    );
+
+    it(
+      "migrate schema 13 เป็น 14 โดยเพิ่ม Solar Rooftop และค่าซื้องานศิลปะโดยไม่เดาค่าเดิม",
+      () => {
+        const oldState = {
+          schemaVersion: 13,
+
+          taxYear: 2569,
+
+          deductions: {
+            thaiEsg: 50_000,
+          },
+        };
+
+        const migrated =
+          migrateStoredState(
+            oldState as never
+          );
+
+        expect(
+          migrated.schemaVersion
+        ).toBe(14);
+
+        expect(
+          migrated.deductions
+            ?.thaiEsg
+        ).toBe(50_000);
+
+        expect(
+          migrated.deductions
+            ?.solarRooftop
+        ).toBe(0);
+
+        expect(
+          migrated.deductions
+            ?.artPurchase
+        ).toBe(0);
+
+        /*
+        * ถ้ามีค่าใหม่อยู่แล้ว
+        * migration ต้องรักษาค่านั้นไว้
+        * เพราะใช้ ?? 0
+        */
+        const stateWithExistingValues = {
+          schemaVersion: 13,
+
+          taxYear: 2569,
+
+          deductions: {
+            solarRooftop: 180_000,
+            artPurchase: 70_000,
+          },
+        };
+
+        const preserved =
+          migrateStoredState(
+            stateWithExistingValues as never
+          );
+
+        expect(
+          preserved.deductions
+            ?.solarRooftop
+        ).toBe(180_000);
+
+        expect(
+          preserved.deductions
+            ?.artPurchase
+        ).toBe(70_000);
       }
     );
 
@@ -390,7 +713,7 @@ describe(
       "ไม่ลด schemaVersion หากข้อมูลใหม่กว่า App เวอร์ชันปัจจุบัน",
       () => {
         const newerState = {
-          schemaVersion: 7,
+          schemaVersion: 15,
 
           taxYear: 2569,
 
@@ -410,7 +733,7 @@ describe(
 
         expect(
           migrated.schemaVersion
-        ).toBe(7);
+        ).toBe(15);
 
         expect(
           migrated.planning

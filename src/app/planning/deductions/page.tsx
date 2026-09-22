@@ -7,20 +7,35 @@ import {
   useTaxPlanner,
 } from "@/store/TaxPlannerContext";
 
-import {
-  DeductionData,
-} from "@/types/deductions";
+import PlanningStepper
+  from "@/components/planning/PlanningStepper";
 
 import {
   calculateTax,
 } from "@/lib/tax/engine";
 
 import {
+  applyPlanningToDeductions,
+} from "@/lib/tax/scenarios";
+
+import {
+  DeductionData,
+  ParentHealthInsurancePolicyData,
+} from "@/types/deductions";
+
+import {
+  ParentData,
   PregnancyExpenseData,
 } from "@/types/family";
 
-type DeductionKey =
-  keyof DeductionData;
+type DeductionKey = {
+  [K in keyof DeductionData]-?:
+    NonNullable<
+      DeductionData[K]
+    > extends number
+      ? K
+      : never;
+}[keyof DeductionData];
 
 interface DeductionField {
   key: DeductionKey;
@@ -40,7 +55,7 @@ const sections: DeductionSectionData[] = [
     id: "insurance",
     title: "ประกัน",
     description:
-      "ประกันชีวิต สุขภาพ และประกันบำนาญที่มีอยู่แล้ว",
+      "ประกันชีวิตและสุขภาพที่มีอยู่แล้ว",
     fields: [
       {
         key: "lifeInsurance",
@@ -58,16 +73,6 @@ const sections: DeductionSectionData[] = [
         description:
           "สำหรับกรณีคู่สมรสไม่มีเงินได้และเข้าเงื่อนไข",
       },
-      {
-        key: "parentHealthInsurance",
-        label: "เบี้ยประกันสุขภาพบิดา / มารดา",
-      },
-      {
-        key: "pensionInsurance",
-        label: "เบี้ยประกันชีวิตแบบบำนาญ",
-        description:
-          "ระบบจะตรวจเพดานร่วมกับกลุ่มเกษียณภายหลัง",
-      },
     ],
   },
 
@@ -75,8 +80,14 @@ const sections: DeductionSectionData[] = [
     id: "retirement",
     title: "การออมเพื่อเกษียณ",
     description:
-      "เงินสะสมและเงินลงทุนเพื่อการเกษียณ",
+      "เบี้ยประกันบำนาญ เงินสะสม และเงินลงทุนเพื่อการเกษียณ",
     fields: [
+      {
+        key: "pensionInsurance",
+        label: "เบี้ยประกันชีวิตแบบบำนาญ",
+        description:
+          "บางส่วนอาจใช้ในวงเงินประกันชีวิต/สุขภาพ และส่วนเพิ่มเติมใช้เพดานร่วมกับกลุ่มเกษียณ",
+      },
       {
         key: "providentFund",
         label: "กองทุนสำรองเลี้ยงชีพ (PVD)",
@@ -139,6 +150,18 @@ const sections: DeductionSectionData[] = [
         key: "socialEnterpriseInvestment",
         label: "เงินลงทุนในวิสาหกิจเพื่อสังคม",
       },
+      {
+        key: "solarRooftop",
+        label: "Solar Rooftop บ้านอยู่อาศัย",
+        description:
+          "กรอกเฉพาะค่าซื้อและติดตั้งที่เข้าเงื่อนไข ระบบต้องติดตั้งบนที่อยู่อาศัย เชื่อมต่อโครงข่าย MEA/PEA สำเร็จ และมี e-Tax Invoice ใช้สิทธิได้ 1 ครั้ง 1 ระบบ สูงสุด 200,000 บาท",
+      },
+      {
+        key: "artPurchase",
+        label: "ค่าซื้องานศิลปะด้านทัศนศิลป์",
+        description:
+          "กรอกเฉพาะยอดซื้อผลงานที่เข้าเงื่อนไข เช่น จิตรกรรม ประติมากรรม ภาพพิมพ์ ภาพถ่าย หรือสื่อผสม ใช้สิทธิได้ตามจริงสูงสุด 100,000 บาท",
+      },
     ],
   },
 
@@ -161,6 +184,13 @@ const sections: DeductionSectionData[] = [
           "เงินบริจาคทั่วไป",
         description:
           "ปี 2569 การบริจาคให้วัด มูลนิธิ และสถานสาธารณกุศลเพื่อใช้สิทธิ ต้องผ่าน e-Donation",
+      },
+      {
+        key: "airForceStupaDonation",
+        label:
+          "เงินบริจาคให้กองทัพอากาศตาม พ.ร.ฎ. 804",
+        description:
+          "สำหรับเงินที่บริจาคผ่านบัญชีเฉพาะของกองทัพอากาศเพื่อโครงการสร้างพระสถูปเจดีย์ ใช้สิทธิ 1 เท่า และใช้เพดาน 10% ร่วมกับเงินบริจาคทั่วไป",
       },
       {
         key: "politicalDonation",
@@ -189,6 +219,46 @@ function parseNumber(
       value.replace(/,/g, "")
     ) || 0
   );
+}
+
+function getParentLabel(
+  parent: ParentData
+) {
+  const relation =
+    parent.relation === "father"
+      ? "บิดา"
+      : "มารดา";
+
+  return parent.owner === "spouse"
+    ? `${relation}คู่สมรส`
+    : relation;
+}
+
+function getParentHealthPolicyShare(
+  policy:
+    ParentHealthInsurancePolicyData
+) {
+  const premium =
+    Math.max(
+      0,
+      policy.premiumPaidThisYear
+    );
+
+  const payerCount =
+    policy.jointPayerCount;
+
+  if (
+    premium <= 0 ||
+    payerCount === null ||
+    !Number.isInteger(
+      payerCount
+    ) ||
+    payerCount < 1
+  ) {
+    return 0;
+  }
+
+  return premium / payerCount;
 }
 
 export default function DeductionsPage() {
@@ -231,10 +301,164 @@ export default function DeductionsPage() {
   const donationUsage =
     taxResult.donationDeductions;
 
+  const hasPlanning =
+  Object.values(
+    state.planning
+  ).some(
+    (value) =>
+      (value ?? 0) > 0
+  );
+
+const plannedDeductions =
+  applyPlanningToDeductions(
+    state.deductions,
+    state.planning
+  );
+
+const plannedTaxResult =
+  calculateTax({
+    taxYear:
+      state.taxYear,
+
+    income:
+      state.income,
+
+    family:
+      state.family,
+
+    deductions:
+      plannedDeductions,
+  });
+
+const plannedDonationUsage =
+  plannedTaxResult
+    .donationDeductions;
+
+const canShowPlanningPreview =
+  hasPlanning &&
+  taxResult.isComplete &&
+  plannedTaxResult.isComplete;
+
+const donationPlanningChanged =
+  canShowPlanningPreview &&
+  (
+    donationUsage
+      .baseBeforeDonations !==
+      plannedDonationUsage
+        .baseBeforeDonations ||
+
+    donationUsage
+      .specialDonationLimit !==
+      plannedDonationUsage
+        .specialDonationLimit ||
+
+    donationUsage
+      .generalDonationLimit !==
+      plannedDonationUsage
+        .generalDonationLimit ||
+
+    donationUsage
+      .totalAllowed !==
+      plannedDonationUsage
+        .totalAllowed
+  );
+
   const [openSections, setOpenSections] =
     useState<string[]>([
       "insurance",
     ]);
+
+  function createParentHealthPolicy(
+    premiumPaidThisYear = 0
+  ): ParentHealthInsurancePolicyData {
+    return {
+      id: crypto.randomUUID(),
+
+      parentId: null,
+
+      premiumPaidThisYear:
+        Math.max(
+          0,
+          premiumPaidThisYear
+        ),
+
+      jointPayerCount: null,
+    };
+  }
+
+  function startParentHealthDetailedMode() {
+    setDeductions({
+      parentHealthInsurancePolicies:
+        [
+          createParentHealthPolicy(
+            deductions
+              .parentHealthInsurance
+          ),
+        ],
+    });
+  }
+
+  function addParentHealthPolicy() {
+    const current =
+      deductions
+        .parentHealthInsurancePolicies;
+
+    setDeductions({
+      parentHealthInsurancePolicies:
+        [
+          ...(current ?? []),
+
+          createParentHealthPolicy(),
+        ],
+    });
+  }
+
+  function updateParentHealthPolicy(
+    id: string,
+    values:
+      Partial<ParentHealthInsurancePolicyData>
+  ) {
+    const current =
+      deductions
+        .parentHealthInsurancePolicies;
+
+    if (current === undefined) {
+      return;
+    }
+
+    setDeductions({
+      parentHealthInsurancePolicies:
+        current.map(
+          (policy) =>
+            policy.id === id
+              ? {
+                  ...policy,
+                  ...values,
+                }
+              : policy
+        ),
+    });
+  }
+
+  function removeParentHealthPolicy(
+    id: string
+  ) {
+    const current =
+      deductions
+        .parentHealthInsurancePolicies;
+
+    if (current === undefined) {
+      return;
+    }
+
+    setDeductions({
+      parentHealthInsurancePolicies:
+        current.filter(
+          (policy) =>
+            policy.id !== id
+        ),
+    });
+  }  
 
   function addPregnancy() {
     const pregnancy: PregnancyExpenseData = {
@@ -303,6 +527,23 @@ export default function DeductionsPage() {
     );
   }
 
+  const parentHealthEnteredTotal =
+    deductions.parentHealthInsurancePolicies ===
+    undefined
+      ? Math.max(
+          0,
+          deductions.parentHealthInsurance
+        )
+      : deductions.parentHealthInsurancePolicies.reduce(
+          (total, policy) =>
+            total +
+            Math.max(
+              0,
+              policy.premiumPaidThisYear
+            ),
+          0
+        );
+
   function getSectionTotal(
     section:
       DeductionSectionData
@@ -311,9 +552,18 @@ export default function DeductionsPage() {
       section.fields.reduce(
         (sum, field) =>
           sum +
-          deductions[field.key],
+          (
+            deductions[field.key] ??
+            0
+          ),
         0
       );
+
+    if (
+      section.id === "insurance"
+    ) {
+      total += parentHealthEnteredTotal;
+    }
 
     if (
       section.id === "general"
@@ -329,14 +579,31 @@ export default function DeductionsPage() {
     Object.entries(
       deductions
     ).reduce(
-      (total, [key, value]) => {
+      (
+        total,
+        [key, value]
+      ) => {
         /*
-        * field เก่าค้างไว้เพื่อ compatibility
-        * แต่เราไม่ใช้มันแล้ว
+        * legacy / detailed fields
+        * ที่คำนวณแยกด้านล่าง
         */
         if (
           key ===
-          "pregnancyAndChildbirth"
+            "pregnancyAndChildbirth" ||
+          key ===
+            "parentHealthInsurance" ||
+          key ===
+            "parentHealthInsurancePolicies"
+        ) {
+          return total;
+        }
+
+        /*
+        * ป้องกัน field non-number
+        * ในอนาคต
+        */
+        if (
+          typeof value !== "number"
         ) {
           return total;
         }
@@ -348,7 +615,8 @@ export default function DeductionsPage() {
 
   const enteredTotal =
     enteredDeductionTotal +
-    pregnancyUsage.totalPaid;
+    pregnancyUsage.totalPaid +
+    parentHealthEnteredTotal;
 
   const usedSections =
     sections.filter(
@@ -358,17 +626,8 @@ export default function DeductionsPage() {
         ) > 0
     ).length;
 
-  const currentTaxResult =
-    calculateTax({
-      taxYear: state.taxYear,
-      income: state.income,
-      family: state.family,
-      deductions,
-    });
-
   const thaiEsgxTransfer =
-    currentTaxResult.generalDeductions
-      .thaiEsgxTransfer;
+    generalUsage.thaiEsgxTransfer;
 
   const [
     isThaiEsgxInfoOpen,
@@ -397,21 +656,9 @@ export default function DeductionsPage() {
           </div>
 
           <div className="mt-7">
-
-            <div className="mb-3 flex items-center justify-between text-sm">
-
-              <span className="font-medium text-blue-600">
-                3. ค่าลดหย่อน
-              </span>
-
-              <span className="text-slate-400">
-                ขั้นตอนที่ 3 จาก 5
-              </span>
-            </div>
-
-            <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full w-3/5 rounded-full bg-blue-600" />
-            </div>
+            <PlanningStepper
+              currentStep={3}
+            />
           </div>
         </header>
 
@@ -481,6 +728,17 @@ export default function DeductionsPage() {
                               section.description
                             }
                           </div>
+
+                          {section.id === "donation" &&
+                            donationPlanningChanged && (
+                              <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 font-bold">
+                                  !
+                                </span>
+
+                                สิทธิเปลี่ยนตามแผน
+                              </div>
+                            )}
                         </div>
 
                         <div className="flex shrink-0 items-center gap-4">
@@ -513,11 +771,252 @@ export default function DeductionsPage() {
 
                           <div className="space-y-4">
 
+                            {section.id === "donation" && (
+                              <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                                <div className="text-sm font-semibold text-slate-900">
+                                  ฐานสำหรับวางแผนเงินบริจาค
+                                </div>
+
+                                <div className="mt-4 space-y-3 text-sm">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-slate-500">
+                                      เงินได้คงเหลือก่อนใช้สิทธิบริจาค
+                                    </span>
+
+                                    <span className="font-semibold text-slate-900">
+                                      {formatNumber(
+                                        donationUsage.baseBeforeDonations
+                                      )}{" "}
+                                      บาท
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-slate-500">
+                                      ฐานสำหรับเงินบริจาคพิเศษ
+                                    </span>
+
+                                    <span className="font-medium text-slate-900">
+                                      {formatNumber(
+                                        donationUsage.baseForSpecialDonation
+                                      )}{" "}
+                                      บาท
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-slate-500">
+                                      เพดานเงินบริจาคพิเศษ
+                                    </span>
+
+                                    <span className="font-semibold text-blue-700">
+                                      {formatNumber(
+                                        donationUsage.specialDonationLimit
+                                      )}{" "}
+                                      บาท
+                                    </span>
+                                  </div>
+
+                                  <div className="border-t border-blue-100 pt-3">
+                                    <div className="flex items-center justify-between gap-4">
+                                      <span className="text-slate-500">
+                                        ฐานสำหรับบริจาคทั่วไป / กองทัพอากาศ
+                                      </span>
+
+                                      <span className="font-medium text-slate-900">
+                                        {formatNumber(
+                                          donationUsage.baseForGeneralDonation
+                                        )}{" "}
+                                        บาท
+                                      </span>
+                                    </div>
+
+                                    <div className="mt-3 flex items-center justify-between gap-4">
+                                      <span className="text-slate-500">
+                                        เพดานบริจาคทั่วไป / กองทัพอากาศ
+                                      </span>
+
+                                      <span className="font-semibold text-blue-700">
+                                        {formatNumber(
+                                          donationUsage.generalDonationLimit
+                                        )}{" "}
+                                        บาท
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {section.id === "donation" &&
+                              donationPlanningChanged && (
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+
+                                  <div className="flex items-start gap-3">
+
+                                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">
+                                      !
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+
+                                      <div className="text-sm font-semibold text-amber-900">
+                                        แผนลดหย่อนมีผลต่อสิทธิเงินบริจาค
+                                      </div>
+
+                                      <div className="mt-1 text-xs leading-5 text-amber-700">
+                                        ตัวเลขเดิมยังเป็นสิทธิจากข้อมูลที่มีอยู่แล้ว
+                                        ส่วนด้านล่างคือผลหากทำตามแผนในหน้าวางแผน
+                                      </div>
+
+                                      <div className="mt-4 space-y-3 text-sm">
+
+                                        <div className="flex items-center justify-between gap-4">
+                                          <span className="text-amber-800">
+                                            เงินได้คงเหลือก่อนบริจาค
+                                          </span>
+
+                                          <span className="font-medium text-amber-900">
+                                            {formatNumber(
+                                              donationUsage
+                                                .baseBeforeDonations
+                                            )}
+                                            {" → "}
+                                            {formatNumber(
+                                              plannedDonationUsage
+                                                .baseBeforeDonations
+                                            )}{" "}
+                                            บาท
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-4">
+                                          <span className="text-amber-800">
+                                            เพดานบริจาคพิเศษ
+                                          </span>
+
+                                          <span className="font-medium text-amber-900">
+                                            {formatNumber(
+                                              donationUsage
+                                                .specialDonationLimit
+                                            )}
+                                            {" → "}
+                                            {formatNumber(
+                                              plannedDonationUsage
+                                                .specialDonationLimit
+                                            )}{" "}
+                                            บาท
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-4">
+                                          <span className="text-amber-800">
+                                            เพดานบริจาคทั่วไป / กองทัพอากาศ
+                                          </span>
+
+                                          <span className="font-medium text-amber-900">
+                                            {formatNumber(
+                                              donationUsage
+                                                .generalDonationLimit
+                                            )}
+                                            {" → "}
+                                            {formatNumber(
+                                              plannedDonationUsage
+                                                .generalDonationLimit
+                                            )}{" "}
+                                            บาท
+                                          </span>
+                                        </div>
+
+                                        {donationUsage.totalAllowed !==
+                                          plannedDonationUsage.totalAllowed && (
+                                          <div className="flex items-center justify-between gap-4 border-t border-amber-200 pt-3">
+                                            <span className="font-medium text-amber-900">
+                                              สิทธิบริจาครวม
+                                            </span>
+
+                                            <span className="font-semibold text-amber-900">
+                                              {formatNumber(
+                                                donationUsage
+                                                  .totalAllowed
+                                              )}
+                                              {" → "}
+                                              {formatNumber(
+                                                plannedDonationUsage
+                                                  .totalAllowed
+                                              )}{" "}
+                                              บาท
+                                            </span>
+                                          </div>
+                                        )}
+
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
                             {section.fields.map(
                               (field) => {
                                 const isThaiEsgx =
                                   field.key ===
                                   "ltfToThaiEsgxTransferAmount";
+
+                                const retirementFieldUsage =
+                                  field.key === "providentFund"
+                                    ? retirementUsage.providentFund
+                                    : field.key === "gpf"
+                                      ? retirementUsage.gpf
+                                      : field.key === "privateTeacherFund"
+                                        ? retirementUsage.privateTeacherFund
+                                        : field.key === "nsf"
+                                          ? retirementUsage.nsf
+                                          : field.key === "rmf"
+                                            ? retirementUsage.rmf
+                                            : null;
+
+                                const generalFieldUsage =
+                                  field.key === "socialSecurity"
+                                    ? generalUsage.socialSecurity
+                                    : field.key === "homeLoanInterest"
+                                      ? generalUsage.homeLoanInterest
+                                      : field.key === "socialEnterpriseInvestment"
+                                        ? generalUsage.socialEnterpriseInvestment
+                                        : field.key === "solarRooftop"
+                                          ? generalUsage.solarRooftop ?? null
+                                          : field.key === "artPurchase"
+                                            ? generalUsage.artPurchase ?? null
+                                            : null;
+
+                                const donationFieldUsage =
+                                  field.key === "generalDonation"
+                                    ? donationUsage.generalDonation
+                                    : field.key === "politicalDonation"
+                                      ? donationUsage.politicalDonation
+                                      : field.key === "airForceStupaDonation"
+                                        ? donationUsage.airForceStupaDonation ?? null
+                                        : null;
+
+                                const plannedDonationFieldUsage =
+                                  field.key === "generalDonation"
+                                    ? plannedDonationUsage
+                                        .generalDonation
+                                    : field.key === "politicalDonation"
+                                      ? plannedDonationUsage
+                                          .politicalDonation
+                                      : field.key === "airForceStupaDonation"
+                                        ? plannedDonationUsage
+                                            .airForceStupaDonation ?? null
+                                        : null;
+
+                                const donationPlanningDelta =
+                                  canShowPlanningPreview &&
+                                  donationFieldUsage &&
+                                  plannedDonationFieldUsage
+                                    ? plannedDonationFieldUsage
+                                        .allowed -
+                                      donationFieldUsage.allowed
+                                    : 0;
 
                                 return (
                                   <div key={field.key}>
@@ -536,6 +1035,440 @@ export default function DeductionsPage() {
                                         })
                                       }
                                     />
+
+                                    {donationFieldUsage &&
+                                      (deductions[field.key] ?? 0) > 0 && (
+                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                                          <div>
+                                            <div className="text-slate-500">
+                                              ใช้สิทธิได้
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-blue-700">
+                                              {formatNumber(
+                                                donationFieldUsage.allowed
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+
+                                          <div>
+                                            <div className="text-slate-500">
+                                              เกินสิทธิ
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-slate-900">
+                                              {formatNumber(
+                                                donationFieldUsage.excess
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+
+                                          {donationPlanningDelta !== 0 && (
+                                            <div className="sm:col-span-2 border-t border-amber-200 pt-3">
+
+                                              <div className="flex items-center justify-between gap-4 text-amber-800">
+                                                <span className="font-medium">
+                                                  ! หลังทำตามแผน
+                                                </span>
+
+                                                <span className="font-semibold">
+                                                  {formatNumber(
+                                                    donationFieldUsage.allowed
+                                                  )}
+                                                  {" → "}
+                                                  {formatNumber(
+                                                    plannedDonationFieldUsage
+                                                      ?.allowed ?? 0
+                                                  )}{" "}
+                                                  บาท
+                                                </span>
+                                              </div>
+
+                                              <div className="mt-1 text-right text-xs text-amber-700">
+                                                {donationPlanningDelta < 0
+                                                  ? "สิทธิลดลง"
+                                                  : "สิทธิเพิ่มขึ้น"}{" "}
+                                                {formatNumber(
+                                                  Math.abs(
+                                                    donationPlanningDelta
+                                                  )
+                                                )}{" "}
+                                                บาท
+                                              </div>
+
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {field.key === "specialDonation" &&
+                                        deductions.specialDonation > 0 && (
+                                          <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm">
+                                            <div className="grid gap-3 sm:grid-cols-2">
+                                              <div>
+                                                <div className="text-slate-500">
+                                                  ใช้สิทธิได้
+                                                </div>
+
+                                                <div className="mt-1 font-semibold text-blue-700">
+                                                  {formatNumber(
+                                                    donationUsage.specialDonation.allowed
+                                                  )}{" "}
+                                                  บาท
+                                                </div>
+                                              </div>
+
+                                              <div>
+                                                <div className="text-slate-500">
+                                                  ส่วนที่ใช้สิทธิไม่ได้
+                                                </div>
+
+                                                <div className="mt-1 font-semibold text-slate-900">
+                                                  {formatNumber(
+                                                    donationUsage.specialDonation
+                                                      .disallowedDeduction
+                                                  )}{" "}
+                                                  บาท
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            {canShowPlanningPreview &&
+                                              plannedDonationUsage
+                                                .specialDonation.allowed !==
+                                                donationUsage
+                                                  .specialDonation.allowed && (
+                                                <div className="mt-4 border-t border-amber-200 pt-3">
+
+                                                  <div className="flex items-center justify-between gap-4 text-sm text-amber-800">
+                                                    <span className="font-medium">
+                                                      ! หลังทำตามแผน
+                                                    </span>
+
+                                                    <span className="font-semibold">
+                                                      {formatNumber(
+                                                        donationUsage
+                                                          .specialDonation.allowed
+                                                      )}
+                                                      {" → "}
+                                                      {formatNumber(
+                                                        plannedDonationUsage
+                                                          .specialDonation.allowed
+                                                      )}{" "}
+                                                      บาท
+                                                    </span>
+                                                  </div>
+
+                                                  <div className="mt-1 text-right text-xs text-amber-700">
+                                                    {plannedDonationUsage
+                                                      .specialDonation.allowed <
+                                                    donationUsage
+                                                      .specialDonation.allowed
+                                                      ? "สิทธิลดลง"
+                                                      : "สิทธิเพิ่มขึ้น"}{" "}
+                                                    {formatNumber(
+                                                      Math.abs(
+                                                        plannedDonationUsage
+                                                          .specialDonation.allowed -
+                                                        donationUsage
+                                                          .specialDonation.allowed
+                                                      )
+                                                    )}{" "}
+                                                    บาท
+                                                  </div>
+
+                                                </div>
+                                              )}
+
+                                            <div className="mt-4 border-t border-slate-200 pt-3">
+                                              <div className="flex items-center justify-between gap-4">
+                                                <span className="text-slate-500">
+                                                  จำนวนลดหย่อนหลังคูณสิทธิ
+                                                </span>
+
+                                                <span className="font-medium text-slate-900">
+                                                  {formatNumber(
+                                                    donationUsage.specialDonation
+                                                      .deductionBeforeCap
+                                                  )}{" "}
+                                                  บาท
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+
+                                    {generalFieldUsage &&
+                                      (deductions[field.key] ?? 0) > 0 && (
+                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                                          <div>
+                                            <div className="text-slate-500">
+                                              ใช้สิทธิได้
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-blue-700">
+                                              {formatNumber(
+                                                generalFieldUsage.allowed
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+
+                                          <div>
+                                            <div className="text-slate-500">
+                                              เกินสิทธิ
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-slate-900">
+                                              {formatNumber(
+                                                generalFieldUsage.excess
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    {retirementFieldUsage &&
+                                      (deductions[field.key] ?? 0) > 0 && (
+                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                                          <div>
+                                            <div className="text-slate-500">
+                                              ใช้สิทธิได้
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-blue-700">
+                                              {formatNumber(
+                                                retirementFieldUsage.allowed
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+
+                                          <div>
+                                            <div className="text-slate-500">
+                                              เกินสิทธิ
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-slate-900">
+                                              {formatNumber(
+                                                retirementFieldUsage.excess
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    {field.key === "lifeInsurance" &&
+                                      deductions.lifeInsurance > 0 && (
+                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                                          <div>
+                                            <div className="text-slate-500">
+                                              ใช้สิทธิได้
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-blue-700">
+                                              {formatNumber(
+                                                insuranceUsage
+                                                  .lifeInsurance
+                                                  .allowed
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+
+                                          <div>
+                                            <div className="text-slate-500">
+                                              เกินสิทธิ
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-slate-900">
+                                              {formatNumber(
+                                                insuranceUsage
+                                                  .lifeInsurance
+                                                  .excess
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    {field.key === "healthInsuranceSelf" &&
+                                      deductions.healthInsuranceSelf > 0 && (
+                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                                          <div>
+                                            <div className="text-slate-500">
+                                              ใช้สิทธิได้
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-blue-700">
+                                              {formatNumber(
+                                                insuranceUsage
+                                                  .healthInsuranceSelf
+                                                  .allowed
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+
+                                          <div>
+                                            <div className="text-slate-500">
+                                              เกินสิทธิ
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-slate-900">
+                                              {formatNumber(
+                                                insuranceUsage
+                                                  .healthInsuranceSelf
+                                                  .excess
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    {field.key === "spouseLifeInsurance" &&
+                                      deductions.spouseLifeInsurance > 0 && (
+                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                                          <div>
+                                            <div className="text-slate-500">
+                                              ใช้สิทธิได้
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-blue-700">
+                                              {formatNumber(
+                                                insuranceUsage
+                                                  .spouseLifeInsurance
+                                                  .allowed
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+
+                                          <div>
+                                            <div className="text-slate-500">
+                                              เกินสิทธิ
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-slate-900">
+                                              {formatNumber(
+                                                insuranceUsage
+                                                  .spouseLifeInsurance
+                                                  .excess
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    {field.key === "pensionInsurance" &&
+                                      deductions.pensionInsurance > 0 && (
+                                        <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm">
+
+                                          <div className="grid gap-3 sm:grid-cols-2">
+                                            <div>
+                                              <div className="text-slate-500">
+                                                ใช้สิทธิได้รวม
+                                              </div>
+
+                                              <div className="mt-1 font-semibold text-blue-700">
+                                                {formatNumber(
+                                                  retirementUsage
+                                                    .pensionInsurance
+                                                    .allowed
+                                                )}{" "}
+                                                บาท
+                                              </div>
+                                            </div>
+
+                                            <div>
+                                              <div className="text-slate-500">
+                                                เกินสิทธิ
+                                              </div>
+
+                                              <div className="mt-1 font-semibold text-slate-900">
+                                                {formatNumber(
+                                                  retirementUsage
+                                                    .pensionInsurance
+                                                    .excess
+                                                )}{" "}
+                                                บาท
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <div className="mt-4 border-t border-slate-200 pt-3">
+                                            <div className="text-xs text-slate-500">
+                                              รายละเอียดสิทธิที่ใช้ได้
+                                            </div>
+
+                                            <div className="mt-2 flex items-center justify-between gap-4">
+                                              <span className="text-slate-500">
+                                                ส่วนของเบี้ยบำนาญที่ใช้ในวงเงิน 100,000 บาท
+                                              </span>
+
+                                              <span className="font-medium text-slate-900">
+                                                {formatNumber(
+                                                  retirementUsage
+                                                    .pensionUsedAsLifeInsurance
+                                                )}{" "}
+                                                บาท
+                                              </span>
+                                            </div>
+
+                                            <div className="mt-2 flex items-center justify-between gap-4">
+                                              <span className="text-slate-500">
+                                                ใช้สิทธิเบี้ยประกันบำนาญ
+                                              </span>
+
+                                              <span className="font-medium text-slate-900">
+                                                {formatNumber(
+                                                  retirementUsage
+                                                    .pensionExtraAllowed
+                                                )}{" "}
+                                                บาท
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    {field.key === "thaiEsg" &&
+                                      deductions.thaiEsg > 0 && (
+                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                                          <div>
+                                            <div className="text-slate-500">
+                                              ใช้สิทธิได้
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-blue-700">
+                                              {formatNumber(
+                                                generalUsage.thaiEsg.allowed
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+
+                                          <div>
+                                            <div className="text-slate-500">
+                                              เกินสิทธิ
+                                            </div>
+
+                                            <div className="mt-1 font-semibold text-slate-900">
+                                              {formatNumber(
+                                                generalUsage.thaiEsg.excess
+                                              )}{" "}
+                                              บาท
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
 
                                     {isThaiEsgx &&
                                       deductions
@@ -583,10 +1516,432 @@ export default function DeductionsPage() {
                                             </div>
                                           )}
                                         </div>
-                                      )}
+                                      )}  
                                   </div>
                                 );
                               }
+                            )}
+
+                            {section.id === "insurance" && (
+                              <div className="rounded-xl bg-white p-4">
+
+                                <div className="flex items-start justify-between gap-4">
+
+                                  <div>
+                                    <div className="font-medium text-slate-800">
+                                      เบี้ยประกันสุขภาพบิดา / มารดา
+                                    </div>
+
+                                    <div className="mt-1 text-sm leading-5 text-slate-400">
+                                      เพิ่มแยกตามกรมธรรม์และบิดา / มารดา
+                                      เพื่อให้ระบบตรวจสิทธิและกรณีร่วมจ่ายได้ถูกต้อง
+                                    </div>
+                                  </div>
+
+                                  {deductions
+                                    .parentHealthInsurancePolicies !==
+                                    undefined && (
+                                    <button
+                                      type="button"
+                                      onClick={
+                                        addParentHealthPolicy
+                                      }
+                                      className="shrink-0 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                                    >
+                                      + เพิ่ม
+                                    </button>
+                                  )}
+                                </div>
+
+                                {deductions
+                                  .parentHealthInsurancePolicies ===
+                                undefined ? (
+                                  deductions
+                                    .parentHealthInsurance >
+                                  0 ? (
+                                    <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+
+                                      <div className="text-sm font-medium text-amber-900">
+                                        พบข้อมูลจากระบบเดิม
+                                      </div>
+
+                                      <div className="mt-1 text-sm leading-6 text-amber-800">
+                                        ยอดเบี้ยประกันสุขภาพบิดา /
+                                        มารดาเดิม{" "}
+                                        <span className="font-semibold">
+                                          {formatNumber(
+                                            deductions
+                                              .parentHealthInsurance
+                                          )}{" "}
+                                          บาท
+                                        </span>
+                                      </div>
+
+                                      <div className="mt-2 text-xs leading-5 text-amber-700">
+                                        ข้อมูลเดิมยังไม่ทราบว่าเป็นกรมธรรม์ของบิดาหรือมารดาคนใด
+                                        และไม่ทราบจำนวนผู้ร่วมจ่าย
+                                        คุณสามารถเปลี่ยนเป็นรายการแบบละเอียดได้
+                                        โดยยอดเดิมจะถูกนำมาใส่ในรายการแรกให้
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={
+                                          startParentHealthDetailedMode
+                                        }
+                                        className="mt-4 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                                      >
+                                        เปลี่ยนเป็นรายการแบบละเอียด
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center">
+
+                                      <div className="text-sm text-slate-400">
+                                        ยังไม่มีเบี้ยประกันสุขภาพบิดา
+                                        / มารดา
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={
+                                          addParentHealthPolicy
+                                        }
+                                        className="mt-3 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                                      >
+                                        + เพิ่มกรมธรรม์
+                                      </button>
+                                    </div>
+                                  )
+                                ) : deductions
+                                    .parentHealthInsurancePolicies
+                                    .length === 0 ? (
+                                  <div className="mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-400">
+                                    ยังไม่มีรายการกรมธรรม์
+                                  </div>
+                                ) : (
+                                  <div className="mt-5 space-y-4">
+
+                                    {deductions
+                                      .parentHealthInsurancePolicies
+                                      .map(
+                                        (
+                                          policy,
+                                          index
+                                        ) => {
+                                          const selectedParent =
+                                            state.family.parents.find(
+                                              (parent) =>
+                                                parent.id ===
+                                                policy.parentId
+                                            );
+
+                                          const payerCountValid =
+                                            policy.jointPayerCount !==
+                                              null &&
+                                            Number.isInteger(
+                                              policy.jointPayerCount
+                                            ) &&
+                                            policy.jointPayerCount >=
+                                              1;
+
+                                          const taxpayerShare =
+                                            getParentHealthPolicyShare(
+                                              policy
+                                            );
+
+                                          return (
+                                            <div
+                                              key={policy.id}
+                                              className="rounded-2xl border border-slate-200 p-4"
+                                            >
+
+                                              <div className="flex items-center justify-between gap-4">
+
+                                                <div className="font-semibold text-slate-900">
+                                                  กรมธรรม์ที่{" "}
+                                                  {index + 1}
+                                                </div>
+
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    removeParentHealthPolicy(
+                                                      policy.id
+                                                    )
+                                                  }
+                                                  className="text-sm text-slate-400 hover:text-red-600"
+                                                >
+                                                  ลบ
+                                                </button>
+                                              </div>
+
+                                              <div className="mt-4 grid gap-4 md:grid-cols-3">
+
+                                                <div>
+                                                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                                                    บิดา / มารดา
+                                                  </label>
+
+                                                  <select
+                                                    value={
+                                                      policy.parentId ??
+                                                      ""
+                                                    }
+                                                    onChange={(e) =>
+                                                      updateParentHealthPolicy(
+                                                        policy.id,
+                                                        {
+                                                          parentId:
+                                                            e.target
+                                                              .value ||
+                                                            null,
+                                                        }
+                                                      )
+                                                    }
+                                                    className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                                                  >
+                                                    <option value="">
+                                                      เลือกบิดา / มารดา
+                                                    </option>
+
+                                                    {policy.parentId &&
+                                                      !selectedParent && (
+                                                        <option
+                                                          value={
+                                                            policy.parentId
+                                                          }
+                                                        >
+                                                          "ไม่พบข้อมูลบิดา / มารดาที่เคยเลือก"
+                                                        </option>
+                                                      )}
+
+                                                    {state.family.parents.map(
+                                                      (parent) => (
+                                                        <option
+                                                          key={
+                                                            parent.id
+                                                          }
+                                                          value={
+                                                            parent.id
+                                                          }
+                                                        >
+                                                          {getParentLabel(
+                                                            parent
+                                                          )}
+                                                        </option>
+                                                      )
+                                                    )}
+                                                  </select>
+
+                                                  <div className="mt-2 text-xs leading-5 text-slate-500">
+                                                    รายชื่อมาจากหน้าครอบครัว{" "}
+                                                    <Link
+                                                      href="/planning/family"
+                                                      className="font-medium text-blue-600 underline"
+                                                    >
+                                                      เพิ่ม / แก้ไขบิดา / มารดา
+                                                    </Link>
+                                                  </div>
+
+                                                  {policy.parentId &&
+                                                    !selectedParent && (
+                                                    <div className="mt-2 text-xs leading-5 text-red-600">
+                                                      ไม่พบข้อมูลบิดา / มารดาที่เลือกไว้
+                                                      อาจถูกลบออกจากหน้าครอบครัวแล้ว
+                                                    </div>
+                                                  )}
+                                                </div>
+
+                                                <div>
+                                                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                                                    เบี้ยที่จ่ายจริง
+                                                  </label>
+
+                                                  <div className="relative">
+                                                    <input
+                                                      inputMode="numeric"
+                                                      value={
+                                                        policy
+                                                          .premiumPaidThisYear
+                                                          ? formatNumber(
+                                                              policy
+                                                                .premiumPaidThisYear
+                                                            )
+                                                          : ""
+                                                      }
+                                                      onChange={(e) =>
+                                                        updateParentHealthPolicy(
+                                                          policy.id,
+                                                          {
+                                                            premiumPaidThisYear:
+                                                              parseNumber(
+                                                                e.target
+                                                                  .value
+                                                              ),
+                                                          }
+                                                        )
+                                                      }
+                                                      placeholder="0"
+                                                      className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 pr-16 text-right text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                                                    />
+
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                                                      บาท
+                                                    </span>
+                                                  </div>
+                                                </div>
+
+                                                <div>
+                                                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                                                    จำนวนผู้ร่วมจ่าย
+                                                  </label>
+
+                                                  <div className="relative">
+                                                    <input
+                                                      type="number"
+                                                      min="1"
+                                                      step="1"
+                                                      inputMode="numeric"
+                                                      value={
+                                                        policy
+                                                          .jointPayerCount ??
+                                                        ""
+                                                      }
+                                                      onChange={(e) => {
+                                                        const raw =
+                                                          e.target
+                                                            .value;
+
+                                                        updateParentHealthPolicy(
+                                                          policy.id,
+                                                          {
+                                                            jointPayerCount:
+                                                              raw === ""
+                                                                ? null
+                                                                : Number(
+                                                                    raw
+                                                                  ),
+                                                          }
+                                                        );
+                                                      }}
+                                                      placeholder="1"
+                                                      className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 pr-14 text-right text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                                                    />
+
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                                                      คน
+                                                    </span>
+                                                  </div>
+
+                                                  {policy
+                                                    .premiumPaidThisYear >
+                                                    0 &&
+                                                    !payerCountValid && (
+                                                      <div className="mt-2 text-xs leading-5 text-red-600">
+                                                        กรุณาระบุจำนวนผู้ร่วมจ่ายเป็นจำนวนเต็มตั้งแต่
+                                                        1 คนขึ้นไป
+                                                      </div>
+                                                    )}
+                                                </div>
+                                              </div>
+
+                                              {policy
+                                                .premiumPaidThisYear >
+                                                0 &&
+                                                !policy.parentId && (
+                                                  <div className="mt-3 text-xs leading-5 text-red-600">
+                                                    กรุณาเลือกว่ากรมธรรม์นี้เป็นของบิดาหรือมารดาคนใด
+                                                  </div>
+                                                )}
+
+                                              {policy
+                                                .premiumPaidThisYear >
+                                                0 &&
+                                                payerCountValid && (
+                                                  <div className="mt-4 rounded-xl bg-slate-50 p-4">
+
+                                                    <div className="text-xs text-slate-500">
+                                                      ส่วนเบี้ยของคุณหลังเฉลี่ยผู้ร่วมจ่าย
+                                                    </div>
+
+                                                    <div className="mt-1 text-lg font-semibold text-slate-900">
+                                                      {formatNumber(
+                                                        taxpayerShare
+                                                      )}{" "}
+                                                      บาท
+                                                    </div>
+                                                  </div>
+                                                )}
+                                            </div>
+                                          );
+                                        }
+                                      )}
+                                  </div>
+                                )}
+
+                                {deductions
+                                  .parentHealthInsurancePolicies !==
+                                  undefined && (
+                                  <div className="mt-5 grid gap-3 rounded-2xl bg-blue-50 p-4 text-sm sm:grid-cols-3">
+
+                                    <div>
+                                      <div className="text-blue-500">
+                                        ส่วนของคุณ
+                                      </div>
+
+                                      <div className="mt-1 font-semibold text-slate-900">
+                                        {formatNumber(
+                                          insuranceUsage
+                                            .parentHealthInsurance
+                                            .paid
+                                        )}{" "}
+                                        บาท
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <div className="text-blue-500">
+                                        ใช้สิทธิได้
+                                      </div>
+
+                                      <div className="mt-1 font-semibold text-blue-700">
+                                        {formatNumber(
+                                          insuranceUsage
+                                            .parentHealthInsurance
+                                            .allowed
+                                        )}{" "}
+                                        บาท
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <div className="text-blue-500">
+                                        เพดานรวม
+                                      </div>
+
+                                      <div className="mt-1 font-semibold text-slate-900">
+                                        15,000 บาท
+                                      </div>
+                                    </div>
+
+                                    {insuranceUsage
+                                      .parentHealthInsurance
+                                      .excess >
+                                      0 && (
+                                      <div className="sm:col-span-3 border-t border-blue-100 pt-3 text-xs leading-5 text-amber-700">
+                                        ส่วนที่ยังใช้สิทธิไม่ได้หรือเกินเพดาน{" "}
+                                        {formatNumber(
+                                          insuranceUsage
+                                            .parentHealthInsurance
+                                            .excess
+                                        )}{" "}
+                                        บาท
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             )}
 
                             {section.id === "general" && (
@@ -855,6 +2210,40 @@ export default function DeductionsPage() {
               ยังไม่ใช่ยอดที่ใช้ลดหย่อนภาษีได้จริง
             </div>
 
+            {(
+              !taxResult.isComplete ||
+              taxResult.warnings.length > 0
+            ) && (
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                {!taxResult.isComplete && (
+                  <div className="font-medium">
+                    การคำนวณภาษียังไม่สมบูรณ์
+                  </div>
+                )}
+
+                {!taxResult.isComplete && (
+                  <div className="mt-1">
+                    จำนวนที่ใช้สิทธิได้บางรายการอาจยังเปลี่ยนแปลงได้
+                    กรุณาตรวจสอบข้อมูลที่ยังไม่ครบถ้วน
+                  </div>
+                )}
+
+                {taxResult.warnings.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {taxResult.warnings.map(
+                      (warning, index) => (
+                        <div
+                          key={`${warning}-${index}`}
+                        >
+                          • {warning}
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {insuranceUsage.totalPaid > 0 && (
               <div className="mt-5 rounded-2xl border border-slate-200 p-4">
 
@@ -1068,6 +2457,45 @@ export default function DeductionsPage() {
                     </div>
                   )}
 
+                  {(
+                    donationUsage.airForceStupaDonation
+                      ?.paid ?? 0
+                  ) > 0 && (
+                    <div className="border-t border-slate-100 pt-3">
+
+                      <SummaryRow
+                        label="บริจาคกองทัพอากาศ พ.ร.ฎ. 804"
+                        value={
+                          donationUsage.airForceStupaDonation
+                            ?.paid ?? 0
+                        }
+                      />
+
+                      <SummaryRow
+                        label="ใช้สิทธิได้"
+                        value={
+                          donationUsage.airForceStupaDonation
+                            ?.allowed ?? 0
+                        }
+                        highlight
+                      />
+
+                      {(
+                        donationUsage.airForceStupaDonation
+                          ?.excess ?? 0
+                      ) > 0 && (
+                        <SummaryRow
+                          label="เกินเพดานร่วม"
+                          value={
+                            donationUsage.airForceStupaDonation
+                              ?.excess ?? 0
+                          }
+                        />
+                      )}
+
+                    </div>
+                  )}
+
                   {donationUsage.politicalDonation.paid > 0 && (
                     <div className="border-t border-slate-100 pt-3">
 
@@ -1093,48 +2521,49 @@ export default function DeductionsPage() {
               </div>
             )}
 
-            {taxResult.totalCurrentDeductions > 0 && (
-              <div className="mt-5 rounded-2xl bg-blue-50 p-4">
+            {taxResult.isComplete &&
+              taxResult.totalCurrentDeductions > 0 && (
+                <div className="mt-5 rounded-2xl bg-blue-50 p-4">
 
-                <div className="text-sm font-semibold text-blue-800">
-                  ผลต่อภาษี
-                </div>
+                  <div className="text-sm font-semibold text-blue-800">
+                    ผลต่อภาษีก่อนเครดิต
+                  </div>
 
-                <div className="mt-4 space-y-3 text-sm">
+                  <div className="mt-4 space-y-3 text-sm">
 
-                  <SummaryRow
-                    label="ใช้ลดหย่อนจริง"
-                    value={taxResult.totalCurrentDeductions}
-                    highlight
-                  />
+                    <SummaryRow
+                      label="ใช้ลดหย่อนจริง"
+                      value={taxResult.totalCurrentDeductions}
+                      highlight
+                    />
 
-                  <SummaryRow
-                    label="ภาษีก่อนค่าลดหย่อน"
-                    value={taxResult.taxBeforeCurrentDeductions}
-                  />
+                    <SummaryRow
+                      label="ภาษีก่อนค่าลดหย่อน"
+                      value={taxResult.taxBeforeCurrentDeductions}
+                    />
 
-                  <SummaryRow
-                    label="ภาษีหลังค่าลดหย่อน"
-                    value={taxResult.taxBeforeCredits}
-                    highlight
-                  />
+                    <SummaryRow
+                      label="ภาษีหลังค่าลดหย่อน"
+                      value={taxResult.taxBeforeCredits}
+                      highlight
+                    />
 
-                  <div className="border-t border-blue-100 pt-3">
+                    <div className="border-t border-blue-100 pt-3">
 
-                    <div className="text-sm text-slate-500">
-                      ประหยัดภาษี
+                      <div className="text-sm text-slate-500">
+                        ภาษีก่อนเครดิตที่ลดลง
+                      </div>
+
+                      <div className="mt-1 text-2xl font-bold text-blue-700">
+                        {formatNumber(
+                          taxResult.taxSavingsFromCurrentDeductions
+                        )}{" "}
+                        บาท
+                      </div>
+
                     </div>
-
-                    <div className="mt-1 text-2xl font-bold text-blue-700">
-                      {formatNumber(
-                        taxResult.taxSavingsFromCurrentDeductions
-                      )}{" "}
-                      บาท
-                    </div>
-
                   </div>
                 </div>
-              </div>
             )}
 
             {sections.map(
@@ -1314,7 +2743,7 @@ function DeductionInput({
 }: {
   label: string;
   description?: string;
-  value: number;
+  value: number | undefined;
   onChange: (
     value: number
   ) => void;

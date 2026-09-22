@@ -63,6 +63,9 @@ const emptyIncome: IncomeData = {
   annualBonus: 0,
   otherEmploymentIncome: 0,
 
+  section40_1TaxWithheld: 0,
+  section40_2TaxWithheld: 0,
+
   hasOtherIncome: false,
 
   otherIncome: {
@@ -90,6 +93,12 @@ const emptyFamily: FamilyData = {
     section40_2: 0,
     section40_3Annuity: 0,
     section40_3Rights: 0,
+    section40_4Interest: 0,
+    section40_4Dividend: 0,
+    section40_5: 0,
+    section40_6: 0,
+    section40_7: 0,
+    section40_8: 0,
   },
 
   maritalStatus: "single",
@@ -132,6 +141,9 @@ const emptyDeductions: DeductionData = {
 
   socialEnterpriseInvestment: 0,
 
+  solarRooftop: 0,
+  artPurchase: 0,
+
   politicalDonation: 0,
   specialDonation: 0,
   generalDonation: 0,
@@ -152,7 +164,7 @@ const emptyPlanning: PlanningData = {
 const STORAGE_KEY =
   "thai-tax-planner-v0.1";
 
-const CURRENT_SCHEMA_VERSION = 6;
+const CURRENT_SCHEMA_VERSION = 14;
 
 const initialState: TaxPlannerState = {
   schemaVersion:
@@ -365,6 +377,12 @@ export function migrateStoredState(
                 migrated.family
                   .seniorIncomeExemptionAllocation
                   ?.section40_3Rights ?? 0,
+
+              section40_4Interest: 0,
+              section40_4Dividend: 0,
+              section40_5: 0,
+              section40_6: 0,
+              section40_7: 0,
             },
           }
         : migrated.family,
@@ -398,11 +416,414 @@ export function migrateStoredState(
               */
               section40_3Annuity: 0,
               section40_3Rights: 0,
+
+              /*
+              * field นี้ถูกเพิ่มภายหลัง
+              * สำหรับ object shape ปัจจุบันให้เริ่มที่ 0
+              */
+              section40_4Interest: 0,
+              section40_4Dividend: 0,
+              section40_5: 0,
+              section40_6: 0,
+              section40_7: 0,
             },
           }
         : migrated.family,
 
       schemaVersion: 6,
+    };
+  }
+
+  if (version < 7) {
+    migrated = {
+      ...migrated,
+
+      family: migrated.family
+        ? {
+            ...migrated.family,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_1 ?? 0,
+
+              section40_2:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_2 ?? 0,
+
+              section40_3Annuity:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Annuity ?? 0,
+
+              section40_3Rights:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Rights ?? 0,
+
+              /*
+              * schema 7 เพิ่ม allocation
+              * สำหรับดอกเบี้ย 40(4)(ก)
+              *
+              * ข้อมูลเก่าไม่มีค่านี้
+              * จึงเริ่มที่ 0 และไม่เดาให้ผู้ใช้
+              */
+              section40_4Interest: 0,
+              section40_4Dividend: 0,
+              section40_5: 0,
+              section40_6: 0,
+              section40_7: 0,
+            },
+          }
+        : migrated.family,
+
+      schemaVersion: 7,
+    };
+  }
+
+  if (version < 8) {
+    migrated = {
+      ...migrated,
+      family: migrated.family
+        ? {
+            ...migrated.family,
+            seniorIncomeExemptionAllocation: {
+              section40_1:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_1 ?? 0,
+
+              section40_2:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_2 ?? 0,
+
+              section40_3Annuity:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Annuity ?? 0,
+
+              section40_3Rights:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Rights ?? 0,
+
+              section40_4Interest:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_4Interest ?? 0,
+
+              section40_4Dividend: 0,
+              section40_5: 0,
+              section40_6: 0,
+              section40_7: 0,
+            },
+          }
+        : migrated.family,
+
+      schemaVersion: 8,
+    };
+  }
+
+  if (version < 9) {
+    migrated = {
+      ...migrated,
+
+      family: migrated.family
+        ? {
+            ...migrated.family,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_1 ?? 0,
+
+              section40_2:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_2 ?? 0,
+
+              section40_3Annuity:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Annuity ?? 0,
+
+              section40_3Rights:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Rights ?? 0,
+
+              section40_4Interest:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_4Interest ?? 0,
+
+              section40_4Dividend:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_4Dividend ?? 0,
+
+              /*
+              * schema 9 เพิ่ม allocation
+              * สำหรับรายได้ค่าเช่า 40(5)
+              *
+              * ข้อมูลเก่าไม่มีค่านี้
+              * จึงเริ่มที่ 0 และไม่เดาให้ผู้ใช้
+              */
+              section40_5:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_5 ?? 0,
+                  section40_6: 0,
+                  section40_7: 0,
+            },
+          }
+        : migrated.family,
+
+      schemaVersion: 9,
+    };
+  }
+
+  if (version < 10) {
+    migrated = {
+      ...migrated,
+
+      family: migrated.family
+        ? {
+            ...migrated.family,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_1 ?? 0,
+
+              section40_2:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_2 ?? 0,
+
+              section40_3Annuity:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Annuity ?? 0,
+
+              section40_3Rights:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Rights ?? 0,
+
+              section40_4Interest:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_4Interest ?? 0,
+
+              section40_4Dividend:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_4Dividend ?? 0,
+
+              section40_5:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_5 ?? 0,
+
+              section40_6: 0,
+              section40_7: 0,
+            },
+          }
+        : migrated.family,
+
+      schemaVersion: 10,
+    };
+  }
+
+  if (version < 11) {
+    migrated = {
+      ...migrated,
+
+      family: migrated.family
+        ? {
+            ...migrated.family,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_1 ?? 0,
+
+              section40_2:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_2 ?? 0,
+
+              section40_3Annuity:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Annuity ?? 0,
+
+              section40_3Rights:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Rights ?? 0,
+
+              section40_4Interest:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_4Interest ?? 0,
+
+              section40_4Dividend:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_4Dividend ?? 0,
+
+              section40_5:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_5 ?? 0,
+
+              section40_6:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_6 ?? 0,
+
+              section40_7: 0,
+            },
+          }
+        : migrated.family,
+
+      schemaVersion: 11,
+    };
+  }
+
+  if (version < 12) {
+    migrated = {
+      ...migrated,
+
+      family: migrated.family
+        ? {
+            ...migrated.family,
+
+            seniorIncomeExemptionAllocation: {
+              section40_1:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_1 ?? 0,
+
+              section40_2:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_2 ?? 0,
+
+              section40_3Annuity:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Annuity ?? 0,
+
+              section40_3Rights:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_3Rights ?? 0,
+
+              section40_4Interest:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_4Interest ?? 0,
+
+              section40_4Dividend:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_4Dividend ?? 0,
+
+              section40_5:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_5 ?? 0,
+
+              section40_6:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_6 ?? 0,
+
+              section40_7:
+                migrated.family
+                  .seniorIncomeExemptionAllocation
+                  ?.section40_7 ?? 0,
+
+              /*
+              * schema 12 เพิ่ม allocation
+              * สำหรับรายได้ 40(8)
+              *
+              * ข้อมูลเก่าไม่มีค่านี้
+              * จึงเริ่มที่ 0 และไม่เดาให้ผู้ใช้
+              */
+              section40_8: 0,
+            },
+          }
+        : migrated.family,
+
+      schemaVersion: 12,
+    };
+  }
+
+  if (version < 13) {
+    migrated = {
+      ...migrated,
+
+      income: migrated.income
+        ? {
+            ...migrated.income,
+
+            /*
+            * schema 13 เพิ่มภาษีหัก ณ ที่จ่าย
+            * สำหรับ 40(1) และ 40(2)
+            *
+            * ข้อมูลเก่าไม่มีค่าเหล่านี้
+            * จึงเริ่มที่ 0 และไม่เดาให้ผู้ใช้
+            */
+            section40_1TaxWithheld:
+              migrated.income
+                .section40_1TaxWithheld ?? 0,
+
+            section40_2TaxWithheld:
+              migrated.income
+                .section40_2TaxWithheld ?? 0,
+          }
+        : migrated.income,
+
+      schemaVersion: 13,
+    };
+  }
+
+  if (version < 14) {
+    migrated = {
+      ...migrated,
+
+      deductions: migrated.deductions
+        ? {
+            ...migrated.deductions,
+
+            /*
+            * schema 14 เพิ่มสิทธิ
+            * Solar Rooftop และค่าซื้องานศิลปะ
+            *
+            * ข้อมูลเก่าไม่มีค่าเหล่านี้
+            * จึงเริ่มที่ 0 และไม่เดาให้ผู้ใช้
+            */
+            solarRooftop:
+              migrated.deductions
+                .solarRooftop ?? 0,
+
+            artPurchase:
+              migrated.deductions
+                .artPurchase ?? 0,
+          }
+        : migrated.deductions,
+
+      schemaVersion: 14,
     };
   }
 
@@ -513,6 +934,16 @@ function reducer(
         family: {
           ...state.family,
           ...(loaded.family ?? {}),
+
+          seniorIncomeExemptionAllocation: {
+            ...state.family
+              .seniorIncomeExemptionAllocation,
+
+            ...(loaded.family
+              ?.seniorIncomeExemptionAllocation ??
+              {}),
+          },
+
 
           children:
             loaded.family?.children ??

@@ -5,6 +5,8 @@ import {
 import {
   PlanningData,
   PlanningLimitReason,
+  PlanningSideEffect,
+  PlanningSideEffectKey,
   PlanningUsageResult,
 } from "@/types/planning";
 
@@ -12,7 +14,20 @@ import {
   TaxResult,
 } from "@/types/taxResult";
 
-
+/*
+ * IMPORTANT:
+ * ลำดับนี้ต้องสอดคล้องกับ allocation priority
+ * ของ Tax Engine เพราะ calculatePlanningUsage*
+ * วัด "deduction ที่เพิ่มขึ้นจริง" แบบ cumulative
+ *
+ * Current Engine priority ที่เกี่ยวข้อง:
+ * - Life ก่อน Health ภายใต้ combined cap
+ * - Pension extra ก่อน RMF ภายใต้
+ *   retirement shared ceiling
+ *
+ * ห้ามเปลี่ยนลำดับนี้เพียงเพื่อเหตุผลด้าน UI
+ * โดยไม่ตรวจ Engine และ scenarios tests พร้อมกัน
+ */
 const planningFieldOrder:
   (keyof PlanningData)[] = [
     "lifeInsurance",
@@ -56,6 +71,128 @@ function emptyPlanning():
   };
 }
 
+function getPlanningFieldAllowed(
+  result: TaxResult,
+  key: keyof PlanningData
+): number {
+  switch (key) {
+    case "lifeInsurance":
+      return result
+        .insuranceDeductions
+        .lifeInsurance
+        .allowed;
+
+    case "healthInsuranceSelf":
+      return result
+        .insuranceDeductions
+        .healthInsuranceSelf
+        .allowed;
+
+    case "pensionInsurance":
+      return result
+        .retirementDeductions
+        .pensionInsurance
+        .allowed;
+
+    case "rmf":
+      return result
+        .retirementDeductions
+        .rmf
+        .allowed;
+
+    case "thaiEsg":
+      return result
+        .generalDeductions
+        .thaiEsg
+        .allowed;
+  }
+}
+
+
+function getTrackedDeductionAllowed(
+  result: TaxResult
+): Partial<
+  Record<
+    PlanningSideEffectKey,
+    number
+  >
+> {
+  return {
+    lifeInsurance:
+      result.insuranceDeductions
+        .lifeInsurance.allowed,
+
+    healthInsuranceSelf:
+      result.insuranceDeductions
+        .healthInsuranceSelf.allowed,
+
+    pensionInsurance:
+      result.retirementDeductions
+        .pensionInsurance.allowed,
+
+    providentFund:
+      result.retirementDeductions
+        .providentFund.allowed,
+
+    gpf:
+      result.retirementDeductions
+        .gpf.allowed,
+
+    privateTeacherFund:
+      result.retirementDeductions
+        .privateTeacherFund.allowed,
+
+    nsf:
+      result.retirementDeductions
+        .nsf.allowed,
+
+    rmf:
+      result.retirementDeductions
+        .rmf.allowed,
+
+    thaiEsg:
+      result.generalDeductions
+        .thaiEsg.allowed,
+
+    socialSecurity:
+      result.generalDeductions
+        .socialSecurity.allowed,
+
+    homeLoanInterest:
+      result.generalDeductions
+        .homeLoanInterest.allowed,
+
+    socialEnterpriseInvestment:
+      result.generalDeductions
+        .socialEnterpriseInvestment
+        .allowed,
+
+    solarRooftop:
+      result.generalDeductions
+        .solarRooftop?.allowed ?? 0,
+
+    artPurchase:
+      result.generalDeductions
+        .artPurchase?.allowed ?? 0,
+
+    specialDonation:
+      result.donationDeductions
+        .specialDonation.allowed,
+
+    generalDonation:
+      result.donationDeductions
+        .generalDonation.allowed,
+
+    airForceStupaDonation:
+      result.donationDeductions
+        .airForceStupaDonation
+        ?.allowed ?? 0,
+
+    politicalDonation:
+      result.donationDeductions
+        .politicalDonation.allowed,
+  };
+}
 
 export function applyPlanningToDeductions(
   current: DeductionData,
@@ -175,6 +312,8 @@ export function calculatePlanningUsageDetails(
       planned: 0,
       allowedAdditional: 0,
       excess: 0,
+      netDeductionChange: 0,
+      sideEffects: [],
       reasons: [],
     },
 
@@ -182,6 +321,8 @@ export function calculatePlanningUsageDetails(
       planned: 0,
       allowedAdditional: 0,
       excess: 0,
+      netDeductionChange: 0,
+      sideEffects: [],
       reasons: [],
     },
 
@@ -189,6 +330,8 @@ export function calculatePlanningUsageDetails(
       planned: 0,
       allowedAdditional: 0,
       excess: 0,
+      netDeductionChange: 0,
+      sideEffects: [],
       reasons: [],
     },
 
@@ -196,6 +339,8 @@ export function calculatePlanningUsageDetails(
       planned: 0,
       allowedAdditional: 0,
       excess: 0,
+      netDeductionChange: 0,
+      sideEffects: [],
       reasons: [],
     },
 
@@ -203,6 +348,8 @@ export function calculatePlanningUsageDetails(
       planned: 0,
       allowedAdditional: 0,
       excess: 0,
+      netDeductionChange: 0,
+      sideEffects: [],
       reasons: [],
     },
   };
@@ -235,14 +382,95 @@ export function calculatePlanningUsageDetails(
         nextDeductions
       );
 
+    const previousFieldAllowed =
+      getPlanningFieldAllowed(
+        previousResult,
+        key
+      );
+
+    const nextFieldAllowed =
+      getPlanningFieldAllowed(
+        nextResult,
+        key
+      );
+
     const allowedAdditional =
       Math.max(
         0,
-        nextResult
-          .totalCurrentDeductions -
-          previousResult
-            .totalCurrentDeductions
+        nextFieldAllowed -
+          previousFieldAllowed
       );
+
+    const netDeductionChange =
+      nextResult.totalCurrentDeductions -
+      previousResult.totalCurrentDeductions;
+
+    const beforeAllowed =
+      getTrackedDeductionAllowed(
+        previousResult
+      );
+
+    const afterAllowed =
+      getTrackedDeductionAllowed(
+        nextResult
+      );
+
+    const sideEffects:
+      PlanningSideEffect[] =
+        Object.entries(
+          afterAllowed
+        )
+          .map(
+            ([rawKey, after]) => {
+              const sideEffectKey =
+                rawKey as PlanningSideEffectKey;
+
+              /*
+              * รายการที่กำลังวางแผน
+              * ไม่ถือเป็น side effect
+              */
+              if (
+                sideEffectKey === key
+              ) {
+                return null;
+              }
+
+              const before =
+                beforeAllowed[
+                  sideEffectKey
+                ] ?? 0;
+
+              const afterAllowedValue =
+                after ?? 0;
+
+              const change =
+                afterAllowedValue -
+                before;
+
+              if (change === 0) {
+                return null;
+              }
+
+              return {
+                key:
+                  sideEffectKey,
+
+                beforeAllowed:
+                  before,
+
+                afterAllowed:
+                  afterAllowedValue,
+
+                change,
+              };
+            }
+          )
+          .filter(
+            (
+              item
+            ): item is PlanningSideEffect =>
+              item !== null
+          );
 
     const excess =
       Math.max(
@@ -830,7 +1058,11 @@ export function calculatePlanningUsageDetails(
 
       allowedAdditional,
 
+      netDeductionChange,
+
       excess,
+
+      sideEffects,
 
       reasons,
     };
@@ -905,11 +1137,19 @@ export function calculatePlanningCapacity(
       emptyPlanning();
 
     /*
-     * ทดลองทีละรายการ
-     * เพื่อไม่ให้ capacity ของ
-     * Pension ไปกินสิทธิ RMF
-     * หรือกลับกัน
-     */
+    * Capacity ในฟังก์ชันนี้หมายถึง:
+    *
+    * "จาก current deductions
+    * ถ้าเพิ่มรายการนี้เพียงรายการเดียว
+    * จะทำให้ deduction เพิ่มได้อีก
+    * สูงสุดเท่าไร"
+    *
+    * จึง probe ทีละรายการจาก current
+    * และไม่รวม planning ของ field อื่น
+    *
+    * ไม่ใช่ remaining capacity
+    * หลังรวม planning ทุก field แล้ว
+    */
     probe[key] =
       probeAmounts[key];
 

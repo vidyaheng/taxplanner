@@ -4,13 +4,14 @@ import {
   useState,
 } from "react";
 
-import { useRouter } from "next/navigation";
-
 import Link from "next/link";
 
 import {
   useTaxPlanner,
 } from "@/store/TaxPlannerContext";
+
+import PlanningStepper
+  from "@/components/planning/PlanningStepper";
 
 import {
   calculateTax,
@@ -25,6 +26,7 @@ import {
 import {
   PlanningData,
   PlanningLimitReason,
+  PlanningSideEffect,
 } from "@/types/planning";
 
 
@@ -69,6 +71,66 @@ const planningFields: {
   },
 ];
 
+const sideEffectLabels:
+  Record<
+    PlanningSideEffect["key"],
+    string
+  > = {
+    lifeInsurance:
+      "เบี้ยประกันชีวิต",
+
+    healthInsuranceSelf:
+      "เบี้ยประกันสุขภาพตนเอง",
+
+    pensionInsurance:
+      "เบี้ยประกันบำนาญ",
+
+    providentFund:
+      "กองทุนสำรองเลี้ยงชีพ (PVD)",
+
+    gpf:
+      "กองทุนบำเหน็จบำนาญข้าราชการ (กบข.)",
+
+    privateTeacherFund:
+      "กองทุนสงเคราะห์ครูโรงเรียนเอกชน",
+
+    nsf:
+      "กองทุนการออมแห่งชาติ (กอช.)",
+
+    rmf:
+      "RMF",
+
+    thaiEsg:
+      "Thai ESG",
+
+    socialSecurity:
+      "ประกันสังคม",
+
+    homeLoanInterest:
+      "ดอกเบี้ยกู้ซื้อ / สร้างที่อยู่อาศัย",
+
+    socialEnterpriseInvestment:
+      "ลงทุนในวิสาหกิจเพื่อสังคม",
+
+    solarRooftop:
+      "Solar Rooftop",
+
+    artPurchase:
+      "ซื้อผลงานศิลปะ",
+
+    specialDonation:
+      "เงินบริจาคที่ได้สิทธิพิเศษ",
+
+    generalDonation:
+      "เงินบริจาคทั่วไป",
+
+    airForceStupaDonation:
+      "เงินบริจาคกองทัพอากาศ",
+
+    politicalDonation:
+      "เงินบริจาคพรรคการเมือง",
+  };
+
 
 function formatNumber(
   value: number
@@ -101,8 +163,6 @@ export default function PlannerPage() {
     state,
     setPlanning,
   } = useTaxPlanner();
-
-  const router = useRouter();
 
   const planning: PlanningData = {
     lifeInsurance:
@@ -166,6 +226,17 @@ export default function PlannerPage() {
         plannedDeductions,
     });
 
+  const isPlanningCalculationComplete =
+    currentResult.isComplete &&
+    plannedResult.isComplete;
+
+  const planningWarnings =
+    Array.from(
+      new Set([
+        ...currentResult.warnings,
+        ...plannedResult.warnings,
+      ])
+    );
 
   /*
    * -------------------------
@@ -184,29 +255,51 @@ export default function PlannerPage() {
 
 
   const additionalDeductionAllowed =
-    Math.max(
-      0,
-      plannedResult
-        .totalCurrentDeductions -
-        currentResult
-          .totalCurrentDeductions
-    );
+    isPlanningCalculationComplete
+      ? Math.max(
+          0,
+          plannedResult
+            .totalCurrentDeductions -
+            currentResult
+              .totalCurrentDeductions
+        )
+      : 0;
 
+  /*
+  * ภาษีก่อนเครดิตที่ลดลง
+  * ใช้แสดงผลของ deduction ต่อฐานภาษี
+  */
+  const taxBeforeCreditsReduction =
+    isPlanningCalculationComplete
+      ? Math.max(
+          0,
+          currentResult.taxBeforeCredits -
+            plannedResult.taxBeforeCredits
+        )
+      : 0;
 
-  const unusedPlannedAmount =
-    Math.max(
-      0,
-      totalPlannedPayment -
-        additionalDeductionAllowed
-    );
+  /*
+  * ผลสุทธิของการยื่นภาษี
+  *
+  * ค่าเป็นบวก = ต้องจ่ายเพิ่ม
+  * ค่าเป็นลบ = ได้คืน
+  */
+  const currentNetTaxPosition =
+    currentResult.taxPayable -
+    currentResult.taxRefund;
 
+  const plannedNetTaxPosition =
+    plannedResult.taxPayable -
+    plannedResult.taxRefund;
 
   const additionalTaxSaving =
-    Math.max(
-      0,
-      currentResult.taxBeforeCredits -
-        plannedResult.taxBeforeCredits
-    );
+    isPlanningCalculationComplete
+      ? Math.max(
+          0,
+          currentNetTaxPosition -
+            plannedNetTaxPosition
+        )
+      : 0;
 
 
   function clearPlanning() {
@@ -254,6 +347,50 @@ export default function PlannerPage() {
         })
     );
 
+  /*
+  * สิทธิของรายการใหม่เอง
+  * ไม่หักผลกระทบที่เกิดกับสิทธิเดิม
+  */
+  const plannedDeductionAllowed =
+    planningFields.reduce(
+      (total, field) =>
+        total +
+        planningDetails[field.key]
+          .allowedAdditional,
+      0
+    );
+
+
+  /*
+  * ยอดในแผนที่รายการนั้นเอง
+  * ใช้สิทธิไม่ได้
+  */
+  const unusedPlannedAmount =
+    Math.max(
+      0,
+      totalPlannedPayment -
+        plannedDeductionAllowed
+    );
+
+
+  /*
+  * ผลกระทบที่ทำให้สิทธิเดิมลดลง
+  *
+  * ตัวอย่าง:
+  * ประกันใหม่ +100,000
+  * แต่ donation ลด -10,000
+  *
+  * plannedDeductionAllowed = 100,000
+  * additionalDeductionAllowed = 90,000
+  * reducedExistingDeduction = 10,000
+  */
+  const reducedExistingDeduction =
+    Math.max(
+      0,
+      plannedDeductionAllowed -
+        additionalDeductionAllowed
+    );
+
 
   return (
   <main className="min-h-screen bg-slate-50">
@@ -261,21 +398,44 @@ export default function PlannerPage() {
 
       {/* HEADER */}
 
-      <div className="mb-8">
-        <div className="text-sm font-medium text-blue-600">
-          ขั้นตอนที่ 4 จาก 5
+      <header className="mb-8">
+
+        <div className="flex items-center justify-between gap-4">
+
+          <Link
+            href="/"
+            className="text-xl font-bold text-slate-900"
+          >
+            Tax Planner
+          </Link>
+
+          <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
+            ปีภาษี {state.taxYear}
+          </div>
+
         </div>
 
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          วางแผนลดภาษี
-        </h1>
+        <div className="mt-7">
+          <PlanningStepper
+            currentStep={4}
+          />
+        </div>
 
-        <p className="mt-2 max-w-3xl text-slate-500">
-          ทดลองเพิ่มประกันและเงินลงทุน
-          โดยไม่เปลี่ยนข้อมูลสิทธิที่คุณมีอยู่แล้ว
-          ระบบจะแสดงผลภาษีของแผนใหม่แบบทันที
-        </p>
-      </div>
+        <div className="mt-8">
+
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            วางแผนลดภาษี
+          </h1>
+
+          <p className="mt-2 max-w-3xl text-slate-500">
+            ทดลองเพิ่มประกันและเงินลงทุน
+            โดยไม่เปลี่ยนข้อมูลสิทธิที่คุณมีอยู่แล้ว
+            ระบบจะแสดงผลภาษีของแผนใหม่แบบทันที
+          </p>
+
+        </div>
+
+      </header>
 
 
       {/* MAIN 2 COLUMNS */}
@@ -334,6 +494,13 @@ export default function PlannerPage() {
                     planningDetails[field.key]
                       .reasons
                   }
+                  sideEffects={
+                    planningDetails[field.key]
+                      .sideEffects
+                  }
+                  showCalculation={
+                    isPlanningCalculationComplete
+                  }
                   onChange={(value) =>
                     setPlanning({
                       [field.key]: value,
@@ -349,10 +516,10 @@ export default function PlannerPage() {
 
           {/* WARNINGS */}
 
-          {plannedResult.warnings.length > 0 && (
+          {planningWarnings.length > 0 && (
             <div className="space-y-2">
 
-              {plannedResult.warnings.map(
+              {planningWarnings.map(
                 (warning, index) => (
                   <div
                     key={index}
@@ -384,36 +551,40 @@ export default function PlannerPage() {
 
           {/* COMPARISON */}
 
-          <div className="grid gap-4 md:grid-cols-2">
+          {isPlanningCalculationComplete ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
 
-            <TaxCard
-              title="สถานะปัจจุบัน"
-              tax={
-                currentResult.taxBeforeCredits
-              }
-              taxableIncome={
-                currentResult.taxableIncome
-              }
-              deductions={
-                currentResult.totalCurrentDeductions
-              }
-            />
+                <TaxCard
+                  title="สถานะปัจจุบัน"
+                  tax={
+                    currentResult.taxBeforeCredits
+                  }
+                  taxableIncome={
+                    currentResult.taxableIncome
+                  }
+                  deductions={
+                    currentResult
+                      .totalCurrentDeductions
+                  }
+                />
 
-            <TaxCard
-              title="หลังวางแผน"
-              tax={
-                plannedResult.taxBeforeCredits
-              }
-              taxableIncome={
-                plannedResult.taxableIncome
-              }
-              deductions={
-                plannedResult.totalCurrentDeductions
-              }
-              highlight
-            />
+                <TaxCard
+                  title="หลังวางแผน"
+                  tax={
+                    plannedResult.taxBeforeCredits
+                  }
+                  taxableIncome={
+                    plannedResult.taxableIncome
+                  }
+                  deductions={
+                    plannedResult
+                      .totalCurrentDeductions
+                  }
+                  highlight
+                />
 
-          </div>
+              </div>
 
 
           {/* SAVING HERO */}
@@ -425,7 +596,7 @@ export default function PlannerPage() {
             </div>
 
             <div className="mt-2 text-2xl font-bold leading-tight sm:text-4xl">
-              ประหยัดภาษีเพิ่ม{" "}
+              ประหยัดภาษีสุทธิเพิ่ม{" "}
               {formatNumber(
                 additionalTaxSaving
               )}{" "}
@@ -433,18 +604,22 @@ export default function PlannerPage() {
             </div>
 
             <div className="mt-3 text-sm text-blue-100">
-              จากภาษี{" "}
+              ภาษีก่อนเครดิตลดลง{" "}
               {formatNumber(
-                currentResult.taxBeforeCredits
-              )}{" "}
-              บาท เหลือ{" "}
-              {formatNumber(
-                plannedResult.taxBeforeCredits
+                taxBeforeCreditsReduction
               )}{" "}
               บาท
             </div>
 
           </div>
+        </>
+      ) : (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800">
+          ยังไม่สามารถเปรียบเทียบผลการวางแผนได้
+          เนื่องจากข้อมูลสำหรับคำนวณภาษีบางรายการยังไม่สมบูรณ์
+          กรุณาตรวจสอบคำเตือนด้านบนก่อน
+        </div>
+      )}
 
 
           {/* NAV */}
@@ -488,68 +663,99 @@ export default function PlannerPage() {
                 value={totalPlannedPayment}
               />
 
-              <SummaryRow
-                label="ใช้ลดหย่อนเพิ่มได้"
-                value={additionalDeductionAllowed}
-                highlight
-              />
+              {isPlanningCalculationComplete && (
+                <>
+                  <SummaryRow
+                    label="สิทธิจากรายการที่วางแผน"
+                    value={plannedDeductionAllowed}
+                  />
 
-              {unusedPlannedAmount > 0 && (
-                <SummaryRow
-                  label="ยอดที่ไม่ช่วยลดภาษีเพิ่ม"
-                  value={unusedPlannedAmount}
-                />
+                  {reducedExistingDeduction > 0 && (
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                      <span className="text-sm leading-6 text-amber-700">
+                        สิทธิเดิมที่ลดลง
+                      </span>
+
+                      <span className="whitespace-nowrap text-right text-sm font-semibold tabular-nums text-amber-700">
+                        -{formatNumber(
+                          reducedExistingDeduction
+                        )}{" "}
+                        บาท
+                      </span>
+                    </div>
+                  )}
+
+                  <SummaryRow
+                    label="ค่าลดหย่อนเพิ่มสุทธิ"
+                    value={additionalDeductionAllowed}
+                    highlight
+                  />
+
+                  {unusedPlannedAmount > 0 && (
+                    <SummaryRow
+                      label="ยอดที่เกินสิทธิของรายการ"
+                      value={unusedPlannedAmount}
+                    />
+                  )}
+                </>
               )}
 
             </div>
 
 
-            <div className="mt-5 border-t border-slate-100 pt-5">
+            {isPlanningCalculationComplete ? (
+              <>
+                <div className="mt-5 border-t border-slate-100 pt-5">
 
-              <div className="text-sm text-slate-500">
-                ภาษีปัจจุบัน
+                  <div className="text-sm text-slate-500">
+                    ภาษีก่อนเครดิตปัจจุบัน
+                  </div>
+
+                  <div className="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-slate-900">
+                    {formatNumber(
+                      currentResult.taxBeforeCredits
+                    )}{" "}
+                    บาท
+                  </div>
+
+                </div>
+
+                <div className="mt-4">
+
+                  <div className="text-sm text-slate-500">
+                    ภาษีก่อนเครดิตหลังวางแผน
+                  </div>
+
+                  <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700">
+                    {formatNumber(
+                      plannedResult.taxBeforeCredits
+                    )}{" "}
+                    บาท
+                  </div>
+
+                </div>
+
+                <div className="mt-5 rounded-2xl bg-blue-50 p-4">
+
+                  <div className="text-sm text-blue-700">
+                    ประหยัดภาษีสุทธิเพิ่ม
+                  </div>
+
+                  <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700 sm:text-3xl">
+                    {formatNumber(
+                      additionalTaxSaving
+                    )}{" "}
+                    บาท
+                  </div>
+
+                </div>
+              </>
+            ) : (
+              <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                รอข้อมูลคำนวณภาษีให้ครบ
+                ก่อนแสดงผลการวางแผน
               </div>
-
-              <div className="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-slate-900">
-                {formatNumber(
-                  currentResult.taxBeforeCredits
-                )}{" "}
-                บาท
-              </div>
-
-            </div>
-
-
-            <div className="mt-4">
-
-              <div className="text-sm text-slate-500">
-                ภาษีหลังวางแผน
-              </div>
-
-              <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700">
-                {formatNumber(
-                  plannedResult.taxBeforeCredits
-                )}{" "}
-                บาท
-              </div>
-
-            </div>
-
-
-            <div className="mt-5 rounded-2xl bg-blue-50 p-4">
-
-              <div className="text-sm text-blue-700">
-                ประหยัดภาษีเพิ่ม
-              </div>
-
-              <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700 sm:text-3xl">
-                {formatNumber(
-                  additionalTaxSaving
-                )}{" "}
-                บาท
-              </div>
-
-            </div>
+            )}
 
 
             {totalPlannedPayment > 0 && (
@@ -578,6 +784,8 @@ function PlannerInput({
   allowed,
   capacity,
   reasons,
+  sideEffects,
+  showCalculation,
   onChange,
 }: {
   label: string;
@@ -589,6 +797,11 @@ function PlannerInput({
   reasons:
     PlanningLimitReason[];
 
+  sideEffects:
+    PlanningSideEffect[];
+
+  showCalculation: boolean;
+
   onChange: (
     value: number
   ) => void;
@@ -597,6 +810,12 @@ function PlannerInput({
     Math.max(
       0,
       value - allowed
+    );
+
+  const reducedRights =
+    sideEffects.filter(
+      (effect) =>
+        effect.change < 0
     );
 
   return (
@@ -613,18 +832,21 @@ function PlannerInput({
             {description}
           </div>
 
-          <div className="mt-2 text-xs text-slate-500">
-            สิทธิลดหย่อนที่ยังเพิ่มได้โดยประมาณ{" "}
-            <span className="font-medium text-slate-700">
-              {formatNumber(
-                capacity
-              )}{" "}
-              บาท
-            </span>
-          </div>
+          {showCalculation && (
+            <div className="mt-2 text-xs text-slate-500">
+              วงเงินเพิ่มโดยประมาณ
+              เมื่อพิจารณารายการนี้แยก{" "}
+              <span className="font-medium text-slate-700">
+                {formatNumber(
+                  capacity
+                )}{" "}
+                บาท
+              </span>
+            </div>
+          )}
 
-
-          {value > 0 && (
+          {showCalculation &&
+            value > 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
 
               <span className="font-medium text-blue-700">
@@ -655,11 +877,61 @@ function PlannerInput({
                 </div>
               )}
 
+              {value > 0 &&
+                reducedRights.length > 0 && (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">
+                        !
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-amber-900">
+                          แผนนี้มีผลต่อสิทธิเดิม
+                        </div>
+
+                        <div className="mt-2 space-y-2">
+                          {reducedRights.map(
+                            (effect) => (
+                              <div
+                                key={effect.key}
+                                className="text-xs leading-5 text-amber-800"
+                              >
+                                {sideEffectLabels[
+                                  effect.key
+                                ]}{" "}
+                                ลดจาก{" "}
+                                {formatNumber(
+                                  effect.beforeAllowed
+                                )}{" "}
+                                บาท เหลือ{" "}
+                                {formatNumber(
+                                  effect.afterAllowed
+                                )}{" "}
+                                บาท
+                                <span className="font-semibold">
+                                  {" "}
+                                  (ลดลง{" "}
+                                  {formatNumber(
+                                    Math.abs(
+                                      effect.change
+                                    )
+                                  )}{" "}
+                                  บาท)
+                                </span>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
             </div>
           )}
 
         </div>
-
 
         <div className="relative">
 
@@ -946,6 +1218,10 @@ function TaxCard({
         {title}
       </div>
 
+      <div className="mt-1 text-xs text-slate-400">
+        ภาษีก่อนเครดิต
+      </div>
+
       <div
         className={
           highlight
@@ -964,7 +1240,7 @@ function TaxCard({
         />
 
         <SummaryRow
-          label="ค่าลดหย่อนรวม"
+          label="ค่าลดหย่อนอื่นที่ใช้ได้"
           value={deductions}
         />
 

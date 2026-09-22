@@ -24,6 +24,279 @@ function usage(
   };
 }
 
+function resolveSpouseAssessableIncome(
+  family: FamilyData
+): boolean | null {
+  if (
+    family.spouseHasAssessableIncome !==
+    undefined
+  ) {
+    return family.spouseHasAssessableIncome;
+  }
+
+  /*
+   * legacy localStorage
+   */
+  return family.spouseHasIncome;
+}
+
+function isParentEligibleForHealthInsurance({
+  parent,
+  family,
+  rules,
+  spouseParentHealthEligible,
+}: {
+  parent: FamilyData["parents"][number];
+  family: FamilyData;
+  rules: TaxRuleSet;
+  spouseParentHealthEligible: boolean;
+}): boolean {
+  const incomeEligible =
+    parent.annualAssessableIncome <=
+    rules.eligibility
+      .parentIncomeLimitInclusive;
+
+  const thailandResidenceEligible =
+    family.isThaiTaxResident !== false ||
+    parent.isInThailand === true ||
+    parent.isInThailand === undefined;
+
+  const ownerEligible =
+    parent.owner === "taxpayer" ||
+    (
+      parent.owner === "spouse" &&
+      spouseParentHealthEligible
+    );
+
+  return (
+    incomeEligible &&
+    thailandResidenceEligible &&
+    ownerEligible
+  );
+}
+
+function resolveParentHealthInsurance({
+  deductions,
+  family,
+  rules,
+  spouseParentHealthEligible,
+}: {
+  deductions: DeductionData;
+  family: FamilyData;
+  rules: TaxRuleSet;
+  spouseParentHealthEligible: boolean;
+}): {
+  paid: number;
+  eligiblePaid: number;
+  warnings: string[];
+} {
+  const warnings: string[] = [];
+
+  const policies =
+    deductions.parentHealthInsurancePolicies;
+
+  /*
+   * legacy localStorage
+   *
+   * ไม่มี detailed list:
+   * ใช้ยอด aggregate เดิม
+   */
+  if (policies === undefined) {
+    const paid =
+      Math.max(
+        0,
+        deductions.parentHealthInsurance
+      );
+
+    const hasEligibleParent =
+      family.parents.some((parent) =>
+        isParentEligibleForHealthInsurance({
+          parent,
+          family,
+          rules,
+          spouseParentHealthEligible,
+        })
+      );
+
+    if (
+      paid > 0 &&
+      !hasEligibleParent
+    ) {
+      warnings.push(
+        "มีเบี้ยประกันสุขภาพบิดา/มารดา แต่ยังไม่มีข้อมูลบิดา/มารดาที่เข้าเงื่อนไขในหน้าครอบครัว"
+      );
+    }
+
+    return {
+      paid,
+      eligiblePaid:
+        hasEligibleParent
+          ? paid
+          : 0,
+      warnings,
+    };
+  }
+
+  /*
+   * detailed list เป็น source of truth
+   */
+  let paid = 0;
+  let eligiblePaid = 0;
+
+  let hasInvalidPayerCount =
+    false;
+
+  let hasMissingParent =
+    false;
+
+  let hasIneligibleParent =
+    false;
+
+  for (const policy of policies) {
+    const premiumPaid =
+      Math.max(
+        0,
+        policy.premiumPaidThisYear
+      );
+
+    /*
+     * ไม่มีเบี้ย ไม่ต้องตรวจข้อมูลอื่น
+     */
+    if (premiumPaid <= 0) {
+      continue;
+    }
+
+    const payerCount =
+      policy.jointPayerCount;
+
+    /*
+     * ยังหาส่วนของผู้ใช้ไม่ได้
+     */
+    if (
+      payerCount === null ||
+      !Number.isInteger(
+        payerCount
+      ) ||
+      payerCount < 1
+    ) {
+      hasInvalidPayerCount =
+        true;
+
+      continue;
+    }
+
+    /*
+     * ส่วนเบี้ยที่เป็นของผู้มีเงินได้คนนี้
+     */
+    const taxpayerShare =
+      premiumPaid /
+      payerCount;
+
+    paid +=
+      taxpayerShare;
+
+    /*
+     * ยังไม่ได้เลือกพ่อ / แม่
+     */
+    if (
+      !policy.parentId ||
+      policy.parentId.trim() === ""
+    ) {
+      hasMissingParent =
+        true;
+
+      continue;
+    }
+
+    const parent =
+      family.parents.find(
+        (item) =>
+          item.id ===
+          policy.parentId
+      );
+
+    /*
+     * parent ถูกลบไปแล้ว
+     * หรือ id ไม่ตรงกับข้อมูล Family
+     */
+    if (!parent) {
+      hasMissingParent =
+        true;
+
+      continue;
+    }
+
+    const eligible =
+      isParentEligibleForHealthInsurance({
+        parent,
+        family,
+        rules,
+        spouseParentHealthEligible,
+      });
+
+    if (!eligible) {
+      hasIneligibleParent =
+        true;
+
+      continue;
+    }
+
+    eligiblePaid +=
+      taxpayerShare;
+  }
+
+  if (hasInvalidPayerCount) {
+    warnings.push(
+      "มีรายการเบี้ยประกันสุขภาพบิดา/มารดาที่ยังไม่ได้ระบุจำนวนผู้มีเงินได้ที่ร่วมจ่ายอย่างถูกต้อง"
+    );
+  }
+
+  if (hasMissingParent) {
+    warnings.push(
+      "มีรายการเบี้ยประกันสุขภาพบิดา/มารดาที่ยังไม่ได้เลือกบิดาหรือมารดา หรือข้อมูลบุพการีที่เลือกไว้ไม่พบแล้ว"
+    );
+  }
+
+  if (hasIneligibleParent) {
+    warnings.push(
+      "มีรายการเบี้ยประกันสุขภาพบิดา/มารดาที่ไม่เข้าเงื่อนไขการใช้สิทธิ จึงไม่นำรายการดังกล่าวมาหักลดหย่อน"
+    );
+  }
+
+  return {
+    paid,
+    eligiblePaid,
+    warnings,
+  };
+}
+
+function canUseSpouseParentHealthInsurance(
+  family: FamilyData
+): boolean {
+  const spouseHasAssessableIncome =
+    resolveSpouseAssessableIncome(
+      family
+    );
+
+  const currentSpouseQualifies =
+    family.maritalStatus === "married" &&
+    spouseHasAssessableIncome === false;
+
+  const formerSpouseQualifies =
+    (
+      family.maritalStatus === "divorced" ||
+      family.maritalStatus === "widowed"
+    ) &&
+    family.marriageEndedThisTaxYear === true &&
+    family.formerSpouseHadAssessableIncomeThisTaxYear ===
+      false;
+
+  return (
+    currentSpouseQualifies ||
+    formerSpouseQualifies
+  );
+}
+
 export function calculateInsuranceDeductions({
   deductions,
   family,
@@ -35,8 +308,30 @@ export function calculateInsuranceDeductions({
 }): InsuranceDeductionResult {
   const warnings: string[] = [];
 
+  const spouseHasAssessableIncome =
+    resolveSpouseAssessableIncome(
+      family
+    );
+
+  const spouseParentHealthEligible =
+    canUseSpouseParentHealthInsurance(
+      family
+    );
+
   const insuranceRules =
     rules.deductions.insurance;
+
+  const parentHealthInsurance =
+    resolveParentHealthInsurance({
+      deductions,
+      family,
+      rules,
+      spouseParentHealthEligible,
+    });
+
+  warnings.push(
+    ...parentHealthInsurance.warnings
+  );
 
   /*
  * ประกันชีวิตใช้สิทธิก่อน
@@ -77,8 +372,8 @@ const healthAllowed =
   ) {
     if (
       family.maritalStatus === "married" &&
-      !family.spouseHasIncome &&
-      family.marriedFullTaxYear
+      spouseHasAssessableIncome === false &&
+      family.marriedFullTaxYear === true
     ) {
       spouseLifeAllowed =
         Math.min(
@@ -93,52 +388,20 @@ const healthAllowed =
   }
 
   /*
-   * ประกันสุขภาพบิดา / มารดา
-   *
-   * ไม่ใช้เงื่อนไขอายุ 60 ปี
-   * แต่ต้องตรวจเรื่องเงินได้ของบิดา/มารดา
-   */
-  const hasEligibleParent =
-    family.parents.some(
-      (parent) => {
-        const incomeEligible =
-          parent.annualAssessableIncome <=
-          rules.eligibility
-            .parentIncomeLimitInclusive;
-
-        const spouseParentEligible =
-          parent.owner === "taxpayer" ||
-          (
-            parent.owner === "spouse" &&
-            family.maritalStatus ===
-              "married" &&
-            !family.spouseHasIncome
-          );
-
-        return (
-          incomeEligible &&
-          spouseParentEligible
-        );
-      }
+  * ประกันสุขภาพบิดา / มารดา
+  *
+  * - ไม่ใช้เงื่อนไขอายุ 60 ปี
+  * - ตรวจ parent รายกรมธรรม์
+  * - ผู้ร่วมจ่ายเฉลี่ยก่อนใช้สิทธิ
+  * - รวมสิทธิสูงสุด 15,000 บาท
+  */
+  const parentHealthAllowed =
+    Math.min(
+      parentHealthInsurance
+        .eligiblePaid,
+      insuranceRules
+        .parentHealthMax
     );
-
-  let parentHealthAllowed = 0;
-
-  if (
-    deductions.parentHealthInsurance > 0
-  ) {
-    if (hasEligibleParent) {
-      parentHealthAllowed =
-        Math.min(
-          deductions.parentHealthInsurance,
-          insuranceRules.parentHealthMax
-        );
-    } else {
-      warnings.push(
-        "มีเบี้ยประกันสุขภาพบิดา/มารดา แต่ยังไม่มีข้อมูลบิดา/มารดาที่เข้าเงื่อนไขในหน้าครอบครัว"
-      );
-    }
-  }
 
   const life =
     usage(
@@ -160,7 +423,7 @@ const healthAllowed =
 
   const parent =
     usage(
-      deductions.parentHealthInsurance,
+      parentHealthInsurance.paid,
       parentHealthAllowed
     );
 
@@ -342,21 +605,22 @@ export function calculateRetirementDeductions({
     );
 
   /*
-   * -------------------------
-   * Shared 500,000 ceiling
-   * -------------------------
-   *
-   * สำหรับ Planner เราจัด allocation:
-   *
-   * PVD
-   * → GPF
-   * → Teacher Fund
-   * → NSF
-   * → Pension extra
-   * → RMF
-   *
-   * เพื่อให้เงินสะสมเดิม/ภาคบังคับใช้พื้นที่ก่อน
-   */
+  * -------------------------
+  * Shared 500,000 ceiling
+  * -------------------------
+  *
+  * Allocation policy ของ Planner:
+  *
+  * Pension extra
+  * → PVD
+  * → GPF
+  * → Teacher Fund
+  * → NSF
+  * → RMF
+  *
+  * ให้สิทธิเบี้ยประกันบำนาญส่วนเพิ่มเติม
+  * ใช้ shared retirement ceiling ก่อน
+  */
   let remainingSharedRoom =
     retirementRules.sharedMax;
 
@@ -374,6 +638,12 @@ export function calculateRetirementDeductions({
 
     return allowed;
   }
+
+  const pensionExtraAllowed =
+    allocate(
+      pensionExtraCandidate
+    );
+
 
   const providentFundAllowed =
     allocate(
@@ -395,10 +665,6 @@ export function calculateRetirementDeductions({
       nsfCandidate
     );
 
-  const pensionExtraAllowed =
-    allocate(
-      pensionExtraCandidate
-    );
 
   const rmfAllowed =
     allocate(
@@ -485,7 +751,7 @@ export function calculateRetirementDeductions({
     retirementRules.sharedMax
   ) {
     warnings.push(
-      "สิทธิกลุ่มเกษียณรวมเกินเพดาน 500,000 บาท ระบบจัดสรรสิทธิให้เงินสะสมเดิมก่อน แล้วจึงประกันบำนาญและ RMF"
+      "สิทธิกลุ่มเกษียณรวมใช้ลดหย่อนได้สูงสุด 500,000 บาท"
     );
   }
 
@@ -730,6 +996,48 @@ export function calculateGeneralDeductions({
         .socialEnterpriseInvestmentMax
     );
 
+  /*
+  * -------------------------
+  * Solar Rooftop
+  * -------------------------
+  *
+  * field นี้เก็บ "ยอดที่เข้าเงื่อนไข"
+  * ตามมาตรการแล้ว
+  */
+  const solarRooftopPaid =
+    Math.max(
+      0,
+      deductions.solarRooftop ?? 0
+    );
+
+  const solarRooftopAllowed =
+    Math.min(
+      solarRooftopPaid,
+      rules.deductions.general
+        .solarRooftopMax
+    );
+
+  /*
+  * -------------------------
+  * Art Purchase
+  * -------------------------
+  *
+  * field นี้เก็บค่าซื้องานศิลปะ
+  * ที่เข้าเงื่อนไขของมาตรการ
+  */
+  const artPurchasePaid =
+    Math.max(
+      0,
+      deductions.artPurchase ?? 0
+    );
+
+  const artPurchaseAllowed =
+    Math.min(
+      artPurchasePaid,
+      rules.deductions.general
+        .artPurchaseMax
+    );
+
   const socialSecurity =
     usage(
       deductions.socialSecurity,
@@ -754,19 +1062,35 @@ export function calculateGeneralDeductions({
       socialEnterpriseAllowed
     );
 
+  const solarRooftop =
+    usage(
+      solarRooftopPaid,
+      solarRooftopAllowed
+    );
+
+  const artPurchase =
+    usage(
+      artPurchasePaid,
+      artPurchaseAllowed
+    );
+
   const totalPaid =
     socialSecurity.paid +
     homeLoanInterest.paid +
     thaiEsg.paid +
     thaiEsgxTransfer.allowedThisYear +
-    socialEnterpriseInvestment.paid;
+    socialEnterpriseInvestment.paid +
+    solarRooftop.paid +
+    artPurchase.paid
 
   const totalAllowed =
     socialSecurity.allowed +
     homeLoanInterest.allowed +
     thaiEsg.allowed +
     thaiEsgxTransfer.allowedThisYear +
-    socialEnterpriseInvestment.allowed;
+    socialEnterpriseInvestment.allowed +
+    solarRooftop.allowed +
+    artPurchase.allowed
 
   const totalExcess =
     Math.max(
@@ -785,6 +1109,10 @@ export function calculateGeneralDeductions({
     thaiEsgxTransfer,
 
     socialEnterpriseInvestment,
+
+    solarRooftop,
+
+    artPurchase,
 
     totalPaid,
 
@@ -819,6 +1147,14 @@ export function calculateGeneralDeductions({
         rules.deductions
           .sustainableInvestment
           .thaiEsgxCarryForwardYears,
+
+      solarRooftopMax:
+        rules.deductions.general
+          .solarRooftopMax,
+
+      artPurchaseMax:
+        rules.deductions.general
+          .artPurchaseMax,
     },
 
     warnings,
@@ -1054,13 +1390,17 @@ export function calculateDonationDeductions({
   };
 
   /*
-   * -------------------------
-   * General donation
-   * -------------------------
-   *
-   * คำนวณหลัง special donation
-   */
-
+  * -------------------------
+  * General donation
+  * + Air Force Stupa donation
+  * พ.ร.ฎ. 804
+  * -------------------------
+  *
+  * ทั้งสองรายการเป็นสิทธิ 1 เท่า
+  * และใช้เพดาน 10% ร่วมกัน
+  *
+  * คำนวณหลัง special donation
+  */
   const baseForGeneralDonation =
     Math.max(
       0,
@@ -1072,6 +1412,17 @@ export function calculateDonationDeductions({
     baseForGeneralDonation *
     donationRules.generalLimitRate;
 
+  /*
+  * เงินบริจาคทั่วไปเดิม
+  *
+  * ให้ใช้พื้นที่ก่อนเพื่อรักษา
+  * behavior เดิมของระบบ
+  *
+  * การจัดลำดับนี้มีผลเฉพาะ
+  * การแสดงผลว่าแต่ละรายการ
+  * ใช้สิทธิเท่าไร
+  * ไม่กระทบยอดสิทธิรวม
+  */
   const generalAllowed =
     Math.min(
       deductions.generalDonation,
@@ -1084,19 +1435,56 @@ export function calculateDonationDeductions({
       generalAllowed
     );
 
+  /*
+  * พ.ร.ฎ. 804
+  *
+  * บุคคลธรรมดา:
+  * - บริจาคเป็นเงิน
+  * - สิทธิ 1 เท่า
+  * - ใช้เพดานร่วมกับ
+  *   general donation
+  */
+  const airForceStupaDonationPaid =
+    Math.max(
+      0,
+      deductions.airForceStupaDonation ??
+        0
+    );
+
+  const remainingGeneralDonationRoom =
+    Math.max(
+      0,
+      generalDonationLimit -
+        generalDonation.allowed
+    );
+
+  const airForceStupaDonationAllowed =
+    Math.min(
+      airForceStupaDonationPaid,
+      remainingGeneralDonationRoom
+    );
+
+  const airForceStupaDonation =
+    usage(
+      airForceStupaDonationPaid,
+      airForceStupaDonationAllowed
+    );
+
   const totalPaid =
     deductions.politicalDonation +
     deductions.specialDonation +
-    deductions.generalDonation;
+    deductions.generalDonation +
+    airForceStupaDonation.paid;
 
   /*
-   * special donation ใช้ยอด deduction
-   * หลังคูณ 2 ไม่ใช่ยอดที่จ่ายจริง
-   */
+  * special donation ใช้ยอด deduction
+  * หลังคูณ 2 ไม่ใช่ยอดที่จ่ายจริง
+  */
   const totalAllowed =
     politicalDonation.allowed +
     specialDonation.allowed +
-    generalDonation.allowed;
+    generalDonation.allowed +
+    airForceStupaDonation.allowed;
 
   if (
     specialDonation.disallowedDeduction >
@@ -1115,12 +1503,22 @@ export function calculateDonationDeductions({
     );
   }
 
+  if (
+    airForceStupaDonation.excess > 0
+  ) {
+    warnings.push(
+      "เงินบริจาคให้กองทัพอากาศตาม พ.ร.ฎ. 804 เมื่อรวมกับเงินบริจาคทั่วไปแล้วเกินเพดาน 10% ระบบจึงใช้สิทธิได้เพียงบางส่วน"
+    );
+  }
+
   return {
     politicalDonation,
 
     specialDonation,
 
     generalDonation,
+
+    airForceStupaDonation,
 
     baseBeforeDonations:
       incomeBeforeDonations,
