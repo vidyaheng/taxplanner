@@ -1,0 +1,30 @@
+name: Tax Planner PR checks
+
+on:
+  pull_request:
+    branches: [main, chore/baseline-eslint-cleanup-20261030]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-lint-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Unit tests
+        run: npm run test -- --run
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        if: ${{ !cancelled() }}
+        run: npm run build
