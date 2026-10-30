@@ -1712,7 +1712,7 @@ const donationPlanningChanged =
                                                             policy.parentId
                                                           }
                                                         >
-                                                          "ไม่พบข้อมูลบิดา / มารดาที่เคยเลือก"
+                                                          &quot;ไม่พบข้อมูลบิดา / มารดาที่เคยเลือก&quot;
                                                         </option>
                                                       )}
 
