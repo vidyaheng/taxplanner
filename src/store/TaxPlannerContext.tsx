@@ -181,6 +181,16 @@ const initialState: TaxPlannerState = {
   planning: emptyPlanning,
 };
 
+/** Persist a complete clean planner snapshot before navigation/reload. */
+export function persistPlannerReset(
+  storage: Pick<Storage, "setItem">
+): void {
+  storage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(initialState)
+  );
+}
+
 type Action =
   | {
       type: "SET_INCOME";
@@ -1010,7 +1020,9 @@ interface TaxPlannerContextValue {
     values: Partial<PlanningData>
   ) => void;
 
-  resetPlanner: () => void;
+  resetPlanner: () => boolean;
+
+  isHydrated: boolean;
 }
 
 const TaxPlannerContext =
@@ -1126,10 +1138,25 @@ export function TaxPlannerProvider({
     });
   }
 
-  function resetPlanner() {
+  function resetPlanner(): boolean {
+    // Do not overwrite saved user data before hydration has finished.
+    if (!hydrated) return false;
+
+    try {
+      // Write synchronously so reloading immediately cannot revive old data.
+      persistPlannerReset(window.localStorage);
+    } catch (error) {
+      console.error(
+        "Unable to reset Tax Planner data",
+        error
+      );
+      return false;
+    }
+
     dispatch({
       type: "RESET",
     });
+    return true;
   }
 
   function setPlanning(
@@ -1152,6 +1179,7 @@ export function TaxPlannerProvider({
         setDeductions,
         setPlanning,
         resetPlanner,
+        isHydrated: hydrated,
       }}
     >
       {children}
