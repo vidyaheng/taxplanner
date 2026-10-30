@@ -1695,7 +1695,7 @@ function removeForeignBusinessIncome(
     );
 
   const conflictingBusinessActivityKeys =
-    useMemo(() => {
+    (() => {
       const methods =
         new Map<
           string,
@@ -1750,11 +1750,7 @@ function removeForeignBusinessIncome(
           )
           .map(([key]) => key)
       );
-    }, [
-      income.hasOtherIncome,
-      businessIncomes,
-      taxableForeignBusinessIncomes,
-    ]);    
+    })();
 
   const taxableSection40_8ForeignIncome =
     foreignIncomeAggregate
