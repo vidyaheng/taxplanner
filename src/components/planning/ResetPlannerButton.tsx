@@ -7,7 +7,7 @@ export default function ResetPlannerButton() {
 
   function handleReset() {
     const confirmed = window.confirm(
-      "เริ่มคำนวณใหม่หรือไม่?\\n\\n" +
+      "เริ่มคำนวณใหม่หรือไม่?\n\n" +
         "ข้อมูลรายได้ ครอบครัว ค่าลดหย่อน และแผนภาษีที่บันทึกไว้ในเบราว์เซอร์นี้จะถูกล้างทั้งหมด และไม่สามารถกู้คืนได้"
     );
 
