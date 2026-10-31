@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ResetPlannerButton from "./ResetPlannerButton";
 
 type PlanningStep =
   | 1
@@ -55,7 +56,11 @@ export default function PlanningStepper({
   currentStep,
 }: PlanningStepperProps) {
   return (
-    <nav
+    <>
+      <div className="mb-4 flex justify-end">
+        <ResetPlannerButton />
+      </div>
+      <nav
       aria-label="ขั้นตอนการวางแผนภาษี"
       className="w-full"
     >
@@ -127,6 +132,7 @@ export default function PlanningStepper({
 
         </div>
       </div>
-    </nav>
+      </nav>
+    </>
   );
 }

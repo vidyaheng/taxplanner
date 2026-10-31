@@ -30,6 +30,9 @@ import {
 export interface TaxPlannerState {
   schemaVersion: number;
 
+  // Changes on each reset to fence off stale writes from other open tabs.
+  resetId?: string;
+
   taxYear: number;
 
   income: IncomeData;
@@ -181,6 +184,43 @@ const initialState: TaxPlannerState = {
   planning: emptyPlanning,
 };
 
+/**
+ * A reset generation is stored alongside the planner data, not in a second
+ * key. Each tab must match this generation before it may write saved state.
+ */
+function resetIdOf(state: Partial<TaxPlannerState> | null): string | null {
+  return typeof state?.resetId === "string" ? state.resetId : null;
+}
+
+export function isStalePlannerTab(
+  current: Partial<TaxPlannerState>,
+  saved: Partial<TaxPlannerState> | null
+): boolean {
+  return resetIdOf(current) !== resetIdOf(saved);
+}
+
+export function savePlannerStateIfCurrent(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  state: TaxPlannerState
+): boolean {
+  const raw = storage.getItem(STORAGE_KEY);
+  const saved = raw ? (JSON.parse(raw) as Partial<TaxPlannerState>) : null;
+  if (isStalePlannerTab(state, saved)) return false;
+  storage.setItem(STORAGE_KEY, JSON.stringify(state));
+  return true;
+}
+
+/** Persist a complete clean planner snapshot before navigation/reload. */
+export function persistPlannerReset(
+  storage: Pick<Storage, "setItem">,
+  resetId: string = globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`
+): TaxPlannerState {
+  const resetState: TaxPlannerState = { ...initialState, resetId };
+  storage.setItem(STORAGE_KEY, JSON.stringify(resetState));
+  return resetState;
+}
+
 type Action =
   | {
       type: "SET_INCOME";
@@ -205,6 +245,7 @@ type Action =
     }
   | {
       type: "RESET";
+      payload: TaxPlannerState;
     }
   | {
       type: "SET_DEDUCTIONS";
@@ -975,7 +1016,7 @@ function reducer(
     }
 
     case "RESET":
-      return initialState;
+      return action.payload;
 
     default:
       return state;
@@ -1010,7 +1051,9 @@ interface TaxPlannerContextValue {
     values: Partial<PlanningData>
   ) => void;
 
-  resetPlanner: () => void;
+  resetPlanner: () => boolean;
+
+  isHydrated: boolean;
 }
 
 const TaxPlannerContext =
@@ -1067,16 +1110,40 @@ export function TaxPlannerProvider({
     if (!hydrated) return;
 
     try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(state)
-      );
+      if (!savePlannerStateIfCurrent(window.localStorage, state)) {
+        // Another tab reset the planner. Never overwrite its clean snapshot.
+        window.location.reload();
+      }
     } catch (error) {
       console.error(
         "Unable to save Tax Planner data",
         error
       );
     }
+  }, [state, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    function onStorage(event: StorageEvent) {
+      if (event.storageArea !== window.localStorage ||
+          event.key !== STORAGE_KEY) return;
+
+      try {
+        const saved = event.newValue
+          ? (JSON.parse(event.newValue) as Partial<TaxPlannerState>)
+          : null;
+        if (isStalePlannerTab(state, saved)) {
+          // Reload also clears page-local form useState values in long forms.
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error("Unable to synchronize Tax Planner tabs", error);
+      }
+    }
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [state, hydrated]);
 
   function setIncome(
@@ -1126,10 +1193,26 @@ export function TaxPlannerProvider({
     });
   }
 
-  function resetPlanner() {
-    dispatch({
-      type: "RESET",
-    });
+  function resetPlanner(): boolean {
+    // Do not overwrite saved user data before hydration has finished.
+    if (!hydrated) return false;
+
+    try {
+      // Write synchronously so reloading immediately cannot revive old data.
+      const cleanState = persistPlannerReset(window.localStorage);
+      dispatch({
+        type: "RESET",
+        payload: cleanState,
+      });
+    } catch (error) {
+      console.error(
+        "Unable to reset Tax Planner data",
+        error
+      );
+      return false;
+    }
+
+    return true;
   }
 
   function setPlanning(
@@ -1152,6 +1235,7 @@ export function TaxPlannerProvider({
         setDeductions,
         setPlanning,
         resetPlanner,
+        isHydrated: hydrated,
       }}
     >
       {children}
