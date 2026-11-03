@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import type {
   ForeignIncomeSourceData,
 } from "@/types/income";
@@ -62,20 +64,23 @@ function MoneyField({
     value: number
   ) => void;
 }) {
+  const inputId = useId();
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-slate-700">
         {label}
       </label>
 
       {description && (
-        <p className="mb-2 text-sm text-slate-400">
+        <p id={`${inputId}-hint`} className="mb-2 text-sm text-slate-400">
           {description}
         </p>
       )}
 
       <div className="relative">
         <input
+          id={inputId}
+          aria-describedby={description ? `${inputId}-hint` : undefined}
           inputMode="numeric"
           value={
             value
@@ -109,15 +114,17 @@ export default function ForeignIncomeCommonFields({
   onAmountChange,
   onForeignSourceChange,
 }: ForeignIncomeCommonFieldsProps) {
+  const fieldId = useId();
   return (
     <>
       <div className="mt-5 grid gap-5 md:grid-cols-2">
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label htmlFor={`${fieldId}-country`} className="mb-2 block text-sm font-medium text-slate-700">
             ประเทศที่มาของรายได้
           </label>
 
           <input
+            id={`${fieldId}-country`}
             type="text"
             value={
               foreignSource.country
@@ -145,11 +152,12 @@ export default function ForeignIncomeCommonFields({
 
       <div className="mt-5 grid gap-5 md:grid-cols-2">
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label htmlFor={`${fieldId}-year`} className="mb-2 block text-sm font-medium text-slate-700">
             ปีที่เกิดเงินได้
           </label>
 
           <input
+            id={`${fieldId}-year`}
             type="number"
             inputMode="numeric"
             value={
@@ -219,7 +227,9 @@ export default function ForeignIncomeCommonFields({
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <button
+          <button aria-pressed={foreignSource
+                .isThaiTaxResidentInIncomeYear ==
+              null}
             type="button"
             onClick={() =>
               onForeignSourceChange({
@@ -238,7 +248,9 @@ export default function ForeignIncomeCommonFields({
             ยังไม่เลือก
           </button>
 
-          <button
+          <button aria-pressed={foreignSource
+                .isThaiTaxResidentInIncomeYear ===
+              true}
             type="button"
             onClick={() =>
               onForeignSourceChange({
@@ -257,7 +269,9 @@ export default function ForeignIncomeCommonFields({
             ใช่
           </button>
 
-          <button
+          <button aria-pressed={foreignSource
+                .isThaiTaxResidentInIncomeYear ===
+              false}
             type="button"
             onClick={() =>
               onForeignSourceChange({

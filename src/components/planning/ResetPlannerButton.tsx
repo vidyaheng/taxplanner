@@ -29,7 +29,7 @@ export default function ResetPlannerButton() {
       type="button"
       onClick={handleReset}
       disabled={!isHydrated}
-      className="min-h-11 rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+      className="tp-button tp-button-reset"
     >
       เริ่มคำนวณใหม่
     </button>

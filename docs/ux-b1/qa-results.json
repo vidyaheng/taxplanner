@@ -1,0 +1,160 @@
+{
+  "matrix": [
+    {
+      "route": "income",
+      "width": 375,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "family",
+      "width": 375,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "deductions",
+      "width": 375,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "planner",
+      "width": 375,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "results",
+      "width": 375,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "income",
+      "width": 390,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "family",
+      "width": 390,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "deductions",
+      "width": 390,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "planner",
+      "width": 390,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "results",
+      "width": 390,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "income",
+      "width": 430,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "family",
+      "width": 430,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "deductions",
+      "width": 430,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "planner",
+      "width": 430,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "results",
+      "width": 430,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "income",
+      "width": 768,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "family",
+      "width": 768,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "deductions",
+      "width": 768,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "planner",
+      "width": 768,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "results",
+      "width": 768,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "income",
+      "width": 1440,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "family",
+      "width": 1440,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "deductions",
+      "width": 1440,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "planner",
+      "width": 1440,
+      "overflow": false,
+      "touch_targets": "pass"
+    },
+    {
+      "route": "results",
+      "width": 1440,
+      "overflow": false,
+      "touch_targets": "pass"
+    }
+  ],
+  "salary_format_autosave_resume": "pass",
+  "navigation_and_tax_fixture": "125,000 pass",
+  "focus": "pass",
+  "cancel_confirm_reset_and_two_tabs": "pass",
+  "expanded_foreign_domestic_labels_warning_ftc": "pass",
+  "page_errors": []
+}
