@@ -36,7 +36,7 @@ describe("Income paired fields and Section 40(8) guidance — source boundary", 
     for (const category of ["standard60", "performer", "actualOnly"]) {
       expect(income.match(new RegExp('<option value="' + category + '">', "g"))).toHaveLength(2);
     }
-    expect(income).toContain('e.target.value as Section40_8BusinessIncomeData["category"]');
+    expect(income.match(/Section40_8BusinessIncomeData\["category"\]/g)).toHaveLength(2);
     expect(income).toContain("updateBusinessIncome(");
     expect(income).toContain("updateForeignBusinessIncome(");
     expect(income).toContain("expenseMethod:");
