@@ -317,7 +317,7 @@
   min-height: 2.75rem;
 }
 /* B2 Director correction: accessible destructive record actions. */
-.tp-family .tp-b2-record .tp-b2-delete {
+.tp-b2-page .tp-b2-delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -334,13 +334,13 @@
   line-height: 1.25;
   cursor: pointer;
 }
-.tp-family .tp-b2-record .tp-b2-delete:hover,
-.tp-family .tp-b2-record .tp-b2-delete:focus-visible {
+.tp-b2-page .tp-b2-delete:hover,
+.tp-b2-page .tp-b2-delete:focus-visible {
   color: #b42342;
   background: #fff1f3;
   border-color: #b42342;
 }
-.tp-family .tp-b2-record .tp-b2-delete:focus-visible {
+.tp-b2-page .tp-b2-delete:focus-visible {
   outline: 3px solid #b42342;
   outline-offset: 3px;
 }

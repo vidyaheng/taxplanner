@@ -1672,7 +1672,7 @@ const donationPlanningChanged =
                                                       policy.id
                                                     )
                                                   }
-                                                  className="text-sm text-slate-400 hover:text-red-600"
+                                                  className="tp-b2-delete"
                                                 >
                                                   ลบ
                                                 </button>
@@ -2007,7 +2007,7 @@ const donationPlanningChanged =
                                                     pregnancy.id
                                                   )
                                                 }
-                                                className="text-sm text-slate-400 hover:text-red-600"
+                                                className="tp-b2-delete"
                                               >
                                                 ลบ
                                               </button>

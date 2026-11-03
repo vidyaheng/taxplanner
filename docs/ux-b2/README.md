@@ -111,3 +111,29 @@ warning, Deductions summary and Family at 390px.
 **Browser visual QA and screenshots: NOT EXECUTED in this environment.**
 Do not infer browser PASS from scoped source tests or CI.
 **Draft PR only.** No merge, auto-merge or manual Production deployment.
+
+## Director final delete-button consistency correction — 2026-11-03
+
+Whole-file Deductions source inspection located exactly **two** visible
+`ลบ` buttons: parent-health policy and pregnancy record. Both now use the
+same `tp-b2-delete` class as all three Family delete buttons. Shared
+CSS is scoped to `.tp-b2-page .tp-b2-delete`, so it applies only to
+these B2 pages. The five buttons share approved `#B42342` foreground,
+`#F3C4CD` border, `#FFF1F3` hover/focus background,
+44px minimum width/height, and a 3px visible focus outline.
+
+Original `removeParentHealthPolicy(policy.id)` and
+`removePregnancy(pregnancy.id)` handlers remain unchanged.
+No extra confirmation, calculations, donation/social-security behavior,
+financial storage, reset or access modifications. New source-level regression
+checks assert the exact original handlers, no legacy gray delete class,
+shared CSS selectors and five consistent buttons.
+
+**Browser execution/screenshots: NOT EXECUTED.** For Director manual QA,
+expand the parent-health insurance and maternity/pregnancy deduction groups,
+add synthetic records, confirm each delete button has coral normal,
+hover/focus styling and 44px touch target, then delete each record without
+an added confirmation. Recheck Family's three buttons, keyboard focus and
+mobile 390px overflow. Full 375/390/430/768/1440px browser matrix remains
+pending. Only accept actual screenshots from this commit's Preview.
+Draft PR #7 is not merged or deployed to Production.

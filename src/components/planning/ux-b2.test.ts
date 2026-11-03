@@ -69,13 +69,13 @@ describe("UX B2 presentation contracts", () => {
   });
 
   it("provides danger color, 44px touch targets, and visible keyboard focus", () => {
-    expect(styles).toContain(".tp-family .tp-b2-record .tp-b2-delete {");
+    expect(styles).toContain(".tp-b2-page .tp-b2-delete {");
     expect(styles).toContain("min-width: 2.75rem;");
     expect(styles).toContain("min-height: 2.75rem;");
     expect(styles).toContain("color: #b42342;");
     expect(styles).toContain("border: 1px solid #f3c4cd;");
-    expect(styles).toContain(".tp-family .tp-b2-record .tp-b2-delete:hover,");
-    expect(styles).toContain(".tp-family .tp-b2-record .tp-b2-delete:focus-visible {");
+    expect(styles).toContain(".tp-b2-page .tp-b2-delete:hover,");
+    expect(styles).toContain(".tp-b2-page .tp-b2-delete:focus-visible {");
     expect(styles).toContain("outline: 3px solid #b42342;");
   });
 
@@ -107,6 +107,30 @@ describe("UX B2 presentation contracts", () => {
       const a = lum(fg), b = lum(bg);
       expect((Math.max(a, b) + .05) / (Math.min(a, b) + .05)).toBeGreaterThanOrEqual(4.5);
     }
+  });
+
+  it("uses the shared danger treatment on all Deductions delete actions", () => {
+    expect(deductions.match(/className="tp-b2-delete"/g)).toHaveLength(2);
+    expect(deductions).not.toContain("text-sm text-slate-400 hover:text-red-600");
+    expect(deductions).toMatch(
+      /onClick=\{\(\) =>\s*removeParentHealthPolicy\(\s*policy\.id\s*\)\s*\}\s*className="tp-b2-delete"\s*>\s*ลบ\s*<\/button>/,
+    );
+    expect(deductions).toMatch(
+      /onClick=\{\(\) =>\s*removePregnancy\(\s*pregnancy\.id\s*\)\s*\}\s*className="tp-b2-delete"\s*>\s*ลบ\s*<\/button>/,
+    );
+  });
+
+  it("limits the shared danger control to B2 and keeps Family/Deductions consistent", () => {
+    expect(family.match(/className="tp-b2-delete"/g)).toHaveLength(3);
+    expect(deductions.match(/className="tp-b2-delete"/g)).toHaveLength(2);
+    expect(styles).toContain(".tp-b2-page .tp-b2-delete {");
+    expect(styles).toContain(".tp-b2-page .tp-b2-delete:hover,");
+    expect(styles).toContain(".tp-b2-page .tp-b2-delete:focus-visible {");
+    expect(styles).toContain("min-width: 2.75rem;");
+    expect(styles).toContain("min-height: 2.75rem;");
+    expect(styles).toContain("background: #fff1f3;");
+    expect(styles).toContain("outline: 3px solid #b42342;");
+    expect(styles).not.toContain(".tp-family .tp-b2-record .tp-b2-delete");
   });
 
 });
