@@ -1910,7 +1910,7 @@ function removeForeignBusinessIncome(
               <div className="mt-5">
 
                 <MoneyInput
-                  label="รายได้จากงานประจำอื่น ๆ ตลอดปี"
+                  label="รายได้อื่นจากนายจ้างทั้งปี"
                   description="เช่น ค่าตำแหน่ง ค่าตอบแทน หรือรายได้อื่นจากนายจ้าง"
                   value={
                     income.otherEmploymentIncome

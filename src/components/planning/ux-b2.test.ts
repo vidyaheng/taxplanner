@@ -95,9 +95,9 @@ describe("UX B2 presentation contracts", () => {
     expect(family.slice(heroStart, breakdownStart)).toMatch(
       /!taxResult\.isComplete && \(\s*<div role="alert" className="tp-b2-summary-warning mt-2 text-sm leading-5"/,
     );
-    expect(family).toContain("ยังไม่สามารถคำนวณภาษีได้ครบถ้วน");
-    expect(family).toContain("เนื่องจากมีข้อมูลบางรายการที่ยังไม่สมบูรณ์");
-    expect(family).toContain("กรุณาตรวจสอบคำเตือนด้านล่าง");
+    // PR #8 changes only the text in B2's lower accessible warning,
+    // keeping the distinct Indigo hero and incomplete-data status.
+    expect(family).toContain("ข้อมูลยังไม่ครบ กรุณาตรวจสอบรายการด้านล่างเพื่อคำนวณภาษี");
     expect(styles).toContain(".tp-family .tp-b2-summary-hero .tp-b2-summary-status {");
     expect(styles).toContain(".tp-family .tp-b2-summary > .tp-b2-summary-warning {");
     expect(styles).toContain("color: #6b4311;");
