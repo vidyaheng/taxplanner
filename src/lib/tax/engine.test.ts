@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { calculateTax } from "./engine";
+import { estimateSection40_1Withholding } from "./withholding-estimator";
 
 import { IncomeData } from "@/types/income";
 import { FamilyData } from "@/types/family";
@@ -8226,3 +8227,36 @@ describe("Tax Engine 2569", () => {
     );
 
   });
+it("the separate estimate never becomes an actual withholding credit, payable or refund", () => {
+  const income = createIncome({
+    monthlySalary: 100_000,
+    section40_1TaxWithheld: 20_000,
+  });
+  const family = createFamily();
+  const deductions = createDeductions();
+  const before = calculateTax({ taxYear: 2569, income, family, deductions });
+
+  const estimate = estimateSection40_1Withholding({
+    taxYear: 2569,
+    income,
+    annualSocialSecurityPaid: deductions.socialSecurity,
+  });
+  const after = calculateTax({ taxYear: 2569, income, family, deductions });
+
+  expect(estimate.estimatedAnnualTax).toBe(125_000);
+  expect(income.section40_1TaxWithheld).toBe(20_000);
+  expect(after.taxCredits.withholdingTax).toBe(20_000);
+  expect(after.taxCredits.withholdingTax).not.toBe(estimate.estimatedAnnualTax);
+  expect(after.taxPayable).toBe(before.taxPayable);
+  expect(after.taxRefund).toBe(before.taxRefund);
+
+  const withoutActual = calculateTax({
+    taxYear: 2569,
+    income: { ...income, section40_1TaxWithheld: 0 },
+    family,
+    deductions,
+  });
+  expect(withoutActual.taxCredits.withholdingTax).toBe(0);
+  expect(withoutActual.taxPayable).toBeGreaterThan(after.taxPayable);
+  expect(withoutActual.taxRefund).toBe(0);
+});
