@@ -149,9 +149,13 @@ describe("Section 40(1) read-only withholding estimator, tax year 2569", () => {
     };
     const before = structuredClone(income);
     const first = estimateSection40_1Withholding({ taxYear: 2569, income });
+    const incomeWithDifferentActual = {
+      ...income,
+      section40_1TaxWithheld: 99_999,
+    };
     const second = estimateSection40_1Withholding({
       taxYear: 2569,
-      income: { ...income, section40_1TaxWithheld: 99_999 },
+      income: incomeWithDifferentActual,
     });
     expect(income).toEqual(before);
     expect(first).toEqual(second);
