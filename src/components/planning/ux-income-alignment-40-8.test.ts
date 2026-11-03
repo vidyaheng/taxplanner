@@ -66,7 +66,7 @@ describe("Income paired fields and Section 40(8) guidance — source boundary", 
   it("keeps existing incomplete-category and expense-method safeguards", () => {
     expect(income.match(/กรุณาเลือกกลุ่มกิจการ/g)).toHaveLength(2);
     expect(income).toContain("conflictingBusinessActivityKeys.has(");
-    expect(income).toContain('item.category === "actualOnly"');
+    expect(income).toMatch(/item\.category ===\s*"actualOnly"/);
     expect(income).toContain('item.category !== "actualOnly"');
     expect(income).toContain("taxability?.isComplete");
     expect(income).toContain("formatNumber(");
