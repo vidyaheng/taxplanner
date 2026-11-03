@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useId } from "react";
 
 import {
   useTaxPlanner,
@@ -567,20 +568,20 @@ const seniorAllocationRemaining =
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-5xl px-5 py-8 md:px-8 md:py-10">
+    <main className="min-h-screen tp-b2-page tp-family">
+      <div className="tp-b2-container">
 
-        <header className="mb-8">
+        <header className="mb-8 tp-b2-header">
           <div className="flex items-center justify-between gap-4">
 
             <Link
               href="/"
-              className="text-xl font-bold text-slate-900"
+              className="tp-brand"
             >
               Tax Planner
             </Link>
 
-            <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
+            <div className="tp-year-badge">
               ปีภาษี {state.taxYear}
             </div>
           </div>
@@ -592,20 +593,23 @@ const seniorAllocationRemaining =
           </div>
         </header>
 
-        <div className="grid gap-6 min-[960px]:grid-cols-[minmax(0,1fr)_320px] min-[960px]:items-start">
+        <div className="tp-b2-grid grid gap-6 min-[960px]:grid-cols-[minmax(0,1fr)_320px] min-[960px]:items-start">
 
-          <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-8">
+          <section className="tp-card tp-b2-form min-w-0">
 
-            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+            <div className="tp-b2-intro">
+              <p className="tp-eyebrow">ขั้นตอนที่ 2 · ข้อมูลครอบครัว</p>
+              <h1 className="tp-page-title">
               ข้อมูลส่วนตัวและครอบครัว
             </h1>
 
-            <p className="mt-2 text-slate-500">
-              ใช้เฉพาะข้อมูลที่จำเป็นสำหรับตรวจสอบสิทธิลดหย่อน
-            </p>
+              <p className="tp-page-description">
+                ใช้เฉพาะข้อมูลที่จำเป็นสำหรับตรวจสอบสิทธิลดหย่อน
+              </p>
+            </div>
 
             {/* Taxpayer */}
-            <div className="mt-8">
+            <div className="mt-8 tp-b2-section">
 
               <h2 className="text-lg font-semibold text-slate-900">
                 เกี่ยวกับคุณ
@@ -620,6 +624,7 @@ const seniorAllocationRemaining =
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
+                    aria-pressed={family.taxpayerAge65OrOlder === false}
                     onClick={() =>
                       setFamily({
                         taxpayerAge65OrOlder: false,
@@ -637,6 +642,7 @@ const seniorAllocationRemaining =
 
                   <button
                     type="button"
+                    aria-pressed={family.taxpayerAge65OrOlder === true}
                     onClick={() =>
                       setFamily({
                         taxpayerAge65OrOlder: true,
@@ -1239,7 +1245,7 @@ const seniorAllocationRemaining =
             </div>
 
             {/* Children */}
-            <div className="mt-10 border-t border-slate-100 pt-8">
+            <div className="mt-10 border-t border-slate-100 pt-8 tp-b2-section">
 
               <div className="flex items-start justify-between gap-4">
 
@@ -1276,7 +1282,7 @@ const seniorAllocationRemaining =
                         key={
                           child.id
                         }
-                        className="rounded-2xl border border-slate-200 p-4 sm:p-5"
+                        className="tp-b2-record rounded-2xl border border-slate-200 p-4 sm:p-5"
                       >
 
                         <div className="flex items-center justify-between">
@@ -1293,7 +1299,7 @@ const seniorAllocationRemaining =
                                 child.id
                               )
                             }
-                            className="text-sm text-slate-400 hover:text-red-600"
+                            className="tp-b2-delete"
                           >
                             ลบ
                           </button>
@@ -1480,7 +1486,7 @@ const seniorAllocationRemaining =
             </div>
 
             {/* Parents */}
-            <div className="mt-10 border-t border-slate-100 pt-8">
+            <div className="mt-10 border-t border-slate-100 pt-8 tp-b2-section">
 
               <div className="flex items-start justify-between gap-4">
 
@@ -1516,7 +1522,7 @@ const seniorAllocationRemaining =
                         key={
                           parent.id
                         }
-                        className="rounded-2xl border border-slate-200 p-4 sm:p-5"
+                        className="tp-b2-record rounded-2xl border border-slate-200 p-4 sm:p-5"
                       >
 
                         <div className="flex items-center justify-between">
@@ -1533,7 +1539,7 @@ const seniorAllocationRemaining =
                                 parent.id
                               )
                             }
-                            className="text-sm text-slate-400 hover:text-red-600"
+                            className="tp-b2-delete"
                           >
                             ลบ
                           </button>
@@ -1797,7 +1803,7 @@ const seniorAllocationRemaining =
             </div>
 
             {/* Disabled */}
-            <div className="mt-10 border-t border-slate-100 pt-8">
+            <div className="mt-10 border-t border-slate-100 pt-8 tp-b2-section">
 
               <div className="flex items-start justify-between gap-4">
 
@@ -1838,7 +1844,7 @@ const seniorAllocationRemaining =
                         key={
                           dependent.id
                         }
-                        className="rounded-2xl border border-slate-200 p-4 sm:p-5"
+                        className="tp-b2-record rounded-2xl border border-slate-200 p-4 sm:p-5"
                       >
 
                         <div className="flex items-center justify-between">
@@ -1855,7 +1861,7 @@ const seniorAllocationRemaining =
                                 dependent.id
                               )
                             }
-                            className="text-sm text-slate-400 hover:text-red-600"
+                            className="tp-b2-delete"
                           >
                             ลบ
                           </button>
@@ -2139,7 +2145,7 @@ const seniorAllocationRemaining =
               )}
             </div>
 
-            <div className="mt-10 flex items-center justify-between border-t border-slate-100 pt-6">
+            <div className="tp-b2-actions mt-10 flex items-center justify-between border-t border-slate-100 pt-6">
 
               <Link
                 href="/planning/income"
@@ -2158,13 +2164,13 @@ const seniorAllocationRemaining =
           </section>
 
           {/* Summary */}
-          <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 min-[960px]:sticky min-[960px]:top-8">
+          <aside className="tp-card tp-b2-summary h-fit min-[960px]:sticky min-[960px]:top-8">
 
             <div className="text-sm font-medium text-slate-500">
               สรุปครอบครัว
             </div>
 
-            <div className="mt-5 rounded-2xl bg-blue-50 p-5">
+            <div className="tp-b2-summary-hero mt-5 rounded-2xl bg-blue-50 p-5">
 
                 <div className="text-sm font-medium text-blue-700">
                     ภาษีคำนวณก่อนหักเครดิตภาษี
@@ -2213,13 +2219,19 @@ const seniorAllocationRemaining =
                     </div>
                     </>
                 ) : (
-                    <div className="mt-3 text-sm leading-6 text-amber-800">
-                      ยังไม่สามารถคำนวณภาษีได้ครบถ้วน
-                      เนื่องจากมีข้อมูลบางรายการที่ยังไม่สมบูรณ์
-                      กรุณาตรวจสอบคำเตือนด้านล่าง
-                    </div>
+                    <span className="tp-b2-summary-status mt-2 inline-flex text-sm font-medium">
+                      รอข้อมูลครบถ้วน
+                    </span>
                 )}
-                </div>  
+                </div>
+
+            {!taxResult.isComplete && (
+              <div role="alert" className="tp-b2-summary-warning mt-2 text-sm leading-5">
+                ยังไม่สามารถคำนวณภาษีได้ครบถ้วน
+                เนื่องจากมีข้อมูลบางรายการที่ยังไม่สมบูรณ์
+                กรุณาตรวจสอบคำเตือนด้านล่าง
+              </div>
+            )}
 
             <div className="mt-5 rounded-2xl border border-slate-200 p-4">
 
@@ -2382,6 +2394,7 @@ function StatusButton({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${
         active
@@ -2411,6 +2424,7 @@ function YesNo({
         onClick={() =>
           onChange(false)
         }
+        aria-pressed={!value}
         className={`flex-1 rounded-lg px-4 py-2 text-sm ${
           !value
             ? "bg-white font-medium text-slate-900 shadow-sm"
@@ -2425,6 +2439,7 @@ function YesNo({
         onClick={() =>
           onChange(true)
         }
+        aria-pressed={value}
         className={`flex-1 rounded-lg px-4 py-2 text-sm ${
           value
             ? "bg-white font-medium text-slate-900 shadow-sm"
@@ -2448,16 +2463,19 @@ function MoneyField({
     value: number
   ) => void;
 }) {
+  const inputId = useId();
+
   return (
     <div>
 
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-slate-700">
         {label}
       </label>
 
       <div className="relative">
 
         <input
+          id={inputId}
           inputMode="numeric"
           value={
             value
