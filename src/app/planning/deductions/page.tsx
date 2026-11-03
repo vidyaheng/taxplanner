@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import {
   useTaxPlanner,
@@ -635,21 +635,21 @@ const donationPlanningChanged =
   ] = useState(false);
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-5xl px-5 py-8 md:px-8 md:py-10">
+    <main className="min-h-screen tp-b2-page tp-deductions">
+      <div className="tp-b2-container">
 
         {/* Header */}
-        <header className="mb-8">
+        <header className="mb-8 tp-b2-header">
           <div className="flex items-center justify-between gap-4">
 
             <Link
               href="/"
-              className="text-xl font-bold text-slate-900"
+              className="tp-brand"
             >
               Tax Planner
             </Link>
 
-            <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
+            <div className="tp-year-badge">
               ปีภาษี{" "}
               {state.taxYear}
             </div>
@@ -662,30 +662,31 @@ const donationPlanningChanged =
           </div>
         </header>
 
-        <div className="grid gap-6 min-[960px]:grid-cols-[minmax(0,1fr)_320px] min-[960px]:items-start">
+        <div className="tp-b2-grid grid gap-6 min-[960px]:grid-cols-[minmax(0,1fr)_320px] min-[960px]:items-start">
 
           {/* Main */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+          <section className="tp-card tp-b2-form min-w-0">
 
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+            <div className="tp-b2-intro">
+              <p className="tp-eyebrow">ขั้นตอนที่ 3 · ค่าลดหย่อน</p>
+              <h1 className="tp-page-title">
                 ค่าลดหย่อนที่คุณมีอยู่แล้ว
               </h1>
 
-              <p className="mt-2 max-w-2xl leading-7 text-slate-500">
+              <p className="tp-page-description">
                 กรอกเฉพาะรายการที่คุณมีอยู่ในปีนี้
                 ระบบจะตรวจเพดานและจำนวนที่ใช้สิทธิได้จริงให้อัตโนมัติ
               </p>
             </div>
 
-            <div className="mt-4 rounded-2xl bg-blue-50 p-4 text-sm leading-6 text-blue-800">
+            <div className="tp-alert tp-alert-info mt-4">
               ตอนนี้ให้กรอกจำนวนที่จ่ายจริงก่อน
               บางรายการอาจใช้ลดหย่อนภาษีได้ไม่เต็มจำนวน
               เนื่องจากมีเพดานเฉพาะและเพดานร่วม
             </div>
 
             {/* Sections */}
-            <div className="mt-8 space-y-4">
+            <div className="tp-b2-accordion-list mt-8 space-y-4">
 
               {sections.map(
                 (section) => {
@@ -704,11 +705,12 @@ const donationPlanningChanged =
                       key={
                         section.id
                       }
-                      className="overflow-hidden rounded-2xl border border-slate-200"
+                      className="tp-b2-accordion overflow-hidden rounded-2xl border border-slate-200"
                     >
 
                       <button
                         type="button"
+                        aria-expanded={isOpen}
                         onClick={() =>
                           toggleSection(
                             section.id
@@ -767,7 +769,7 @@ const donationPlanningChanged =
                       </button>
 
                       {isOpen && (
-                        <div className="border-t border-slate-100 bg-slate-50/60 p-4 sm:p-5">
+                        <div className="tp-b2-accordion-content border-t border-slate-100 bg-slate-50/60 p-4 sm:p-5">
 
                           <div className="space-y-4">
 
@@ -2148,7 +2150,7 @@ const donationPlanningChanged =
             </div>
 
             {/* Navigation */}
-            <div className="mt-10 flex items-center justify-between border-t border-slate-100 pt-6">
+            <div className="tp-b2-actions mt-10 flex items-center justify-between border-t border-slate-100 pt-6">
 
               <Link
                 href="/planning/family"
@@ -2167,13 +2169,13 @@ const donationPlanningChanged =
           </section>
 
           {/* Summary */}
-          <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 min-[960px]:sticky min-[960px]:top-8">
+          <aside className="tp-card tp-b2-summary h-fit min-[960px]:sticky min-[960px]:top-8">
 
             <div className="text-sm font-medium text-slate-500">
               สรุปค่าลดหย่อน
             </div>
 
-            <div className="mt-5">
+            <div className="tp-b2-summary-hero mt-5">
 
               <div className="text-sm text-slate-500">
                 จำนวนที่กรอกทั้งหมด
@@ -2748,13 +2750,15 @@ function DeductionInput({
     value: number
   ) => void;
 }) {
+  const inputId = useId();
+
   return (
-    <div className="rounded-xl bg-white p-4">
+    <div className="tp-b2-deduction-field rounded-xl bg-white p-4">
 
       <div className="grid gap-4 md:grid-cols-[1fr_220px] md:items-center">
 
         <div>
-          <label className="font-medium text-slate-800">
+          <label htmlFor={inputId} className="font-medium text-slate-800">
             {label}
           </label>
 
@@ -2768,6 +2772,7 @@ function DeductionInput({
         <div className="relative">
 
           <input
+            id={inputId}
             inputMode="numeric"
             value={
               value
