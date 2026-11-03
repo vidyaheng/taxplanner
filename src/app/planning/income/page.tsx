@@ -1851,11 +1851,17 @@ function removeForeignBusinessIncome(
           </div>
         </header>
 
+        <section className="tp-mobile-feedback" aria-label="สรุปรายได้สำหรับปีภาษีนี้">
+          <div><span>รายได้ที่นำมาคำนวณปีนี้</span><small>ก่อนหักค่าใช้จ่ายและค่าลดหย่อน</small></div>
+          <p><strong>{formatNumber(totalIncome)}</strong><span>บาท</span></p>
+        </section>
+
         <div className="tp-income-grid">
 
           <section className="tp-card tp-income-form">
 
-            <p className="tp-eyebrow">เริ่มต้นจากสิ่งที่คุณมี</p>
+            <div className="tp-income-intro">
+            <p className="tp-eyebrow">วางแผนวันนี้ มองเห็นภาพรายได้ทั้งปี</p>
             <h1 className="tp-page-title">
               รายได้ของคุณ
             </h1>
@@ -1865,12 +1871,14 @@ function removeForeignBusinessIncome(
               ระบบจะนำไปคำนวณค่าใช้จ่ายและภาษีให้อัตโนมัติ
             </p>
 
-            <div className="mt-8">
+            </div>
+
+            <div className="tp-salary-section">
               <h2 className="text-lg font-semibold text-slate-900">
                 เงินเดือนและรายได้จากงานประจำ
               </h2>
 
-              <div className="mt-5 grid gap-5 md:grid-cols-2">
+              <div className="tp-primary-fields mt-5 grid gap-5 md:grid-cols-2">
 
                 <MoneyInput
                   label="เงินเดือนต่อเดือน"
@@ -1945,7 +1953,7 @@ function removeForeignBusinessIncome(
                 </div>
               )}
 
-              <div className="mt-7 border-t border-slate-100 pt-6">
+              <div className="tp-conditional-section mt-7 border-t border-slate-100 pt-6">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h3 className="font-semibold text-slate-900">
@@ -2230,7 +2238,7 @@ function removeForeignBusinessIncome(
             </div>
             
 
-            <div className="mt-9 border-t border-slate-100 pt-8">
+            <div className="tp-category-section mt-9 border-t border-slate-100 pt-8">
 
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 
@@ -5991,6 +5999,7 @@ function removeForeignBusinessIncome(
           </section>
 
           <aside className="tp-card tp-income-summary">
+            <div className="tp-summary-head">
 
             <div className="text-sm font-medium text-slate-500">
               สรุปรายได้
@@ -6012,7 +6021,8 @@ function removeForeignBusinessIncome(
               </div>
             </div>
 
-            <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-sm">
+            </div>
+            <div className="tp-summary-breakdown mt-6 space-y-3 border-t border-slate-100 pt-5 text-sm">
 
               <SummaryRow
                 label="เงินเดือน"

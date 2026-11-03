@@ -65,3 +65,21 @@ Request Director visual and functional review of the Draft PR and subsequent phy
 acceptance. No merge, auto-merge, manual deployment, project configuration or legacy retirement
 is authorized in this PR. Recommendation: **READY FOR REVIEW**, with device/assistive-technology
 acceptance explicitly outstanding before any release decision.
+
+## Visual revision verification
+
+The Director-requested revision retains 337 unit tests and all protected source boundaries.
+The browser suite additionally checks that mobile feedback is visible at 390px, hidden at
+1440px and exactly matches the existing summary total after input/reload. All five pages
+remain in the overflow/touch-target matrix; expanded Income, foreign-income warnings/FTC,
+financial fixture, Reset and two-tab checks are rerun. Final results replace qa-results.json.
+Keyboard/input labels remain unchanged. Fresh Teal/Indigo surfaces communicate grouping;
+no new income amount or tax result is calculated for presentation.
+
+The original B1 screenshots remain available. Revision images add desktop/mobile Income,
+mobile navigation, populated Summary close-up and Family/shared-shell compatibility.
+No physical device, WebKit, screen reader or complete WCAG/CLS claim is made. B2 is not started.
+
+Revised contrast samples: summary main white/indigo 9.76:1, summary secondary text/indigo
+7.72:1, mobile indigo/light-indigo 8.21:1, heading/mint 8.20:1. These samples do not replace
+a complete accessibility audit. All revised local gates completed successfully.

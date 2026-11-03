@@ -41,6 +41,12 @@ async def run():
   await page.wait_for_function("document.querySelector('.tp-income input').value === '100,000'")
   snapshot = await page.evaluate('(key) => JSON.parse(localStorage.getItem(key))', KEY)
   assert snapshot['income']['monthlySalary'] == 100000 and snapshot['schemaVersion'] == 14
+  # Revised visual feedback uses the existing total and does not obscure the form.
+  for width in [390, 1440]:
+   await page.set_viewport_size({'width': width, 'height': 1000})
+   assert await page.locator('.tp-mobile-feedback').is_visible() == (width < 1100)
+   assert (await page.locator('.tp-mobile-feedback strong').text_content()).strip() == (await page.locator('.tp-summary-amount').text_content()).strip()
+
   await page.get_by_role('link', name='ถัดไป →', exact=True).click()
   await page.wait_for_url('**/planning/family')
   await page.locator('nav a[href="/planning/results"]').click()
@@ -99,6 +105,6 @@ async def run():
   assert await page.get_by_label('ภาษีต่างประเทศที่ใช้พิจารณา FTC หลังตรวจ DTA', exact=True).first.input_value() == '1000'
   assert await page.get_by_role('button', name='มีสิทธิ FTC', exact=True).first.get_attribute('aria-pressed') == 'true'
   assert not errors, errors
-  print(json.dumps({'matrix': matrix, 'salary_format_autosave_resume': 'pass', 'navigation_and_tax_fixture': '125,000 pass', 'focus': 'pass', 'cancel_confirm_reset_and_two_tabs': 'pass', 'expanded_foreign_domestic_labels_warning_ftc': 'pass', 'page_errors': errors}, ensure_ascii=False, indent=2))
+  print(json.dumps({'matrix': matrix, 'salary_format_autosave_resume': 'pass', 'navigation_and_tax_fixture': '125,000 pass', 'mobile_summary_matches_existing_total': 'pass', 'focus': 'pass', 'cancel_confirm_reset_and_two_tabs': 'pass', 'expanded_foreign_domestic_labels_warning_ftc': 'pass', 'page_errors': errors}, ensure_ascii=False, indent=2))
   await browser.close()
 asyncio.run(run())

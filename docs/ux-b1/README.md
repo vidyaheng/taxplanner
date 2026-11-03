@@ -1,4 +1,4 @@
-# B1 — Fresh Teal design system, shared shell and Income pilot
+# B1 — Fresh Teal + Soft Indigo visual revision
 
 Base: `a6365df8926c8ea0b88140e23fc4a8451dfc4551` (merged P1a).
 Official Production remains **taxplannervid / https://taxplannervid.vercel.app**.
@@ -27,7 +27,34 @@ No UI libraries or dependencies were added. No third-party artwork/design/source
   their handlers, field behavior and rules are unchanged. MoneyInput formatting/parsing
   and numeric keyboard mode remain unchanged; no new rounding/formatting semantics.
 
-## Actual before/after evidence
+## Director-requested visual revision
+
+Reviewed predecessor: `41d14630ce97bb99cd856afdcca21db7416f9e14`.
+The revision strengthens visual hierarchy without a marketing hero: mint introduction,
+larger Thai heading, salary/bonus groups with distinct surfaces, confident indigo summary,
+clearer breakdown rows and a compact mobile financial-feedback strip. The strip uses the
+existing `totalIncome` and `formatNumber` directly; it introduces no formula, saving estimate,
+input, navigation or persistence behavior. It is hidden on desktop where the existing summary
+is visible beside the form. Shared navigation keeps its structure and only receives surface polish.
+Form content is not hidden/clipped to conceal overflow; focus indicators remain unobstructed.
+
+| Required evidence | Original B1 (before) | Revised application (after) |
+| --- | --- | --- |
+| Income desktop, 1440px | [Before](evidence/after-income-desktop.png) | [After](evidence/revision-income-desktop.png) |
+| Income mobile, 390px | [Before](evidence/after-income-mobile.png) | [After](evidence/revision-income-mobile.png) |
+| Navigation mobile, 375px | [Before](evidence/after-navigation-mobile.png) | [After](evidence/revision-navigation-mobile.png) |
+| Financial Summary close-up | [Before](evidence/original-b1-summary.png) | [After](evidence/revision-summary.png) |
+| Family/shared shell, 390px | [Before](evidence/original-b1-family-mobile.png) | [After](evidence/revision-family-mobile.png) |
+
+Original B1's three requested Income/navigation captures are retained unchanged. Supplemental
+before captures for Summary and Family were taken from the unchanged B1 production build
+before editing. Summary close-ups use the same synthetic monthly salary 100,000 and bonus
+50,000, yielding the existing annual income total 1,250,000. Full-page/viewport captures use
+empty synthetic contexts for like-for-like comparison. No AI mockups or real customer data.
+An additional [revised Results compatibility capture](evidence/revision-results-mobile.png)
+is included; the Results page source itself is unchanged.
+
+## Original B1 evidence (retained history)
 
 Captured from local production builds in isolated Chromium using empty synthetic browser
 contexts. These are real application screenshots, not generated mockups. Before is the
@@ -41,8 +68,8 @@ not proof of every conditional field or entire long-page content.
 | Mobile navigation, 375px | [Before](evidence/before-navigation-mobile.png) | [After](evidence/after-navigation-mobile.png) |
 | Existing Results + shell, 390px | [Before](evidence/before-results-mobile.png) | [After](evidence/after-results-mobile.png) |
 
-![Implemented Income desktop](evidence/after-income-desktop.png)
-![Implemented Income mobile](evidence/after-income-mobile.png)
+![Revised Income desktop](evidence/revision-income-desktop.png)
+![Revised Income mobile](evidence/revision-income-mobile.png)
 
 ## Accessibility review
 
