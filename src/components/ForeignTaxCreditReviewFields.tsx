@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import type {
   ForeignIncomeSourceData,
 } from "@/types/income";
@@ -28,6 +30,7 @@ export default function ForeignTaxCreditReviewFields({
   taxability,
   onForeignSourceChange,
 }: ForeignTaxCreditReviewFieldsProps) {
+  const inputId = useId();
   const shouldReviewForeignTaxCredit =
     !!taxability &&
     taxability.isComplete &&
@@ -55,7 +58,7 @@ export default function ForeignTaxCreditReviewFields({
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <button
+          <button aria-pressed={!dtaReview}
             type="button"
             onClick={() =>
               onForeignSourceChange({
@@ -72,7 +75,8 @@ export default function ForeignTaxCreditReviewFields({
             ยังไม่ได้ตรวจ
           </button>
 
-          <button
+          <button aria-pressed={dtaReview?.isEligible ===
+              false}
             type="button"
             onClick={() =>
               onForeignSourceChange({
@@ -91,7 +95,8 @@ export default function ForeignTaxCreditReviewFields({
             ไม่มีสิทธิ FTC
           </button>
 
-          <button
+          <button aria-pressed={dtaReview?.isEligible ===
+              true}
             type="button"
             onClick={() =>
               onForeignSourceChange({
@@ -120,11 +125,12 @@ export default function ForeignTaxCreditReviewFields({
         {dtaReview?.isEligible ===
           true && (
           <div className="mt-5">
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-slate-700">
               ภาษีต่างประเทศที่ใช้พิจารณา FTC หลังตรวจ DTA
             </label>
 
             <input
+              id={inputId}
               type="number"
               inputMode="decimal"
               min="0"

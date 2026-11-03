@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  useId,
   useMemo,
   useState,
 } from "react";
@@ -1826,19 +1827,19 @@ function removeForeignBusinessIncome(
     totalBusinessIncome;
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-5xl px-5 py-8 md:px-8 md:py-10">
+    <main className="tp-income min-h-screen">
+      <div className="tp-income-container">
 
         <header className="mb-8">
           <div className="flex items-center justify-between gap-4">
             <Link
               href="/"
-              className="text-xl font-bold text-slate-900"
+              className="tp-brand"
             >
               Tax Planner
             </Link>
 
-            <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
+            <div className="tp-year-badge">
               ปีภาษี {state.taxYear}
             </div>
           </div>
@@ -1850,25 +1851,34 @@ function removeForeignBusinessIncome(
           </div>
         </header>
 
-        <div className="grid gap-6 min-[960px]:grid-cols-[minmax(0,1fr)_320px] min-[960px]:items-start">
+        <section className="tp-mobile-feedback" aria-label="สรุปรายได้สำหรับปีภาษีนี้">
+          <div><span>รายได้ที่นำมาคำนวณปีนี้</span><small>ก่อนหักค่าใช้จ่ายและค่าลดหย่อน</small></div>
+          <p><strong>{formatNumber(totalIncome)}</strong><span>บาท</span></p>
+        </section>
 
-          <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-8">
+        <div className="tp-income-grid">
 
-            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+          <section className="tp-card tp-income-form">
+
+            <div className="tp-income-intro">
+            <p className="tp-eyebrow">วางแผนวันนี้ มองเห็นภาพรายได้ทั้งปี</p>
+            <h1 className="tp-page-title">
               รายได้ของคุณ
             </h1>
 
-            <p className="mt-2 text-slate-500">
+            <p className="tp-page-description">
               เริ่มจากรายได้ที่ได้รับตลอดปี
               ระบบจะนำไปคำนวณค่าใช้จ่ายและภาษีให้อัตโนมัติ
             </p>
 
-            <div className="mt-8">
+            </div>
+
+            <div className="tp-salary-section">
               <h2 className="text-lg font-semibold text-slate-900">
                 เงินเดือนและรายได้จากงานประจำ
               </h2>
 
-              <div className="mt-5 grid gap-5 md:grid-cols-2">
+              <div className="tp-primary-fields mt-5 grid gap-5 md:grid-cols-2">
 
                 <MoneyInput
                   label="เงินเดือนต่อเดือน"
@@ -1932,7 +1942,7 @@ function removeForeignBusinessIncome(
               </div>
 
               {annualSalary > 0 && (
-                <div className="mt-4 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                <div className="tp-alert tp-alert-info mt-4">
                   เงินเดือนรวมทั้งปี{" "}
                   <strong>
                     {formatNumber(
@@ -1943,7 +1953,7 @@ function removeForeignBusinessIncome(
                 </div>
               )}
 
-              <div className="mt-7 border-t border-slate-100 pt-6">
+              <div className="tp-conditional-section mt-7 border-t border-slate-100 pt-6">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h3 className="font-semibold text-slate-900">
@@ -1956,7 +1966,7 @@ function removeForeignBusinessIncome(
                   </div>
 
                   <div className="flex rounded-xl bg-slate-100 p-1">
-                    <button
+                    <button aria-pressed={!showForeignIncomeHub}
                       type="button"
                       disabled={hasForeignIncomeData}
                       onClick={() =>
@@ -1975,7 +1985,7 @@ function removeForeignBusinessIncome(
                       ไม่มี
                     </button>
 
-                    <button
+                    <button aria-pressed={showForeignIncomeHub}
                       type="button"
                       onClick={() =>
                         setForeignIncomeManuallyOpened(true)
@@ -2078,7 +2088,7 @@ function removeForeignBusinessIncome(
                         );
 
                       return (
-                        <button
+                        <button aria-pressed={selected}
                           key={option.id}
                           type="button"
                           onClick={() =>
@@ -2228,7 +2238,7 @@ function removeForeignBusinessIncome(
             </div>
             
 
-            <div className="mt-9 border-t border-slate-100 pt-8">
+            <div className="tp-category-section mt-9 border-t border-slate-100 pt-8">
 
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 
@@ -2246,7 +2256,7 @@ function removeForeignBusinessIncome(
 
                 <div className="flex rounded-xl bg-slate-100 p-1">
 
-                  <button
+                  <button aria-pressed={!income.hasOtherIncome}
                     type="button"
                     onClick={() =>
                       setIncome({
@@ -2263,7 +2273,7 @@ function removeForeignBusinessIncome(
                     ไม่มี
                   </button>
 
-                  <button
+                  <button aria-pressed={income.hasOtherIncome}
                     type="button"
                     onClick={() =>
                       setIncome({
@@ -2516,7 +2526,8 @@ function removeForeignBusinessIncome(
                                           </div>
 
                                           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                            <button
+                                            <button aria-pressed={item.expenseMethod ===
+                                                "standard"}
                                               type="button"
                                               onClick={() =>
                                                 updateForeignRightsIncome(
@@ -2539,7 +2550,8 @@ function removeForeignBusinessIncome(
                                               </div>
                                             </button>
 
-                                            <button
+                                            <button aria-pressed={item.expenseMethod ===
+                                                "actual"}
                                               type="button"
                                               onClick={() =>
                                                 updateForeignRightsIncome(
@@ -3159,11 +3171,11 @@ function removeForeignBusinessIncome(
                                 />
 
                                 <div className="mt-5">
-                                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                                  <label htmlFor={`income-field-1-${item.id}`} className="mb-2 block text-sm font-medium text-slate-700">
                                     ประเภททรัพย์สินที่ให้เช่า
                                   </label>
 
-                                  <select
+                                  <select id={`income-field-1-${item.id}`}
                                     value={
                                       item.assetType ?? ""
                                     }
@@ -3243,7 +3255,8 @@ function removeForeignBusinessIncome(
                                   </div>
 
                                   <div className="grid gap-3 sm:grid-cols-2">
-                                    <button
+                                    <button aria-pressed={item.expenseMethod ===
+                                        "standard"}
                                       type="button"
                                       onClick={() =>
                                         updateForeignRentalIncome(
@@ -3275,7 +3288,8 @@ function removeForeignBusinessIncome(
                                       </div>
                                     </button>
 
-                                    <button
+                                    <button aria-pressed={item.expenseMethod ===
+                                        "actual"}
                                       type="button"
                                       onClick={() =>
                                         updateForeignRentalIncome(
@@ -3532,11 +3546,11 @@ function removeForeignBusinessIncome(
                                 />
 
                                 <div className="mt-5">
-                                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                                  <label htmlFor={`income-field-2-${item.id}`} className="mb-2 block text-sm font-medium text-slate-700">
                                     ประเภทวิชาชีพ
                                   </label>
 
-                                  <select
+                                  <select id={`income-field-2-${item.id}`}
                                     value={
                                       item.professionalType ?? ""
                                     }
@@ -3586,7 +3600,8 @@ function removeForeignBusinessIncome(
                                   </div>
 
                                   <div className="grid gap-3 sm:grid-cols-2">
-                                    <button
+                                    <button aria-pressed={item.expenseMethod ===
+                                        "standard"}
                                       type="button"
                                       onClick={() =>
                                         updateForeignProfessionalIncome(
@@ -3619,7 +3634,8 @@ function removeForeignBusinessIncome(
                                       </div>
                                     </button>
 
-                                    <button
+                                    <button aria-pressed={item.expenseMethod ===
+                                        "actual"}
                                       type="button"
                                       onClick={() =>
                                         updateForeignProfessionalIncome(
@@ -3842,7 +3858,8 @@ function removeForeignBusinessIncome(
                                   </div>
 
                                   <div className="grid gap-3 sm:grid-cols-2">
-                                    <button
+                                    <button aria-pressed={item.expenseMethod ===
+                                        "standard"}
                                       type="button"
                                       onClick={() =>
                                         updateForeignContractIncome(
@@ -3874,7 +3891,8 @@ function removeForeignBusinessIncome(
                                       </div>
                                     </button>
 
-                                    <button
+                                    <button aria-pressed={item.expenseMethod ===
+                                        "actual"}
                                       type="button"
                                       onClick={() =>
                                         updateForeignContractIncome(
@@ -4092,11 +4110,11 @@ function removeForeignBusinessIncome(
                                 />
 
                                 <div className="mt-5">
-                                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                                  <label htmlFor={`income-field-3-${item.id}`} className="mb-2 block text-sm font-medium text-slate-700">
                                     กลุ่มกิจการ
                                   </label>
 
-                                  <select
+                                  <select id={`income-field-3-${item.id}`}
                                     value={
                                       item.category ?? ""
                                     }
@@ -4172,11 +4190,11 @@ function removeForeignBusinessIncome(
                                 </div>
 
                                 <div className="mt-5">
-                                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                                  <label htmlFor={`income-field-4-${item.id}`} className="mb-2 block text-sm font-medium text-slate-700">
                                     ประเภท / ลักษณะกิจการ
                                   </label>
 
-                                  <input
+                                  <input id={`income-field-4-${item.id}`}
                                     type="text"
                                     value={
                                       item.activityCode ?? ""
@@ -4254,7 +4272,8 @@ function removeForeignBusinessIncome(
                                     </div>
 
                                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                      <button
+                                      <button aria-pressed={item.expenseMethod ===
+                                          "standard"}
                                         type="button"
                                         onClick={() =>
                                           updateForeignBusinessIncome(
@@ -4287,7 +4306,8 @@ function removeForeignBusinessIncome(
                                         </div>
                                       </button>
 
-                                      <button
+                                      <button aria-pressed={item.expenseMethod ===
+                                          "actual"}
                                         type="button"
                                         onClick={() =>
                                           updateForeignBusinessIncome(
@@ -4561,6 +4581,7 @@ function removeForeignBusinessIncome(
 
                           <div className="relative">
                             <input
+                              aria-label={item.label}
                               inputMode="numeric"
                               value={
                                 income
@@ -4664,7 +4685,8 @@ function removeForeignBusinessIncome(
                           </div>
 
                           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                            <button
+                            <button aria-pressed={(rightsIncome?.expenseMethod ?? "standard") ===
+                                "standard"}
                               type="button"
                               onClick={() =>
                                 updateRightsIncome({
@@ -4683,7 +4705,7 @@ function removeForeignBusinessIncome(
                               </div>
                             </button>
 
-                            <button
+                            <button aria-pressed={rightsIncome?.expenseMethod === "actual"}
                               type="button"
                               onClick={() =>
                                 updateRightsIncome({
@@ -4777,7 +4799,8 @@ function removeForeignBusinessIncome(
                           </div>
 
                           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                            <button
+                            <button aria-pressed={interestIncome?.taxTreatment ===
+                                "final"}
                               type="button"
                               onClick={() =>
                                 selectInterestTaxTreatment(
@@ -4800,7 +4823,8 @@ function removeForeignBusinessIncome(
                               </div>
                             </button>
 
-                            <button
+                            <button aria-pressed={interestIncome?.taxTreatment ===
+                                "include"}
                               type="button"
                               onClick={() =>
                                 selectInterestTaxTreatment(
@@ -4883,7 +4907,8 @@ function removeForeignBusinessIncome(
                             </div>
 
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <button
+                              <button aria-pressed={dividendIncome?.taxTreatment ===
+                                  "final"}
                                 type="button"
                                 onClick={() =>
                                   selectDividendTaxTreatment(
@@ -4906,7 +4931,8 @@ function removeForeignBusinessIncome(
                                 </div>
                               </button>
 
-                              <button
+                              <button aria-pressed={dividendIncome?.taxTreatment ===
+                                  "include"}
                                 type="button"
                                 onClick={() =>
                                   selectDividendTaxTreatment(
@@ -5021,11 +5047,11 @@ function removeForeignBusinessIncome(
                             />
 
                             <div>
-                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                              <label htmlFor="income-field-5" className="mb-2 block text-sm font-medium text-slate-700">
                                 ประเภททรัพย์สิน
                               </label>
 
-                              <select
+                              <select id="income-field-5"
                                 value={
                                   rentalIncome?.assetType ?? ""
                                 }
@@ -5135,7 +5161,8 @@ function removeForeignBusinessIncome(
                             </div>
 
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <button
+                              <button aria-pressed={(rentalIncome?.expenseMethod ??
+                                    "standard") === "standard"}
                                 type="button"
                                 onClick={() =>
                                   updateRentalIncome({
@@ -5164,7 +5191,8 @@ function removeForeignBusinessIncome(
                                 </div>
                               </button>
 
-                              <button
+                              <button aria-pressed={rentalIncome?.expenseMethod ===
+                                  "actual"}
                                 type="button"
                                 onClick={() =>
                                   updateRentalIncome({
@@ -5253,11 +5281,11 @@ function removeForeignBusinessIncome(
                             />
 
                             <div>
-                              <label className="mb-2 block text-sm font-medium text-slate-700">
+                              <label htmlFor="income-field-6" className="mb-2 block text-sm font-medium text-slate-700">
                                 ประเภทวิชาชีพ
                               </label>
 
-                              <select
+                              <select id="income-field-6"
                                 value={
                                   professionalIncome
                                     ?.professionalType ?? ""
@@ -5339,7 +5367,10 @@ function removeForeignBusinessIncome(
                             </div>
 
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <button
+                              <button aria-pressed={(professionalIncome
+                                    ?.expenseMethod ??
+                                    "standard") ===
+                                  "standard"}
                                 type="button"
                                 onClick={() =>
                                   updateProfessionalIncome({
@@ -5371,7 +5402,9 @@ function removeForeignBusinessIncome(
                                 </div>
                               </button>
 
-                              <button
+                              <button aria-pressed={professionalIncome
+                                    ?.expenseMethod ===
+                                  "actual"}
                                 type="button"
                                 onClick={() =>
                                   updateProfessionalIncome({
@@ -5482,7 +5515,10 @@ function removeForeignBusinessIncome(
                             </div>
 
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <button
+                              <button aria-pressed={(contractIncome
+                                    ?.expenseMethod ??
+                                    "standard") ===
+                                  "standard"}
                                 type="button"
                                 onClick={() =>
                                   updateContractIncome({
@@ -5513,7 +5549,9 @@ function removeForeignBusinessIncome(
                                 </div>
                               </button>
 
-                              <button
+                              <button aria-pressed={contractIncome
+                                    ?.expenseMethod ===
+                                  "actual"}
                                 type="button"
                                 onClick={() =>
                                   updateContractIncome({
@@ -5629,11 +5667,11 @@ function removeForeignBusinessIncome(
                                       />
 
                                       <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-700">
+                                        <label htmlFor={`income-field-7-${item.id}`} className="mb-2 block text-sm font-medium text-slate-700">
                                           กลุ่มกิจการ
                                         </label>
 
-                                        <select
+                                        <select id={`income-field-7-${item.id}`}
                                           value={
                                             item.category ?? ""
                                           }
@@ -5753,11 +5791,11 @@ function removeForeignBusinessIncome(
                                     )}
 
                                     <div className="mt-5">
-                                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                                      <label htmlFor={`income-field-8-${item.id}`} className="mb-2 block text-sm font-medium text-slate-700">
                                         ประเภท / ลักษณะกิจการ
                                       </label>
 
-                                      <input
+                                      <input id={`income-field-8-${item.id}`}
                                         type="text"
                                         value={
                                           item.activityCode ?? ""
@@ -5800,7 +5838,8 @@ function removeForeignBusinessIncome(
                                           </div>
 
                                           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                            <button
+                                            <button aria-pressed={item.expenseMethod ===
+                                                "standard"}
                                               type="button"
                                               onClick={() =>
                                                 updateBusinessIncome(
@@ -5832,7 +5871,8 @@ function removeForeignBusinessIncome(
                                               </div>
                                             </button>
 
-                                            <button
+                                            <button aria-pressed={item.expenseMethod ===
+                                                "actual"}
                                               type="button"
                                               onClick={() =>
                                                 updateBusinessIncome(
@@ -5940,25 +5980,26 @@ function removeForeignBusinessIncome(
               )}
             </div>
 
-            <div className="mt-10 flex items-center justify-between border-t border-slate-100 pt-6">
+            <div className="tp-form-actions">
 
               <Link
                 href="/"
-                className="rounded-xl px-5 py-3 font-medium text-slate-500 transition hover:bg-slate-100"
+                className="tp-button tp-button-secondary"
               >
                 ← ย้อนกลับ
               </Link>
 
               <Link
                 href="/planning/family"
-                className="rounded-xl bg-blue-600 px-7 py-3 font-semibold text-white transition hover:bg-blue-700"
+                className="tp-button tp-button-primary"
               >
                 ถัดไป →
               </Link>
             </div>
           </section>
 
-          <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 min-[960px]:sticky min-[960px]:top-8">
+          <aside className="tp-card tp-income-summary">
+            <div className="tp-summary-head">
 
             <div className="text-sm font-medium text-slate-500">
               สรุปรายได้
@@ -5969,7 +6010,7 @@ function removeForeignBusinessIncome(
                 รายได้ที่นำมารวมคำนวณปีนี้
               </div>
 
-              <div className="mt-1 break-words text-2xl font-bold text-slate-900 sm:text-3xl">
+              <div className="tp-summary-amount">
                 {formatNumber(
                   totalIncome
                 )}
@@ -5980,7 +6021,8 @@ function removeForeignBusinessIncome(
               </div>
             </div>
 
-            <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-sm">
+            </div>
+            <div className="tp-summary-breakdown mt-6 space-y-3 border-t border-slate-100 pt-5 text-sm">
 
               <SummaryRow
                 label="เงินเดือน"
@@ -6059,7 +6101,7 @@ function removeForeignBusinessIncome(
             {foreignIncomeAggregate.items.length >
               0 &&
               !foreignIncomeAggregate.isComplete && (
-                <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                <div role="status" className="tp-alert tp-alert-warning mt-6">
                   <div className="font-medium">
                     ข้อมูลรายได้ต่างประเทศยังไม่ครบ
                   </div>
@@ -6096,20 +6138,23 @@ function MoneyInput({
     value: number
   ) => void;
 }) {
+  const inputId = useId();
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-slate-700">
         {label}
       </label>
 
       {description && (
-        <p className="mb-2 text-sm text-slate-400">
+        <p id={`${inputId}-hint`} className="mb-2 text-sm text-slate-400">
           {description}
         </p>
       )}
 
       <div className="relative">
         <input
+          id={inputId}
+          aria-describedby={`${description ? `${inputId}-hint ` : ""}${inputId}-unit`}
           inputMode="numeric"
           value={
             value
@@ -6127,7 +6172,7 @@ function MoneyInput({
           className="h-14 w-full rounded-xl border border-slate-300 bg-white px-4 pr-16 text-lg text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
         />
 
-        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+        <span id={`${inputId}-unit`} className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
           บาท
         </span>
       </div>
@@ -6143,13 +6188,13 @@ function SummaryRow({
   value: number;
 }) {
   return (
-    <div className="flex justify-between gap-3">
+    <div className="tp-summary-row">
 
       <span className="text-slate-500">
         {label}
       </span>
 
-      <span className="font-medium text-slate-800">
+      <span className="tp-summary-value">
         {formatNumber(value)}
       </span>
 
