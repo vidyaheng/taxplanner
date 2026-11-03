@@ -59,7 +59,7 @@ export function estimateSection40_1Withholding(
   }
 
   const salaryMonthsAssumed = input.salaryMonthsInYear == null;
-  const salaryMonthsUsed = salaryMonthsAssumed ? 12 : input.salaryMonthsInYear!;
+  const salaryMonthsUsed = input.salaryMonthsInYear ?? 12;
   if (
     !Number.isInteger(salaryMonthsUsed) ||
     salaryMonthsUsed < 0 ||

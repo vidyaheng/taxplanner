@@ -171,7 +171,7 @@ describe("Section 40(1) read-only withholding estimator, tax year 2569", () => {
     expect(page.match(/label="เงินเดือนต่อเดือน"/g)).toHaveLength(1);
     expect(page.match(/label="โบนัสทั้งปี"/g)).toHaveLength(1);
     expect(page.match(/label="ภาษีหัก ณ ที่จ่ายจากเงินได้ 40\(1\)"/g)).toHaveLength(1);
-    expect(page).toMatch(/setIncome\(\{\s*section40_1TaxWithheld:\s*value\s*\}\)/);
+    expect(page).toMatch(/setIncome\(\{\s*section40_1TaxWithheld:\s*value,?\s*\}\)/);
     expect(page).toContain("estimatedAnnualTax");
     expect(page).toContain("ดูวิธีประมาณการ");
     expect(logic).not.toContain("section40_1TaxWithheld");
