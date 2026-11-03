@@ -5,8 +5,8 @@ Local runtime: Node 24.19.0 / npm 11.9.0. Remote main was rechecked before branc
 
 | Gate | Result |
 | --- | --- |
-| `npm ci` | PASS, 407 packages; initial restricted-sandbox call failed with EPERM connecting to proxy, retry with command network permission passed |
-| `npm run test -- --run --cache=false` | PASS, 301 tests / 16 files: existing 226 unchanged + new 75 in 2 files |
+| `npm ci` | PASS, 407 packages; rerun for the Director limited correction with command network permission |
+| `npm run test -- --run --cache=false` | PASS, 331 tests / 16 files: existing 226 unchanged + 105 P1a tests in 2 files (30 added by this correction) |
 | `npm run lint` | PASS, exit 0 |
 | `tsc --noEmit --incremental false` | PASS, exit 0 |
 | `npm run build` | PASS, compilation, type-check and 11 static pages; existing route list unchanged |
@@ -23,8 +23,7 @@ root advisories). This matches the documented S2 residual. No forced fix or down
 included. Director must review continued acceptance before merge.
 
 The existing Vite native config-loader warning remains a future-major compatibility
-warning; no config change is included. A test-fixture union assignment type error found
-during implementation was corrected before the successful type-check/build.
+warning; no config change is included. No Vite configuration change is included in this correction.
 
 ## Scope and security review
 
@@ -42,7 +41,7 @@ during implementation was corrected before the successful type-check/build.
   tenant/lineage, current revocations and expiration are checked separately.
 - No production staff lifetime is approved: pending denies. Future integration must derive
   approval state from trusted policy configuration, not caller claims.
-- Conservative invitation-expiry cap needs Director review. The proposal has no RLS allow
+- Restrictive invitation-expiry cap is the retained P1a policy; future relaxation is a P1b business decision. The proposal has no RLS allow
   policies, and is not an executable integration or validated migration.
 
 New tests cover exact 12h/2h boundaries, start/end, company/invitation/grant expiry,
@@ -57,3 +56,28 @@ and actual provider/browser verification remain prerequisites for any live relea
 
 Recommendation: **READY FOR REVIEW** as a dormant Draft PR, not approval to merge or deploy.
 Review the existing Moderate development-tooling exception and all P1b decisions in README.
+
+## Director limited correction (reviewed predecessor 692fd181)
+
+Before: staff evaluation required the company customer authorization window and capped
+staff access by its end. After: `evaluateStaffLogin` requires an active application staff
+membership and valid individual staff session under an explicitly approved supplied policy;
+`evaluateStaff` additionally requires current tenant membership/role and active company
+administrative lifecycle. Issuing requires a separate active tenant/membership-matching
+issuer privilege. Neither staff decision is capped by customer QR dates. Pending lifetimes
+still deny; no staff duration has been approved or hardcoded.
+
+30 deterministic cases were added (301 → 331 total; 75 → 105 P1a cases). They cover company
+QR expiry before/at/after now, staff preparation before the customer window, company
+suspension/revocation with valid login but denied tenant actions, cross-company/staff
+rejection, app-wide and tenant-only offboarding, staff session revocation/expiry, pending
+lifetime, missing state/provider errors, issuer role/privilege isolation, unchanged participant
+company cap, original expiry after Stop New Redemptions, next-decision full revocation and
+invitation expiry without renewal. The predecessor's P1a tests were adapted to the explicit
+`company_access` action purpose; existing 226 financial/storage tests remain unchanged.
+
+Correction files: policy.ts, policy.test.ts, README.md, schema-proposal.sql and validation.md,
+all within the existing foundation/documentation folders. The unapplied proposal adds only
+the application staff membership distinction and corresponding FK/RLS scaffolding.
+Remote CI for the final pushed HEAD must be checked and reported separately; this document
+records local verification, not an assumed remote pass.

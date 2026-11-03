@@ -7,7 +7,9 @@ REVOKE ALL ON SCHEMA access_foundation FROM PUBLIC;
 SET LOCAL search_path = access_foundation, pg_catalog;
 CREATE TABLE companies (
   id uuid PRIMARY KEY,
+  -- Administrative operational lifecycle; independent of the participant window below.
   status text NOT NULL CHECK (status IN ('active','suspended','revoked')),
+  -- Customer participant authorization only; never used as staff login/action lifetime.
   starts_at timestamptz NOT NULL,
   expires_at timestamptz NOT NULL,
   CHECK (isfinite(starts_at) AND isfinite(expires_at) AND starts_at < expires_at)
@@ -58,10 +60,16 @@ CREATE TABLE staff_identities (
   provider_subject text NOT NULL CHECK (length(provider_subject) > 0),
   UNIQUE(provider_issuer,provider_subject)
 );
+-- Application membership controls staff login/offboarding, but grants no tenant permissions.
+CREATE TABLE application_staff_memberships (
+  id uuid PRIMARY KEY,
+  staff_id uuid NOT NULL UNIQUE REFERENCES staff_identities(id) ON DELETE RESTRICT,
+  active boolean NOT NULL
+);
 CREATE TABLE staff_memberships (
   id uuid PRIMARY KEY,
   company_id uuid NOT NULL REFERENCES companies(id) ON DELETE RESTRICT,
-  staff_id uuid NOT NULL REFERENCES staff_identities(id) ON DELETE RESTRICT,
+  staff_id uuid NOT NULL REFERENCES application_staff_memberships(staff_id) ON DELETE RESTRICT,
   active boolean NOT NULL,
   role text NOT NULL CHECK (role IN ('staff','issuer')),
   UNIQUE(company_id,staff_id),
@@ -111,6 +119,8 @@ ALTER TABLE participant_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE participant_sessions FORCE ROW LEVEL SECURITY;
 ALTER TABLE staff_identities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_identities FORCE ROW LEVEL SECURITY;
+ALTER TABLE application_staff_memberships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE application_staff_memberships FORCE ROW LEVEL SECURITY;
 ALTER TABLE staff_memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_memberships FORCE ROW LEVEL SECURITY;
 ALTER TABLE staff_sessions ENABLE ROW LEVEL SECURITY;

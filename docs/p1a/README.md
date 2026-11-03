@@ -23,9 +23,11 @@ No customer account, registration, email verification or password is required.
 
 `evaluateParticipant` validates tenant/lineage, participant purpose, status, absolute and
 idle expiry. A session ends at the earliest of creation + 12h, activity + 2h, company,
-grant **and invitation** expiry. Capping derived access by invitation expiry is a
-conservative foundation choice; Director review is required before relaxing it.
-Start is inclusive and end is exclusive. Company suspension blocks all associated access.
+grant **and invitation** expiry. Capping derived access by invitation expiry is an
+explicit P1a foundation policy accepted for this PR; any future relaxation is a P1b
+business decision requiring separate approval.
+Start is inclusive and end is exclusive. Company suspension/revocation blocks participant and company-specific operational access;
+it does not invalidate an otherwise valid application staff login.
 Stopping redemptions blocks only new grants; full invitation revocation blocks all derived
 access because every decision requires current invitation state. Grant or session revocation
 blocks that scope. Re-entry can create a new session only through a still-valid invitation;
@@ -35,12 +37,32 @@ it cannot alter company authorization dates. No policy ever touches local financ
 It does not mutate or persist anything and never slides the original creation time.
 Concurrent persistence and revocation races require the transaction protocol below.
 
-`evaluateStaff` separates individual managed-provider identity, company membership and
-issuer privilege from anonymous participants. QR issuance needs both issuer role and an
-active tenant-matching privilege. Staff lifetime policy defaults to **pending/deny**;
-there are no hardcoded production staff durations. The `approved` branch is a testable
-future contract, not Director approval of any lifetime. Future adapters must also verify
-provider authentication strength, MFA requirements and provider/session revocation.
+`evaluateStaffLogin` checks individual staff session purpose/identity, an active
+**application staff membership**, revocation, server time and an explicitly approved supplied
+lifetime policy. It receives no company window. Application offboarding disables this
+membership and denies login and all company actions even if the bearer has not expired.
+This decision grants only application login; it cannot authorize access to any company.
+
+`evaluateStaff` adds **company-specific operational authorization** to a successful login:
+the current target company's administrative status must be active, the tenant membership
+must be active and match both company and staff identity, and its role must be recognized.
+`company_access` is the explicit company action purpose (the old ambiguous `staff_access`
+purpose is removed). `issue_invitation` additionally requires both issuer role and an active
+privilege for that exact company and membership. No global company/issuer permission exists.
+
+`CompanyOperations` contains only identity and administrative lifecycle. `Company` extends
+it with the customer participant window. Staff decisions return the supplied **staff session
+expiry only**, independent of company/QR start/end. Staff may prepare company operations
+before or after the customer window; a later redemption still requires a valid company and
+invitation window. Suspending/revoking a company denies its operational actions while
+preserving valid application login. Removing a tenant membership denies that tenant only;
+application offboarding or session revocation denies login and every tenant action.
+
+Staff lifetime policy remains **pending/deny** by default; no production duration or
+approval is invented. The `approved` branch is a testable future contract, not approval of
+any lifetime. Future adapters must verify managed-provider authentication, MFA policy,
+provider/session revocation and fresh application/tenant memberships before building the
+authoritative snapshot. Approval flags and memberships must never come from client claims.
 
 `calendar.ts` adds three calendar months in Bangkok, clamps the day to the destination
 month end, preserves local time and emits canonical UTC timestamps. Supported modern
@@ -63,7 +85,9 @@ data-security guide. Unit tests mock only that build-time marker; crypto is not 
 `schema-proposal.sql` is a review artifact outside migration folders, with a final ROLLBACK.
 It has **not been executed or verified against PostgreSQL**. No Supabase deployment or
 provider is selected. Staff identities use provider issuer+subject, not email.
-Composite foreign keys maintain invitation/grant/session and membership/issuer tenant
+Application staff memberships separate app-wide offboarding from tenant membership.
+Tenant membership staff IDs reference application membership staff IDs; inactivity must
+still be enforced by policy/transactions, not merely a foreign key. Composite foreign keys maintain invitation/grant/session and membership/issuer tenant
 lineage. FK lookup indexes support revocation lookups and joins. Separate tables and
 purpose constraints prevent participant/staff credential substitution.
 
@@ -71,8 +95,10 @@ CHECK constraints handle same-row ranges, finiteness and digest shape. They cann
 cross-table expiry caps, current status, issuer authorization or time-dependent expiry.
 These remain transaction and policy requirements. `revoked_at != null` must map to
 `revoked: true`; all timestamp adapters must reject nonfinite/invalid values and retain
-consistent millisecond precision. Staff sessions may span memberships; each company action
-must re-evaluate the current target membership and company. No global issuer privilege exists.
+consistent millisecond precision. Company starts_at/expires_at represent participant authorization only; company status
+represents administrative lifecycle. Staff sessions may span memberships; each company action
+must re-evaluate the current application membership, target tenant membership and company
+operational status, without capping staff access by the customer window. No global issuer privilege exists.
 
 RLS is enabled and forced with no allow policies; PUBLIC receives no privileges. This is
 deny-by-default scaffolding, not a complete RLS implementation. Owners/bypass roles and
@@ -91,6 +117,9 @@ provider's actual roles and tenant policies require a separate approved integrat
   the company window during redemption. Invitation reuse has no redemption counter to consume.
 - Activity updates must be monotonic and conditioned on the session still being live; never
   overwrite `created_at`. A stale activity write must not revive revoked or expired access.
+- Serialize application staff offboarding, tenant membership/issuer changes and staff
+  session revocation with authorization using current records, just as for participant
+  revocation. A previously successful login decision is not a company authorization cache.
 - Define revocation as effective for authorization transactions that serialize after its commit.
   Document treatment of already in-flight requests; do not promise instantaneous cancellation.
 - Avoid stale allow caches; define revocation propagation before any caching is introduced.
@@ -99,7 +128,7 @@ provider's actual roles and tenant policies require a separate approved integrat
 
 Audit rows contain only allowlisted security metadata, no financial records, free-form payload,
 IP/UA, fingerprints or raw secrets. Retention durations, legal basis, staff identity deletion,
-audit access and incident needs remain Director/privacy decisions. Cleanup must follow FK
+application membership cleanup, audit access and incident needs remain Director/privacy decisions. Cleanup must follow FK
 order (sessions → grants → invitations → company); RESTRICT prevents accidental cascades.
 Preserve required audit evidence before deleting parent companies. No cleanup job exists.
 
@@ -119,7 +148,8 @@ Existing Team Access/event access is unchanged and is not the new architecture.
 
 ## Review checklist
 
-- [ ] Director accepts policy contracts, conservative invitation cap and schema proposal.
+- [ ] Director re-reviews corrected staff login/company operation boundaries and schema proposal.
+- [ ] P1a retains restrictive invitation expiry; any relaxation stays a P1b business decision.
 - [ ] All required quality gates are reviewed, with network failures distinguished from advisories.
 - [ ] No production route imports the foundation; no existing tax/storage/UI file changed.
 - [ ] Staff lifetimes, provider and database remain unapproved for production.

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
-import { ABSOLUTE_MS, IDLE_MS, evaluateActivity, evaluateParticipant, evaluateRedemption, evaluateStaff, type ParticipantState, type StaffState, type Authority } from './policy';
+import { ABSOLUTE_MS, IDLE_MS, evaluateActivity, evaluateParticipant, evaluateRedemption, evaluateStaff, evaluateStaffLogin, type ParticipantState, type StaffState, type StaffLoginState, type Authority } from './policy';
 import { companyAuthorizationWindow } from './calendar';
 const now = Date.parse('2026-11-03T00:00:00.000Z');
 const day = 86_400_000;
@@ -15,7 +15,7 @@ function participant(): Mutable<ParticipantState> {
   };
 }
 function staff(): Mutable<StaffState> {
-  return { company: participant().company, membership: { id: 'm', staffId: 'u', companyId: 'c', active: true, role: 'staff' },
+  return { applicationMembership: { id: 'app-m', staffId: 'u', active: true }, company: participant().company, membership: { id: 'm', staffId: 'u', companyId: 'c', active: true, role: 'staff' },
     session: { id: 's', staffId: 'u', purpose: 'staff', revoked: false, startsAt: now, expiresAt: now + day },
     issuerPrivilege: null, lifetimePolicy: 'pending' };
 }
@@ -75,7 +75,7 @@ describe('participant policy', () => {
   it.each(['missing', 'provider_error'] as const)('fails closed for %s', state => {
     expect(evaluateParticipant({ state }, now).allowed).toBe(false);
     expect(evaluateRedemption({ state }, now).allowed).toBe(false);
-    expect(evaluateStaff({ state }, now, 'staff_access').allowed).toBe(false);
+    expect(evaluateStaff({ state }, now, 'company_access').allowed).toBe(false);
   });
   it.each(['company', 'invitation', 'grant', 'session'] as const)('fails closed for missing %s record', key => {
     expect(evaluateParticipant(ready({ ...participant(), [key]: null } as unknown as ParticipantState), now).allowed).toBe(false);
@@ -111,8 +111,8 @@ describe('shared invitation policy', () => {
   });
 });
 describe('staff isolation', () => {
-  it('denies pending lifetime policy', () => expect(evaluateStaff(ready(staff()), now, 'staff_access').allowed).toBe(false));
-  it('allows individual staff with explicitly approved supplied lifetime', () => expect(evaluateStaff(ready({ ...staff(), lifetimePolicy: 'approved' }), now, 'staff_access').allowed).toBe(true));
+  it('denies pending lifetime policy', () => expect(evaluateStaff(ready(staff()), now, 'company_access').allowed).toBe(false));
+  it('allows individual staff with explicitly approved supplied lifetime', () => expect(evaluateStaff(ready({ ...staff(), lifetimePolicy: 'approved' }), now, 'company_access').allowed).toBe(true));
   it('requires both issuer role and separate active privilege', () => {
     const s: Mutable<StaffState> = { ...staff(), lifetimePolicy: 'approved' };
     expect(evaluateStaff(ready(s), now, 'issue_invitation').allowed).toBe(false);
@@ -125,12 +125,12 @@ describe('staff isolation', () => {
   });
   it('denies cross-company membership and cross-staff session', () => {
     const s: Mutable<StaffState> = { ...staff(), lifetimePolicy: 'approved' };
-    expect(evaluateStaff(ready({ ...s, membership: { ...s.membership, companyId: 'other' } }), now, 'staff_access').allowed).toBe(false);
-    expect(evaluateStaff(ready({ ...s, session: { ...s.session, staffId: 'other' } }), now, 'staff_access').allowed).toBe(false);
+    expect(evaluateStaff(ready({ ...s, membership: { ...s.membership, companyId: 'other' } }), now, 'company_access').allowed).toBe(false);
+    expect(evaluateStaff(ready({ ...s, session: { ...s.session, staffId: 'other' } }), now, 'company_access').allowed).toBe(false);
   });
   it('denies participant purpose in staff evaluation', () => {
     const s = { ...staff(), lifetimePolicy: 'approved', session: { ...staff().session, purpose: 'participant' } } as unknown as StaffState;
-    expect(evaluateStaff(ready(s), now, 'staff_access').allowed).toBe(false);
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
   });
   it.each(['revoked', 'expired', 'inactive', 'suspended'] as const)('denies staff %s', condition => {
     const s: Mutable<StaffState> = { ...staff(), lifetimePolicy: 'approved' };
@@ -138,7 +138,124 @@ describe('staff isolation', () => {
     if (condition === 'expired') s.session = { ...s.session, expiresAt: now };
     if (condition === 'inactive') s.membership = { ...s.membership, active: false };
     if (condition === 'suspended') s.company = { ...s.company, status: 'suspended' };
-    expect(evaluateStaff(ready(s), now, 'staff_access').allowed).toBe(false);
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
+  });
+});
+describe('staff login versus company operations', () => {
+  function login(): Mutable<StaffLoginState> {
+    const s = staff();
+    return { applicationMembership: s.applicationMembership, session: s.session, lifetimePolicy: 'approved' };
+  }
+  function issuer(): Mutable<StaffState> {
+    const s = staff();
+    return { ...s, lifetimePolicy: 'approved', membership: { ...s.membership, role: 'issuer' },
+      issuerPrivilege: { membershipId: 'm', companyId: 'c', active: true } };
+  }
+  it('login needs no company or QR window and grants only application login', () => {
+    expect(evaluateStaffLogin(ready(login()), now)).toEqual({ allowed: true, expiresAt: now + day });
+    expect(evaluateStaff(ready(login() as unknown as StaffState), now, 'company_access').allowed).toBe(false);
+  });
+  it.each([now - 1, now, now + 1])('QR expiry %s does not cap staff login or company operation', expiresAt => {
+    const company = { ...participant().company, expiresAt };
+    const s = { ...issuer(), company };
+    expect(evaluateStaffLogin(ready(s), now)).toEqual({ allowed: true, expiresAt: now + day });
+    expect(evaluateStaff(ready(s), now, 'company_access')).toEqual({ allowed: true, expiresAt: now + day });
+    expect(evaluateStaff(ready(s), now, 'issue_invitation')).toEqual({ allowed: true, expiresAt: now + day });
+  });
+  it('QR authorization not yet started does not block staff preparation', () => {
+    const company = { ...participant().company, startsAt: now + day };
+    expect(evaluateStaff(ready({ ...issuer(), company }), now, 'issue_invitation').allowed).toBe(true);
+  });
+  it.each(['suspended', 'revoked'] as const)('company %s blocks company actions but preserves login', status => {
+    const s = { ...issuer(), company: { id: 'c', status } };
+    expect(evaluateStaffLogin(ready(s), now).allowed).toBe(true);
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
+    expect(evaluateStaff(ready(s), now, 'issue_invitation').allowed).toBe(false);
+  });
+  it('valid login cannot authorize another tenant', () => {
+    const s = { ...issuer(), company: { id: 'other', status: 'active' as const } };
+    expect(evaluateStaffLogin(ready(s), now).allowed).toBe(true);
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
+    expect(evaluateStaff(ready(s), now, 'issue_invitation').allowed).toBe(false);
+  });
+  it('tenant offboarding denies tenant actions without granting or revoking other company rights', () => {
+    const s = issuer(); s.membership = { ...s.membership, active: false };
+    expect(evaluateStaffLogin(ready(s), now).allowed).toBe(true);
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
+    expect(evaluateStaff(ready(s), now, 'issue_invitation').allowed).toBe(false);
+  });
+  it.each(['offboarded', 'revoked', 'expired', 'pending'] as const)('%s staff cannot login or act in any company', condition => {
+    const s = issuer();
+    if (condition === 'offboarded') s.applicationMembership = { ...s.applicationMembership, active: false };
+    if (condition === 'revoked') s.session = { ...s.session, revoked: true };
+    if (condition === 'expired') s.session = { ...s.session, expiresAt: now };
+    if (condition === 'pending') s.lifetimePolicy = 'pending';
+    expect(evaluateStaffLogin(ready(s), now).allowed).toBe(false);
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
+    expect(evaluateStaff(ready(s), now, 'issue_invitation').allowed).toBe(false);
+  });
+  it('application membership must match the individually authenticated session', () => {
+    const s = issuer(); s.applicationMembership = { ...s.applicationMembership, staffId: 'other' };
+    expect(evaluateStaffLogin(ready(s), now).allowed).toBe(false);
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
+  });
+  it.each(['missing', 'provider_error'] as const)('login fails closed for %s authority', state => {
+    expect(evaluateStaffLogin({ state }, now).allowed).toBe(false);
+  });
+  it.each(['applicationMembership', 'session'] as const)('missing %s denies login and company actions', key => {
+    const s = { ...issuer(), [key]: null } as unknown as StaffState;
+    expect(evaluateStaffLogin(ready(s), now).allowed).toBe(false);
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
+  });
+  it.each(['company', 'membership'] as const)('missing %s denies company actions even with valid login', key => {
+    const s = { ...issuer(), [key]: null } as unknown as StaffState;
+    expect(evaluateStaffLogin(ready(s), now).allowed).toBe(true);
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
+  });
+  it('a tenant membership belonging to another staff member cannot authorize actions', () => {
+    const s = issuer(); s.membership = { ...s.membership, staffId: 'other' };
+    expect(evaluateStaff(ready(s), now, 'company_access').allowed).toBe(false);
+  });
+  it.each(['role_only', 'inactive', 'wrong_membership', 'wrong_tenant', 'staff_role'] as const)('issuer privilege restriction: %s', condition => {
+    const s = issuer();
+    if (condition === 'role_only') s.issuerPrivilege = null;
+    if (condition === 'inactive') s.issuerPrivilege = { ...s.issuerPrivilege!, active: false };
+    if (condition === 'wrong_membership') s.issuerPrivilege = { ...s.issuerPrivilege!, membershipId: 'other' };
+    if (condition === 'wrong_tenant') s.issuerPrivilege = { ...s.issuerPrivilege!, companyId: 'other' };
+    if (condition === 'staff_role') s.membership = { ...s.membership, role: 'staff' };
+    expect(evaluateStaff(ready(s), now, 'issue_invitation').allowed).toBe(false);
+  });
+  it('keeps participant access capped by company authorization when staff login remains valid', () => {
+    const p = participant(); p.company = { ...p.company, expiresAt: now + 1 };
+    expect(evaluateParticipant(ready(p), now)).toEqual({ allowed: true, expiresAt: now + 1 });
+    expect(evaluateParticipant(ready(p), now + 1).allowed).toBe(false);
+    expect(evaluateStaffLogin(ready(login()), now + 1).allowed).toBe(true);
+  });
+});
+describe('P1a invitation expiry contract', () => {
+  it('stopping redemptions keeps the original session expiry, including the invitation cap', () => {
+    const p = participant(); p.invitation = { ...p.invitation, expiresAt: now + 60_000 };
+    const original = evaluateParticipant(ready(p), now);
+    p.invitation = { ...p.invitation, status: 'redemptions_stopped' };
+    expect(evaluateRedemption(ready(p), now).allowed).toBe(false);
+    expect(evaluateParticipant(ready(p), now)).toEqual(original);
+    expect(evaluateParticipant(ready(p), now + 59_999).allowed).toBe(true);
+    expect(evaluateParticipant(ready(p), now + 60_000).allowed).toBe(false);
+  });
+  it('full revocation denies the next decision before the original expiry', () => {
+    const p = participant(); expect(evaluateParticipant(ready(p), now).allowed).toBe(true);
+    p.invitation = { ...p.invitation, status: 'revoked' };
+    expect(evaluateParticipant(ready(p), now + 1).allowed).toBe(false);
+    expect(evaluateActivity(ready(p), now + 1).nextLastActivityAt).toBeUndefined();
+  });
+  it('expired invitation denies existing access, redemption and activity without renewal', () => {
+    const p = participant(); p.invitation = { ...p.invitation, expiresAt: now + 1 };
+    const before = structuredClone(p);
+    expect(evaluateParticipant(ready(p), now).allowed).toBe(true);
+    expect(evaluateParticipant(ready(p), now + 1).allowed).toBe(false);
+    expect(evaluateRedemption(ready(p), now + 1).allowed).toBe(false);
+    expect(evaluateActivity(ready(p), now + 1).nextLastActivityAt).toBeUndefined();
+    expect(p).toEqual(before);
   });
 });
 describe('Bangkok calendar authorization', () => {

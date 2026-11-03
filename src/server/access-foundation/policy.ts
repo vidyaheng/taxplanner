@@ -2,7 +2,9 @@ import 'server-only';
 
 /** All records and times must come from trusted server/provider state, never request claims. */
 export type Window = Readonly<{ startsAt: number; expiresAt: number }>;
-export type Company = Window & Readonly<{ id: string; status: 'active' | 'suspended' | 'revoked' }>;
+// Administrative lifecycle is independent of the customer participant authorization window.
+export type CompanyOperations = Readonly<{ id: string; status: 'active' | 'suspended' | 'revoked' }>;
+export type Company = Window & CompanyOperations;
 export type Invitation = Window & Readonly<{
   id: string; companyId: string; status: 'active' | 'redemptions_stopped' | 'revoked';
   kind: 'shared_company';
@@ -74,24 +76,44 @@ export function evaluateActivity(state: Authority<ParticipantState>, now: number
   const decision = evaluateParticipant(state, now);
   return decision.allowed ? { decision, nextLastActivityAt: now } : { decision };
 }
-export type StaffState = Readonly<{
-  company: Company; membership: Membership; session: StaffSession;
-  issuerPrivilege: Readonly<{ membershipId: string; companyId: string; active: boolean }> | null;
-  // Pending policy approval must be represented explicitly by the future adapter.
+export type ApplicationStaffMembership = Readonly<{
+  id: string; staffId: string; active: boolean;
+}>;
+export type StaffLoginState = Readonly<{
+  applicationMembership: ApplicationStaffMembership;
+  session: StaffSession;
+  // Only trusted future configuration may mark a lifetime policy approved.
   lifetimePolicy: 'pending' | 'approved';
 }>;
-/** Staff expiration is supplied by an approved future policy, never the participant defaults. */
-export function evaluateStaff(state: Authority<StaffState>, now: number, purpose: 'staff_access' | 'issue_invitation'): Decision {
+export type StaffState = StaffLoginState & Readonly<{
+  company: CompanyOperations;
+  membership: Membership;
+  issuerPrivilege: Readonly<{ membershipId: string; companyId: string; active: boolean }> | null;
+}>;
+/** Application login only. This decision grants no company or issuer permission. */
+export function evaluateStaffLogin(state: Authority<StaffLoginState>, now: number): Decision {
   if (state?.state !== 'ready' || !state.value) return deny('unavailable');
-  const { company: c, membership: m, session: s, issuerPrivilege: p } = state.value;
-  if (!c || !m || !s) return deny('unavailable');
+  const { applicationMembership: a, session: s } = state.value;
+  if (!a || !s) return deny('unavailable');
   if (s.purpose !== 'staff') return deny('purpose_mismatch');
+  if (a.staffId !== s.staffId) return deny('tenant_mismatch');
+  if (state.value.lifetimePolicy !== 'approved' || a.active !== true || s.revoked !== false ||
+      !id(a.id) || !id(a.staffId) || !id(s.id) || !validWindow(s, now)) return deny('ineligible');
+  return { allowed: true, expiresAt: s.expiresAt };
+}
+/** Company actions require login AND current tenant authorization, independent of QR dates. */
+export function evaluateStaff(state: Authority<StaffState>, now: number, purpose: 'company_access' | 'issue_invitation'): Decision {
+  const login = evaluateStaffLogin(state, now);
+  if (!login.allowed) return login;
+  // The successful login established ready authoritative state, not company access.
+  if (state.state !== 'ready') return deny('unavailable');
+  const { company: c, membership: m, session: s, issuerPrivilege: p } = state.value;
+  if (!c || !m) return deny('unavailable');
   if (m.companyId !== c.id || m.staffId !== s.staffId) return deny('tenant_mismatch');
-  if (state.value.lifetimePolicy !== 'approved' || !companyEligible(c, now) ||
-      m.active !== true || s.revoked !== false || !id(m.id) || !id(m.staffId) || !id(s.id) ||
-      !validWindow(s, now) || !['staff', 'issuer'].includes(m.role)) return deny('ineligible');
-  if (purpose !== 'staff_access' && purpose !== 'issue_invitation') return deny('purpose_mismatch');
+  if (!id(c.id) || c.status !== 'active' || m.active !== true || !id(m.id) ||
+      !['staff', 'issuer'].includes(m.role)) return deny('ineligible');
+  if (purpose !== 'company_access' && purpose !== 'issue_invitation') return deny('purpose_mismatch');
   if (purpose === 'issue_invitation' && (m.role !== 'issuer' || !p || p.active !== true ||
       p.companyId !== c.id || p.membershipId !== m.id)) return deny('permission_denied');
-  return { allowed: true, expiresAt: Math.min(c.expiresAt, s.expiresAt) };
+  return login;
 }
