@@ -504,3 +504,22 @@
 @media (prefers-reduced-motion: reduce) {
   .tp-b2-page * { transition: none; scroll-behavior: auto; }
 }
+
+
+/* Income paired financial fields: top-aligned controls, naturally stacked on mobile.
+   MoneyInput helper text now follows its input, so it never pushes a
+   neighboring paired input lower. Kept within the existing Fresh Teal scope. */
+.tp-income .tp-income-financial-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+.tp-income .tp-income-financial-row > * {
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .tp-income .tp-income-financial-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
