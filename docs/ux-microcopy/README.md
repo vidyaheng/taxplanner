@@ -86,3 +86,34 @@ do not cherry-pick or silently overwrite unapproved B2 changes.
   until independently captured. CI/source checks do not equal visual QA.
 - **Stop: Draft PR only**, no merge, no auto-merge, no manual Production
   deployment, no legacy project changes.
+
+## PR #8 integration reconciliation — 3 November 2026
+
+- Integrated **main** `b8f1e133bb74325889ae812275028e9550cf7710` after merged PR #7 using a true two-parent
+  merge commit, first parent previous PR #8 HEAD `ea5877e5262c9ae693816e83e0371cfdf5809f6e`, second parent
+  main `b8f1e133bb74325889ae812275028e9550cf7710`; no merge into main was performed.
+- **Family overlap:** preserve B2 Indigo hero, distinct "รอข้อมูลครบถ้วน"
+  status, `tp-b2-summary-warning` as separate accessible `role="alert"`
+  under the hero. Replace only its outdated long text with PR #8's
+  approved short warning. Preserve all Family B2 classes, responsive
+  layout, `useId` label binding and ARIA states. Preserve PR #8 senior
+  allocation/parent question/marginal rate text.
+- **Deductions overlap:** start from B2 markup and preserve `tp-b2-`
+  classes, accordion `aria-expanded`, `useId()`, associated
+  `htmlFor={inputId}` and `id={inputId}` numeric input labels. Apply
+  PR #8's three exact unabridged legal conditions in native details,
+  parent policy disclosure and concise prompts with no value changes.
+- `ux-b2.test.ts` changes **one warning-copy assertion** to reflect
+  Director-approved PR #8 text. All other B2 assertions are unchanged,
+  including status/placement, focus, and delete handler checks.
+- Unaffected PR #8 Income, Planner, Results source and Microcopy source
+  contract remain byte-for-byte PR #8. Merged B2 CSS is preserved exactly.
+- Mandatory exact labels remain:
+  `ภาษีหัก ณ ที่จ่ายจากเงินได้ 40(1)` and
+  `เงินได้พึงประเมินทั้งปี` (both Family occurrences).
+- No PR #9 40(1) estimator or PR #10 40(3)/40(8) work is imported.
+- Exact-HEAD full CI, Vercel Preview and GitHub Mergeability must be
+  rechecked; earlier green checks are not reusable. Real browser/mobile
+  visual QA requires separate evidence.
+- No merge, auto-merge, manual production deploy, Vercel config, DB,
+  Tax Engine/Rules, financial state or access-control changes.
