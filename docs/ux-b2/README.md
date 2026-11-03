@@ -81,3 +81,33 @@ A Preview becoming READY is **not** visual or functional acceptance.
 
 **Stop at Draft PR**. Do not merge, auto-merge, change Vercel configuration,
 or manually deploy Production. Director decides subsequent review/UAT.
+
+## Director limited visual correction — 2026-11-03
+
+- Family child, parent and dependent delete buttons now share scoped
+  `tp-b2-delete` styling: coral `#B42342`, border `#F3C4CD`,
+  pale `#FFF1F3` hover/focus, visible 3px focus outline and >=44px target.
+  Original delete handlers and lack of extra confirmation are unchanged.
+- The original incomplete-tax warning inside the Family Indigo summary retains
+  its `taxResult.isComplete` trigger and text, but gains a light
+  `#FFF7E9` surface with dark `#6B4311` text.
+- Deductions already places its warning outside the Indigo hero on a light
+  amber background, so no Deductions JSX edit was necessary.
+- Source-color contrast ratios: danger/white 6.44:1, danger/pale coral 5.87:1,
+  warning/light amber 8.10:1, lavender/Indigo 7.72:1, white/Indigo 9.76:1.
+  These are source-color checks, **not** browser-rendered visual acceptance.
+
+### Director manual QA (new Preview HEAD only)
+
+Check child, parent and dependent delete normal/hover/focus states and original
+removal behavior; trigger the existing Family incomplete-tax warning with synthetic
+data; inspect Deductions Indigo total and its light warning surfaces; inspect
+Income B1 unchanged. Check all five planning pages with expanded B2 sections
+at widths 375/390/430/768/1440px for overflow. Verify financial fixture,
+autosave/reload, Reset cancel/confirm and two-tab protection. Capture actual
+application screenshots of Family delete normal/hover/focus, Family active
+warning, Deductions summary and Family at 390px.
+
+**Browser visual QA and screenshots: NOT EXECUTED in this environment.**
+Do not infer browser PASS from scoped source tests or CI.
+**Draft PR only.** No merge, auto-merge or manual Production deployment.

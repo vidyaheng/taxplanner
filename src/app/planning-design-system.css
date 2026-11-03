@@ -316,6 +316,35 @@
 .tp-b2-page .tp-b2-section button {
   min-height: 2.75rem;
 }
+/* B2 Director correction: accessible destructive record actions. */
+.tp-family .tp-b2-record .tp-b2-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: .55rem .85rem;
+  border: 1px solid #f3c4cd;
+  border-radius: .75rem;
+  background: #fff;
+  color: #b42342;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.tp-family .tp-b2-record .tp-b2-delete:hover,
+.tp-family .tp-b2-record .tp-b2-delete:focus-visible {
+  color: #b42342;
+  background: #fff1f3;
+  border-color: #b42342;
+}
+.tp-family .tp-b2-record .tp-b2-delete:focus-visible {
+  outline: 3px solid #b42342;
+  outline-offset: 3px;
+}
+
 .tp-b2-actions {
   gap: .75rem;
   flex-wrap: wrap;
@@ -368,6 +397,15 @@
 .tp-b2-summary-hero :where(.font-medium, .font-bold) {
   font-variant-numeric: tabular-nums;
 }
+/* Original incomplete-tax warning is legible inside the dark Indigo hero. */
+.tp-family .tp-b2-summary-hero .tp-b2-summary-warning {
+  color: #6b4311;
+  background: #fff7e9;
+  border: 1px solid #eac58b;
+  border-radius: .75rem;
+  padding: .85rem 1rem;
+}
+
 .tp-b2-summary :where(.break-words, .tabular-nums) {
   overflow-wrap: anywhere;
 }

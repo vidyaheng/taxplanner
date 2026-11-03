@@ -61,4 +61,52 @@ describe("UX B2 presentation contracts", () => {
     expect(styles).toContain("var(--tp-indigo-deep)");
     expect(styles).toContain("@media (max-width: 639px)");
   });
+  it("preserves all three original delete handlers and applies one danger class", () => {
+    expect(family.match(/className="tp-b2-delete"/g)).toHaveLength(3);
+    expect(family).toMatch(/onClick=\{\(\) =>\s*removeChild\(\s*child\.id\s*\)\s*\}\s*className="tp-b2-delete"/);
+    expect(family).toMatch(/onClick=\{\(\) =>\s*removeParent\(\s*parent\.id\s*\)\s*\}\s*className="tp-b2-delete"/);
+    expect(family).toMatch(/onClick=\{\(\) =>\s*removeDisabledDependent\(\s*dependent\.id\s*\)\s*\}\s*className="tp-b2-delete"/);
+  });
+
+  it("provides danger color, 44px touch targets, and visible keyboard focus", () => {
+    expect(styles).toContain(".tp-family .tp-b2-record .tp-b2-delete {");
+    expect(styles).toContain("min-width: 2.75rem;");
+    expect(styles).toContain("min-height: 2.75rem;");
+    expect(styles).toContain("color: #b42342;");
+    expect(styles).toContain("border: 1px solid #f3c4cd;");
+    expect(styles).toContain(".tp-family .tp-b2-record .tp-b2-delete:hover,");
+    expect(styles).toContain(".tp-family .tp-b2-record .tp-b2-delete:focus-visible {");
+    expect(styles).toContain("outline: 3px solid #b42342;");
+  });
+
+  it("keeps the Family warning conditional, and leaves Deductions warning outside its hero", () => {
+    expect(family).toMatch(/taxResult\.isComplete \? \([\s\S]*?\) : \(\s*<div className="tp-b2-summary-warning mt-3 text-sm leading-6"/);
+    expect(family).toContain("ยังไม่สามารถคำนวณภาษีได้ครบถ้วน");
+    expect(styles).toContain(".tp-family .tp-b2-summary-hero .tp-b2-summary-warning {");
+    expect(styles).toContain("color: #6b4311;");
+    expect(styles).toContain("background: #fff7e9;");
+    expect(deductions).toContain("tp-b2-summary-hero");
+    expect(deductions).toContain("border border-amber-200 bg-amber-50");
+  });
+
+  it("meets 4.5:1 source-color text contrast on all corrected surfaces", () => {
+    const lum = (hex: string) => {
+      const rgb = hex.slice(1).match(/.{2}/g);
+      if (!rgb || rgb.length !== 3) throw new Error("Expected #RRGGBB");
+      const [r, g, b] = rgb.map((part) => {
+        const c = Number.parseInt(part, 16) / 255;
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      });
+      return .2126 * r + .7152 * g + .0722 * b;
+    };
+    for (const [fg, bg] of [
+      ["#b42342", "#ffffff"], ["#b42342", "#fff1f3"],
+      ["#6b4311", "#fff7e9"], ["#e0e3ff", "#353992"],
+      ["#ffffff", "#353992"],
+    ]) {
+      const a = lum(fg), b = lum(bg);
+      expect((Math.max(a, b) + .05) / (Math.min(a, b) + .05)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
 });

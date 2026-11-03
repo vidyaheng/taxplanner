@@ -1299,7 +1299,7 @@ const seniorAllocationRemaining =
                                 child.id
                               )
                             }
-                            className="text-sm text-slate-400 hover:text-red-600"
+                            className="tp-b2-delete"
                           >
                             ลบ
                           </button>
@@ -1539,7 +1539,7 @@ const seniorAllocationRemaining =
                                 parent.id
                               )
                             }
-                            className="text-sm text-slate-400 hover:text-red-600"
+                            className="tp-b2-delete"
                           >
                             ลบ
                           </button>
@@ -1861,7 +1861,7 @@ const seniorAllocationRemaining =
                                 dependent.id
                               )
                             }
-                            className="text-sm text-slate-400 hover:text-red-600"
+                            className="tp-b2-delete"
                           >
                             ลบ
                           </button>
@@ -2219,7 +2219,7 @@ const seniorAllocationRemaining =
                     </div>
                     </>
                 ) : (
-                    <div className="mt-3 text-sm leading-6 text-amber-800">
+                    <div className="tp-b2-summary-warning mt-3 text-sm leading-6">
                       ยังไม่สามารถคำนวณภาษีได้ครบถ้วน
                       เนื่องจากมีข้อมูลบางรายการที่ยังไม่สมบูรณ์
                       กรุณาตรวจสอบคำเตือนด้านล่าง
