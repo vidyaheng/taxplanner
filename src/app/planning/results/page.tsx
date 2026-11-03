@@ -581,8 +581,7 @@ export default function ResultsPage() {
 
             {!isResultCalculationComplete && (
               <div className="mt-2 text-sm leading-6 text-amber-800">
-                กรุณาตรวจสอบข้อมูลที่ยังไม่ครบถ้วนก่อน
-                ระบบจึงจะแสดงผลเปรียบเทียบภาษีและผลประหยัดภาษี
+                กรอกข้อมูลให้ครบเพื่อดูผลภาษีก่อนและหลังวางแผน
               </div>
             )}
 
@@ -729,7 +728,7 @@ export default function ResultsPage() {
                   <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8">
                     <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-600">
                       <span>
-                        อัตราภาษีขั้นสูงสุด (Marginal Rate)
+                        อัตราภาษีขั้นสูงสุด
                       </span>
 
                       <span className="text-lg leading-none text-slate-400 transition-transform group-open:rotate-180">
@@ -817,7 +816,7 @@ export default function ResultsPage() {
                 />
 
                 <CompareRow
-                  label="ภาษีที่ต้องชำระหลังเครดิต"
+                  label="ภาษีที่ต้องจ่ายเพิ่ม"
                   current={`${formatNumber(
                     currentResult.taxPayable
                   )} บาท`}

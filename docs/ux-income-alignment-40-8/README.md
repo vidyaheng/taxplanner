@@ -90,3 +90,14 @@ the actual taxpayer's business in tax year 2569.
   explicit conflict/reconciliation review after separate approvals.
 - No merge, no auto-merge, no manual Production deploy, no legacy project
   changes. Stop for Director review.
+
+## Sequential reconciliation after merged PR #7 / PR #8 (2026-11-03)
+
+- Production Gate: Director-confirmed Microsoft Edge Smoke Test 7/7 PASS. Vercel READY, alias and production source SHA 6173f6cd410e86eca932dd02b34b3a659d105d21 verified separately. Browser smoke result is Director-reported, not agent-executed.
+- Previous PR #10 HEAD: 281ad11bdd06e5a93ffaeb169d83f3803b33d097. Integrate main 6173f6cd410e86eca932dd02b34b3a659d105d21 via a true two-parent merge commit into existing Draft PR #10 (not into main).
+- Income conflict: PR #8 changed exactly one existing label from รายได้จากงานประจำอื่น ๆ ตลอดปี to รายได้อื่นจากนายจ้างทั้งปี. Verified main Income differs from the common pre-PR7/8 base by precisely that one line; preserve full PR #10 Income source and reinstate PR #8 exact copy.
+- Stylesheet conflict: latest main contains all B1 and B2 styles. Both branch stylesheets extend the same original base, so use entire latest main stylesheet byte-for-byte plus only isolated Income financial-row styles from PR #10.
+- Family, Deductions, Planner, Results and both B2/Microcopy regression tests remain exactly as in merged main, including PR #8 legal disclosures and Director-preserved Thai financial labels.
+- Retain both paired Section 40(3) field layouts, helper-after-input and all Section 40(8) options, IDs, descriptions, unchanged original update handlers and existing tax engine.
+- Run fresh full CI, tests, lint, TypeScript, build; verify Preview READY and mergeability on new exact HEAD. Updated Preview physical browser visual QA must be reported separately.
+- Keep Draft, no PR #10 merge or auto-merge; do not touch PR #9, Production configuration, legacy project, DB, calculations or storage.
