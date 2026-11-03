@@ -741,11 +741,8 @@ const seniorAllocationRemaining =
 
                   {seniorAllocationTotal === 0 ? (
                     <div className="mt-4 rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
-                      ตอนนี้ระบบจะจัดสรรสิทธิให้อัตโนมัติ
-                      โดยใช้กับเงินได้ 40(2) ก่อน
-                      แล้วจึงใช้กับเงินได้ 40(1)
-                      หากต้องการกำหนดเอง
-                      ให้กรอกจำนวนในแต่ละประเภทเงินได้ด้านล่าง
+                      ระบบจัดสรรสิทธิให้อัตโนมัติ โดยใช้กับเงินได้ 40(2)
+                      ก่อน แล้วจึงใช้กับเงินได้ 40(1) คุณปรับเองได้ด้านล่าง
                     </div>
                   ) : (
                     <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
@@ -1738,7 +1735,7 @@ const seniorAllocationRemaining =
 
                           <div>
                             <div className="mb-2 text-sm font-medium text-slate-700">
-                              มีผู้มีเงินได้คนอื่นใช้สิทธิบุพการีคนนี้แล้วหรือไม่?
+                              มีคนอื่นใช้สิทธิลดหย่อนบิดา/มารดาท่านนี้แล้วหรือไม่?
                             </div>
 
                             <div className="flex gap-2">
@@ -2199,7 +2196,7 @@ const seniorAllocationRemaining =
                         <div className="mt-2 flex justify-between text-sm">
 
                         <span className="text-slate-500">
-                            อัตราภาษีขั้นสูงสุด (Marginal Rate)
+                            อัตราภาษีขั้นสูงสุด
                         </span>
 
                         <span className="font-medium text-blue-700">
@@ -2214,9 +2211,7 @@ const seniorAllocationRemaining =
                     </>
                 ) : (
                     <div className="mt-3 text-sm leading-6 text-amber-800">
-                      ยังไม่สามารถคำนวณภาษีได้ครบถ้วน
-                      เนื่องจากมีข้อมูลบางรายการที่ยังไม่สมบูรณ์
-                      กรุณาตรวจสอบคำเตือนด้านล่าง
+                      ข้อมูลยังไม่ครบ กรุณาตรวจสอบรายการด้านล่างเพื่อคำนวณภาษี
                     </div>
                 )}
                 </div>  
