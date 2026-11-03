@@ -106,3 +106,13 @@ non-UI callers; the current Income UI does **not** create a months field.
   Check auto-save/reload and refunds, all five steps. **Real Browser QA
   and screenshots are NOT EXECUTED in this connector environment.**
 - Do not merge, auto-merge, configure Production or begin P1b.
+
+## Final sequential reconciliation after PR #7, #8 and #10 (2026-11-03)
+
+- PR #10 Production metadata gate VERIFIED: `dpl_6GLUtvioNjsazU28bDp8qgcqibtZ` READY, `taxplannervid.vercel.app` alias assigned, deployed and current main source SHA `e1b88d556791907a0ef7a2556bb228944ff95726`. 64 build events examined; successful Build Completed and Deployment completed, no error/failure event. Browser Smoke for PR #10 **NOT EXECUTED** by agent (prior Director 7/7 Edge was PR #8).
+- Existing Draft PR #9 HEAD before reconciliation: `cb139789b66aa65dad0867deb62999d227b88548`. Integrate latest main via two-parent merge commit into existing feature branch, without changing main.
+- Exact Income JSX conflict proof: old PR #9 file differs from its common original main base solely by three insertions: one import, one read-only derived annual estimate, and one collapsible display panel. Reverse those additions and the old file is **byte-for-byte identical** to the common base. Final Income file uses current `main` source and inserts only these three approved PR #9 sections.
+- Preserve B1 Fresh Teal, B2 Family/Deductions, all PR #8 Microcopy/legal disclosures, both Director tax labels, PR #10 two aligned 40(3) paired rows/under-input helpers and both 40(8) selectors with exactly `standard60` / `performer` / `actualOnly` and unchanged expense handlers. All current main CSS, family, deductions, planner, results, context and financial files untouched.
+- Estimator must not write to `section40_1TaxWithheld` or any state. It reads salary, annual bonus, other annual 40(1) income, plus recorded Social Security if any. Uses shared 2569 tax rules, assumes 12 salary months and displays an illustrative annual tax and annual/12 average, explicitly **not** precise payroll withholding.
+- Preserve both original PR #9 estimator unit tests and `engine.test.ts` credit/payable/refund integration guard unchanged. Exact new-HEAD CI and Preview/mergeability must be freshly verified after merge commit.
+- Updated Preview browser, keyboard and 375/390px mobile checks **NOT EXECUTED** unless separately verified. No manual Production deployment, PR #9 merge/auto-merge, Phase B3 or configuration/dependency/storage/access-control changes.

@@ -177,3 +177,349 @@
  .tp-mobile-feedback { display: none; }
  .tp-income-grid { grid-template-columns: minmax(0,1fr) 21rem; }
 }
+
+
+/* UX B2: Family and Deductions. Reuse the approved B1 palette, components and
+   spacing; all new styling is scoped to these two routes. */
+.tp-b2-page {
+  background: var(--tp-background);
+  color: var(--tp-text);
+}
+.tp-b2-container {
+  width: 100%;
+  max-width: 77rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+.tp-b2-header {
+  margin-bottom: 1.25rem;
+}
+.tp-b2-header .tp-brand,
+.tp-b2-header .tp-year-badge {
+  flex-shrink: 0;
+}
+.tp-b2-grid {
+  min-width: 0;
+  align-items: start;
+}
+.tp-b2-form {
+  padding: 0 1.25rem 1.25rem;
+}
+.tp-b2-intro {
+  position: relative;
+  margin: 0 -1.25rem 1.5rem;
+  padding: 1.6rem 1.25rem;
+  background: #e4f5f0;
+  border-bottom: 1px solid #c4e5dc;
+  border-radius: calc(var(--tp-radius) - 1px) calc(var(--tp-radius) - 1px) 0 0;
+}
+.tp-b2-intro::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 1.25rem;
+  width: 3.5rem;
+  height: 4px;
+  background: var(--tp-warm);
+  border-radius: 4px 4px 0 0;
+}
+.tp-b2-intro .tp-page-description {
+  max-width: 44rem;
+}
+.tp-b2-section {
+  min-width: 0;
+}
+.tp-b2-section h2 {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  color: #123e4c;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.65;
+}
+.tp-b2-section h2::before {
+  content: "";
+  flex: 0 0 5px;
+  height: 1.3rem;
+  margin-top: .25rem;
+  border-radius: 3px;
+  background: var(--tp-turquoise);
+}
+.tp-b2-page :where(input, select, textarea) {
+  accent-color: var(--tp-primary);
+  min-width: 0;
+  max-width: 100%;
+  font-size: 1rem;
+}
+.tp-b2-page :where(input:not([type="checkbox"]), select, textarea) {
+  min-height: 3rem;
+  border-color: #78919d;
+  border-radius: var(--tp-control-radius);
+  background-color: #fcfefe;
+}
+.tp-b2-page :where(input, select, textarea):focus-visible,
+.tp-b2-page :where(a, button):focus-visible {
+  outline: 3px solid var(--tp-primary-hover);
+  outline-offset: 3px;
+}
+.tp-b2-page :where(button, a) {
+  -webkit-tap-highlight-color: transparent;
+}
+.tp-b2-page button[aria-pressed="true"] {
+  border-color: var(--tp-primary);
+  color: var(--tp-primary-hover);
+  background: var(--tp-mint);
+  box-shadow: inset 0 -3px 0 var(--tp-primary);
+}
+.tp-b2-page :where(.text-slate-400, .text-slate-500) {
+  color: var(--tp-muted);
+}
+.tp-b2-page :where(.text-blue-700, .text-blue-800) {
+  color: var(--tp-primary-hover);
+}
+.tp-b2-page .bg-blue-600,
+.tp-b2-actions a[href$="/deductions"],
+.tp-b2-actions a[href$="/planner"] {
+  background-color: var(--tp-primary);
+}
+.tp-b2-page .bg-blue-600:hover,
+.tp-b2-actions a[href$="/deductions"]:hover,
+.tp-b2-actions a[href$="/planner"]:hover {
+  background-color: var(--tp-primary-hover);
+}
+.tp-b2-page .bg-blue-50 {
+  background-color: #e9f8f4;
+}
+.tp-b2-page .border-blue-200 {
+  border-color: #b2dcd3;
+}
+.tp-b2-page .border-blue-100 {
+  border-color: #c8e6df;
+}
+.tp-b2-record {
+  background: #fff;
+  border-color: #d3e5e6;
+  box-shadow: 0 3px 12px #17344508;
+}
+.tp-b2-record > :first-child {
+  min-width: 0;
+}
+.tp-family .tp-b2-section > .rounded-2xl.bg-slate-50,
+.tp-family .tp-b2-section > .rounded-2xl.border-blue-200 {
+  border: 1px solid #d5e7e6;
+  background: #f4f9f9;
+}
+.tp-family .tp-b2-section > .flex:first-child {
+  flex-wrap: wrap;
+}
+.tp-b2-page .tp-b2-section button {
+  min-height: 2.75rem;
+}
+/* B2 Director correction: accessible destructive record actions. */
+.tp-b2-page .tp-b2-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: .55rem .85rem;
+  border: 1px solid #f3c4cd;
+  border-radius: .75rem;
+  background: #fff;
+  color: #b42342;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.tp-b2-page .tp-b2-delete:hover,
+.tp-b2-page .tp-b2-delete:focus-visible {
+  color: #b42342;
+  background: #fff1f3;
+  border-color: #b42342;
+}
+.tp-b2-page .tp-b2-delete:focus-visible {
+  outline: 3px solid #b42342;
+  outline-offset: 3px;
+}
+
+.tp-b2-actions {
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding-top: 1.5rem;
+  margin-bottom: -1.25rem;
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  padding: 1.25rem;
+  border-top: 1px solid #d5e5e3;
+  border-radius: 0 0 calc(var(--tp-radius) - 1px) calc(var(--tp-radius) - 1px);
+  background: #f2f8f7;
+}
+.tp-b2-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  border-radius: var(--tp-control-radius);
+  text-decoration: none;
+}
+.tp-b2-summary {
+  min-width: 0;
+  overflow: hidden;
+  padding: 1.25rem;
+  background: #f1f2fd;
+  border-color: #d3d5ee;
+  box-shadow: 0 12px 30px #35399213;
+}
+.tp-b2-summary > .text-sm:first-child {
+  color: var(--tp-indigo-deep);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.tp-b2-summary-hero {
+  padding: 1.25rem;
+  border-top: 5px solid var(--tp-turquoise);
+  border-radius: 1rem;
+  background: var(--tp-indigo-deep) !important;
+  color: #fff;
+}
+.tp-b2-summary-hero :where(.text-slate-400, .text-slate-500, .text-blue-700) {
+  color: #e0e3ff;
+}
+.tp-b2-summary-hero :where(.text-slate-900, .text-slate-800) {
+  color: #fff;
+}
+.tp-b2-summary-hero .border-blue-100 {
+  border-color: #7579cc;
+}
+.tp-b2-summary-hero :where(.font-medium, .font-bold) {
+  font-variant-numeric: tabular-nums;
+}
+/* Neutral compact incomplete state inside Indigo; full warning sits below hero. */
+.tp-family .tp-b2-summary-hero .tp-b2-summary-status {
+  color: #f5f5ff;
+  background: #ffffff1a;
+  border: 1px solid #a8ace9;
+  border-radius: 999px;
+  padding: .35rem .7rem;
+  line-height: 1.5;
+}
+.tp-family .tp-b2-summary > .tp-b2-summary-warning {
+  color: #6b4311;
+  background: #fff7e9;
+  border: 1px solid #eac58b;
+  border-radius: .7rem;
+  padding: .65rem .8rem;
+}
+
+.tp-b2-summary :where(.break-words, .tabular-nums) {
+  overflow-wrap: anywhere;
+}
+.tp-b2-summary :where(.flex.justify-between, .grid) {
+  min-width: 0;
+  gap: .6rem;
+}
+.tp-b2-summary :where(.flex.justify-between, .grid) > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tp-b2-summary .whitespace-nowrap {
+  white-space: normal;
+}
+.tp-b2-accordion-list {
+  margin-top: 1.5rem;
+}
+.tp-b2-accordion {
+  min-width: 0;
+  border-color: #cddfe5;
+  background: #fff;
+  box-shadow: 0 4px 14px #17344508;
+}
+.tp-b2-accordion > button {
+  min-height: 5rem;
+  border-left: 5px solid transparent;
+  padding-left: 1rem;
+}
+.tp-b2-accordion > button[aria-expanded="true"] {
+  background: #e8f6f1;
+  border-left-color: var(--tp-primary);
+}
+.tp-b2-accordion > button[aria-expanded="true"] .text-slate-900 {
+  color: #075d68;
+}
+.tp-b2-accordion > button > .flex {
+  gap: .6rem;
+}
+.tp-b2-accordion > button > .flex > div {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.tp-b2-accordion > button > .flex > span {
+  color: var(--tp-primary-hover);
+  font-weight: 700;
+}
+.tp-b2-accordion-content {
+  background: #f6fafb;
+  border-top-color: #cddfe5;
+}
+.tp-b2-deduction-field {
+  border: 1px solid #dce8ee;
+  box-shadow: 0 2px 8px #17344505;
+}
+.tp-b2-deduction-field label {
+  color: #204554;
+  font-weight: 600;
+}
+.tp-b2-deduction-field input {
+  font-variant-numeric: tabular-nums;
+}
+.tp-b2-page :where(h1, h2, h3, p, label) {
+  overflow-wrap: anywhere;
+}
+@media (min-width: 640px) {
+  .tp-b2-container { padding: 2rem 1.5rem 4rem; }
+  .tp-b2-form { padding: 0 2rem 2rem; }
+  .tp-b2-intro { margin: 0 -2rem 1.75rem; padding: 2rem; }
+  .tp-b2-intro::after { left: 2rem; }
+  .tp-b2-actions { margin: 1.75rem -2rem -2rem; padding: 1.5rem 2rem; }
+}
+@media (min-width: 960px) {
+  .tp-b2-grid { grid-template-columns: minmax(0, 1fr) 20rem; }
+  .tp-b2-summary { position: sticky; top: 1.5rem; }
+}
+@media (max-width: 639px) {
+  .tp-b2-container { padding: 1.1rem .75rem 2.5rem; }
+  .tp-b2-form { padding: 0 1rem 1rem; }
+  .tp-b2-intro { margin: 0 -1rem 1rem; padding: 1.3rem 1rem; }
+  .tp-b2-intro::after { left: 1rem; }
+  .tp-b2-actions { margin: 1.5rem -1rem -1rem; padding: 1rem; }
+  .tp-b2-page .tp-b2-section > .flex:first-child > button { white-space: normal; }
+  .tp-b2-accordion > button { align-items: flex-start; gap: .5rem; }
+  .tp-b2-accordion > button > .flex { flex-direction: column; align-items: flex-end; }
+  .tp-b2-accordion > button > .flex > div { text-align: right; }
+  .tp-b2-summary { padding: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tp-b2-page * { transition: none; scroll-behavior: auto; }
+}
+
+
+/* Income paired financial fields: top-aligned controls, naturally stacked on mobile.
+   MoneyInput helper text now follows its input, so it never pushes a
+   neighboring paired input lower. Kept within the existing Fresh Teal scope. */
+.tp-income .tp-income-financial-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+.tp-income .tp-income-financial-row > * {
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .tp-income .tp-income-financial-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

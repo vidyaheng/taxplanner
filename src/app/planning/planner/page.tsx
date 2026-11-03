@@ -596,7 +596,7 @@ export default function PlannerPage() {
             </div>
 
             <div className="mt-2 text-2xl font-bold leading-tight sm:text-4xl">
-              ประหยัดภาษีสุทธิเพิ่ม{" "}
+              ภาษีที่คาดว่าจะประหยัดเพิ่ม{" "}
               {formatNumber(
                 additionalTaxSaving
               )}{" "}
@@ -615,9 +615,7 @@ export default function PlannerPage() {
         </>
       ) : (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800">
-          ยังไม่สามารถเปรียบเทียบผลการวางแผนได้
-          เนื่องจากข้อมูลสำหรับคำนวณภาษีบางรายการยังไม่สมบูรณ์
-          กรุณาตรวจสอบคำเตือนด้านบนก่อน
+          ยังเปรียบเทียบผลไม่ได้ กรุณากรอกข้อมูลที่ขาดตามคำเตือนด้านบน
         </div>
       )}
 
@@ -738,7 +736,7 @@ export default function PlannerPage() {
                 <div className="mt-5 rounded-2xl bg-blue-50 p-4">
 
                   <div className="text-sm text-blue-700">
-                    ประหยัดภาษีสุทธิเพิ่ม
+                    ภาษีที่คาดว่าจะประหยัดเพิ่ม
                   </div>
 
                   <div className="mt-1 whitespace-nowrap text-2xl font-bold tabular-nums text-blue-700 sm:text-3xl">
