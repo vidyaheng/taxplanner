@@ -79,14 +79,51 @@ describe("UX B2 presentation contracts", () => {
     expect(styles).toContain("outline: 3px solid #b42342;");
   });
 
-  it("keeps the Family warning conditional, and leaves Deductions warning outside its hero", () => {
-    expect(family).toMatch(/taxResult\.isComplete \? \([\s\S]*?\) : \(\s*<div className="tp-b2-summary-warning mt-3 text-sm leading-6"/);
+  it("keeps the Indigo hero compact on incomplete Family data and its full warning below", () => {
+    const heroStart = family.indexOf('<div className="tp-b2-summary-hero');
+    const warningStart = family.indexOf('<div role="alert" className="tp-b2-summary-warning');
+    const breakdownStart = family.indexOf('<div className="mt-5 rounded-2xl border border-slate-200 p-4">', heroStart);
+    expect(heroStart).toBeGreaterThan(-1);
+    expect(warningStart).toBeGreaterThan(heroStart);
+    expect(breakdownStart).toBeGreaterThan(warningStart);
+    const hero = family.slice(heroStart, warningStart);
+    expect(hero).toContain("taxResult.isComplete ? (");
+    expect(hero).toMatch(/\) : \(\s*<span className="tp-b2-summary-status mt-2 inline-flex text-sm font-medium">/);
+    expect(hero).toContain("รอข้อมูลครบถ้วน");
+    expect(hero).not.toContain("tp-b2-summary-warning");
+    expect(hero).not.toContain("ยังไม่สามารถคำนวณภาษีได้ครบถ้วน");
+    expect(family.slice(heroStart, breakdownStart)).toMatch(
+      /!taxResult\.isComplete && \(\s*<div role="alert" className="tp-b2-summary-warning mt-2 text-sm leading-5"/,
+    );
     expect(family).toContain("ยังไม่สามารถคำนวณภาษีได้ครบถ้วน");
-    expect(styles).toContain(".tp-family .tp-b2-summary-hero .tp-b2-summary-warning {");
+    expect(family).toContain("เนื่องจากมีข้อมูลบางรายการที่ยังไม่สมบูรณ์");
+    expect(family).toContain("กรุณาตรวจสอบคำเตือนด้านล่าง");
+    expect(styles).toContain(".tp-family .tp-b2-summary-hero .tp-b2-summary-status {");
+    expect(styles).toContain(".tp-family .tp-b2-summary > .tp-b2-summary-warning {");
     expect(styles).toContain("color: #6b4311;");
     expect(styles).toContain("background: #fff7e9;");
     expect(deductions).toContain("tp-b2-summary-hero");
     expect(deductions).toContain("border border-amber-200 bg-amber-50");
+  });
+
+  it("preserves the completed tax calculation presentation and detailed warning list", () => {
+    const heroStart = family.indexOf('<div className="tp-b2-summary-hero');
+    const warningStart = family.indexOf('<div role="alert" className="tp-b2-summary-warning');
+    const hero = family.slice(heroStart, warningStart);
+    expect(hero).toMatch(/taxResult\.isComplete \? \(\s*<>/);
+    expect(hero).toMatch(/formatNumber\(\s*taxResult\.taxBeforeCredits\s*\)/);
+    expect(hero).toMatch(/formatNumber\(\s*taxResult\.taxableIncome\s*\)/);
+    expect(hero).toContain("taxResult.marginalTaxRate *");
+    expect(family).toContain("taxResult.warnings.length > 0 && (");
+    expect(family).toContain("taxResult.warnings.map(");
+  });
+
+  it("keeps the moved Family warning compact and usable on narrow layouts", () => {
+    expect(styles).toContain("padding: .65rem .8rem;");
+    expect(styles).toContain("padding: .35rem .7rem;");
+    expect(styles).toContain("line-height: 1.5;");
+    expect(styles).not.toContain(".tp-family .tp-b2-summary-hero .tp-b2-summary-warning");
+    expect(family).toContain('className="tp-b2-summary-warning mt-2 text-sm leading-5"');
   });
 
   it("meets 4.5:1 source-color text contrast on all corrected surfaces", () => {

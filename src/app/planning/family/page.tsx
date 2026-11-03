@@ -2219,13 +2219,19 @@ const seniorAllocationRemaining =
                     </div>
                     </>
                 ) : (
-                    <div className="tp-b2-summary-warning mt-3 text-sm leading-6">
-                      ยังไม่สามารถคำนวณภาษีได้ครบถ้วน
-                      เนื่องจากมีข้อมูลบางรายการที่ยังไม่สมบูรณ์
-                      กรุณาตรวจสอบคำเตือนด้านล่าง
-                    </div>
+                    <span className="tp-b2-summary-status mt-2 inline-flex text-sm font-medium">
+                      รอข้อมูลครบถ้วน
+                    </span>
                 )}
-                </div>  
+                </div>
+
+            {!taxResult.isComplete && (
+              <div role="alert" className="tp-b2-summary-warning mt-2 text-sm leading-5">
+                ยังไม่สามารถคำนวณภาษีได้ครบถ้วน
+                เนื่องจากมีข้อมูลบางรายการที่ยังไม่สมบูรณ์
+                กรุณาตรวจสอบคำเตือนด้านล่าง
+              </div>
+            )}
 
             <div className="mt-5 rounded-2xl border border-slate-200 p-4">
 

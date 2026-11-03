@@ -137,3 +137,28 @@ an added confirmation. Recheck Family's three buttons, keyboard focus and
 mobile 390px overflow. Full 375/390/430/768/1440px browser matrix remains
 pending. Only accept actual screenshots from this commit's Preview.
 Draft PR #7 is not merged or deployed to Production.
+
+## Director Family Summary visual polish — 2026-11-03
+
+**Scope:** Presentation only. The previous pale-cream warning was visually
+disproportionate *inside* the dark Indigo Family tax-summary hero.
+
+- When `taxResult.isComplete === false`, the same JSX conditional now renders
+  a short neutral pill **รอข้อมูลครบถ้วน** inside the unchanged Indigo hero.
+- The existing full incomplete-tax warning text is displayed immediately below
+  the hero, on a compact cream surface with dark high-contrast text, using the
+  same `!taxResult.isComplete` condition. This is a relocation, **not**
+  suppression of the warning or change in eligibility/computation.
+- When `taxResult.isComplete === true`, the complete branch displaying
+  tax-before-credits, taxable income and marginal rate is byte-for-byte unchanged.
+- `taxResult.warnings` remains rendered separately after the preliminary
+  breakdown with its original condition and original text. No messages hidden.
+- The moved alert uses compact `mt-2` separation and .65rem/.8rem padding.
+  The neutral pill uses .35rem/.7rem padding. Existing B2 responsive rules
+  remain unchanged; actual mobile 390px browser verification is **PENDING**.
+
+Source regression checks cover conditional positions, complete-branch metrics,
+detailed warning retention and compact spacing. These are not screenshots.
+No tax logic, donation/social-security calculations, storage, access, CSS
+outside B2, dependency or Vercel configuration changes authorized.
+PR #7 remains Draft; do not merge, auto-merge or manually deploy Production.

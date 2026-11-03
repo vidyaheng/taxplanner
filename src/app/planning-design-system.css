@@ -397,13 +397,21 @@
 .tp-b2-summary-hero :where(.font-medium, .font-bold) {
   font-variant-numeric: tabular-nums;
 }
-/* Original incomplete-tax warning is legible inside the dark Indigo hero. */
-.tp-family .tp-b2-summary-hero .tp-b2-summary-warning {
+/* Neutral compact incomplete state inside Indigo; full warning sits below hero. */
+.tp-family .tp-b2-summary-hero .tp-b2-summary-status {
+  color: #f5f5ff;
+  background: #ffffff1a;
+  border: 1px solid #a8ace9;
+  border-radius: 999px;
+  padding: .35rem .7rem;
+  line-height: 1.5;
+}
+.tp-family .tp-b2-summary > .tp-b2-summary-warning {
   color: #6b4311;
   background: #fff7e9;
   border: 1px solid #eac58b;
-  border-radius: .75rem;
-  padding: .85rem 1rem;
+  border-radius: .7rem;
+  padding: .65rem .8rem;
 }
 
 .tp-b2-summary :where(.break-words, .tabular-nums) {
