@@ -4111,10 +4111,11 @@ function removeForeignBusinessIncome(
 
                                 <div className="mt-5">
                                   <label htmlFor={`income-field-3-${item.id}`} className="mb-2 block text-sm font-medium text-slate-700">
-                                    กลุ่มกิจการ
+                                    กลุ่มกิจการตามเกณฑ์หักค่าใช้จ่าย
                                   </label>
 
                                   <select id={`income-field-3-${item.id}`}
+                                    aria-describedby={`income-field-3-category-help-${item.id}`}
                                     value={
                                       item.category ?? ""
                                     }
@@ -4143,7 +4144,7 @@ function removeForeignBusinessIncome(
                                     className="h-14 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                                   >
                                     <option value="">
-                                      เลือกกลุ่มกิจการ
+                                      เลือกกลุ่มกิจการตามเกณฑ์
                                     </option>
 
                                     <option value="standard60">
@@ -4158,6 +4159,9 @@ function removeForeignBusinessIncome(
                                       กิจการที่หักค่าใช้จ่ายตามจริงเท่านั้น
                                     </option>
                                   </select>
+                                  <BusinessExpenseCategoryGuidance
+                                    descriptionId={`income-field-3-category-help-${item.id}`}
+                                  />
 
                                   {taxability?.isComplete &&
                                     taxability.isTaxable &&
@@ -4652,7 +4656,7 @@ function removeForeignBusinessIncome(
                           </div>
                         </div>                  
 
-                        <div className="mt-5 grid gap-5 md:grid-cols-2">
+                        <div className="tp-income-financial-row mt-5">
                           <MoneyInput
                             label="รายได้ทั้งปี"
                             value={
@@ -4752,7 +4756,7 @@ function removeForeignBusinessIncome(
                           </div>
                         </div>
 
-                        <div className="mt-5 grid gap-5 md:grid-cols-2">
+                        <div className="tp-income-financial-row mt-5">
                           <MoneyInput
                             label="รายได้ทั้งปี"
                             value={
@@ -5668,10 +5672,11 @@ function removeForeignBusinessIncome(
 
                                       <div>
                                         <label htmlFor={`income-field-7-${item.id}`} className="mb-2 block text-sm font-medium text-slate-700">
-                                          กลุ่มกิจการ
+                                          กลุ่มกิจการตามเกณฑ์หักค่าใช้จ่าย
                                         </label>
 
                                         <select id={`income-field-7-${item.id}`}
+                                          aria-describedby={`income-field-7-category-help-${item.id}`}
                                           value={
                                             item.category ?? ""
                                           }
@@ -5700,7 +5705,7 @@ function removeForeignBusinessIncome(
                                           className="h-14 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                                         >
                                           <option value="">
-                                            เลือกกลุ่มกิจการ
+                                            เลือกกลุ่มกิจการตามเกณฑ์
                                           </option>
 
                                           <option value="standard60">
@@ -5715,6 +5720,9 @@ function removeForeignBusinessIncome(
                                             กิจการที่หักค่าใช้จ่ายตามจริงเท่านั้น
                                           </option>
                                         </select>
+                                        <BusinessExpenseCategoryGuidance
+                                          descriptionId={`income-field-7-category-help-${item.id}`}
+                                        />
                                       </div>
                                     </div>
 
@@ -6145,12 +6153,6 @@ function MoneyInput({
         {label}
       </label>
 
-      {description && (
-        <p id={`${inputId}-hint`} className="mb-2 text-sm text-slate-400">
-          {description}
-        </p>
-      )}
-
       <div className="relative">
         <input
           id={inputId}
@@ -6176,6 +6178,65 @@ function MoneyInput({
           บาท
         </span>
       </div>
+
+      {description && (
+        <p id={`${inputId}-hint`} className="mt-2 text-sm leading-5 text-slate-500">
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BusinessExpenseCategoryGuidance({
+  descriptionId,
+}: {
+  descriptionId: string;
+}) {
+  return (
+    <div className="mt-2 min-w-0 text-xs leading-5 text-slate-600">
+      <p id={descriptionId}>
+        เลือกกลุ่มตามเกณฑ์หักค่าใช้จ่ายของกิจการจริง ไม่ใช่รายชื่อกิจการทั้งหมด
+      </p>
+      <details className="mt-1 min-w-0 max-w-full">
+        <summary className="inline-flex min-h-9 max-w-full cursor-pointer items-center rounded-md px-1 font-medium text-teal-800 underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-800">
+          ดูตัวอย่างกิจการและเงื่อนไข
+        </summary>
+        <div className="mt-1 space-y-2 rounded-lg border border-teal-100 bg-teal-50/60 p-3 text-slate-700">
+          <p>
+            <strong>กลุ่มหักเหมา 60%:</strong> เช่น ร้านขายของชำ (ซื้อมาขายไป)
+            ที่เข้าเกณฑ์ตามกฎหมาย ไม่ใช่ทุกกิจการหักเหมา 60% ได้
+          </p>
+          <p>
+            <strong>กลุ่มผู้แสดง:</strong> เช่น นักแสดงละคร นักร้อง นักดนตรี
+            และนักกีฬาอาชีพ มีอัตราหักเหมาสำหรับผู้แสดงต่างหาก
+            ไม่ใช่อัตรา 60% ตลอดทั้งจำนวน
+          </p>
+          <p>
+            <strong>กลุ่มหักตามจริงเท่านั้น:</strong> กิจการที่ไม่เข้าเกณฑ์
+            ของรายการที่กฎหมายกำหนดให้หักเหมา
+            ต้องมีหลักฐานค่าใช้จ่ายที่หักได้
+          </p>
+          <p>
+            กิจการที่ไม่แน่ใจควรตรวจสอบประเภทเงินจริงกับกรมสรรพากร
+            ก่อนเลือกกลุ่ม ระบบไม่ได้จำแนกกิจการให้อัตโนมัติ
+          </p>
+          <p className="break-words">
+            อ้างอิง:{" "}
+            <a href="https://www.rd.go.th/2375.html" className="font-medium text-teal-800 underline underline-offset-2">
+              พระราชกฤษฎีกาฯ ฉบับที่ 11
+            </a>
+            {" · "}
+            <a href="https://www.rd.go.th/62149.html" className="font-medium text-teal-800 underline underline-offset-2">
+              คำอธิบายกรมสรรพากร มาตรา 40(8)
+            </a>
+            {" · "}
+            <a href="https://www.rd.go.th/61549.html" className="font-medium text-teal-800 underline underline-offset-2">
+              ตัวอย่างร้านขายของชำ
+            </a>
+          </p>
+        </div>
+      </details>
     </div>
   );
 }
