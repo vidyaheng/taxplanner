@@ -2742,8 +2742,8 @@ function removeForeignBusinessIncome(
                         </div>
 
                         <p className="mt-1 text-sm leading-6 text-slate-500">
-                          เงินได้ที่มีลักษณะเป็นเงินปีหรือเงินรายปี
-                          ที่ได้รับจากแหล่งเงินได้ในต่างประเทศ
+                          เช่น เงินรายปีตามพินัยกรรมหรือคำพิพากษาของศาล
+                          ที่เป็นเงินได้จากต่างประเทศ (ไม่รวมบำนาญทุกประเภทโดยอัตโนมัติ)
                         </p>
                       </div>
 
@@ -3656,14 +3656,14 @@ function removeForeignBusinessIncome(
                                     </option>
 
                                     <option value="other">
-                                      วิชาชีพอื่น
+                                      กฎหมาย / วิศวกรรม / สถาปัตยกรรม / การบัญชี
                                     </option>
                                   </select>
 
                                   {item.professionalType ===
                                     "other" && (
                                     <p className="mt-2 text-xs leading-5 text-slate-500">
-                                      เช่น กฎหมาย วิศวกรรม
+                                      กลุ่มเดียวกัน: กฎหมาย วิศวกรรม
                                       สถาปัตยกรรม และการบัญชี
                                     </p>
                                   )}
@@ -4636,88 +4636,62 @@ function removeForeignBusinessIncome(
                         item.id !== "professional" &&
                         item.id !== "business"
                     )
-                    .map(
-                      (item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-2xl border border-slate-200 p-4 sm:p-5"
-                      >
-                        <div className="grid gap-4 md:grid-cols-[1fr_220px] md:items-center">
-
-                          <div>
-                            <div className="font-medium text-slate-800">
-                              {
-                                item.label
-                              }
+                    .map((item) => (
+                      <div key={item.id} className="rounded-2xl border border-slate-200 p-4 sm:p-5">
+                        {item.id === "commission" ? (
+                          <>
+                            <h3 className="font-semibold text-slate-900">
+                              ค่านายหน้า / ค่าตอบแทน 40(2)
+                            </h3>
+                            <p className="mt-1 text-sm leading-6 text-slate-500">
+                              {item.description}
+                            </p>
+                            <div className="tp-income-financial-row mt-4">
+                              <MoneyInput
+                                label="รายได้ค่านายหน้า / ค่าตอบแทนทั้งปี"
+                                value={income.otherIncome[item.id] ?? 0}
+                                onChange={(value) => setOtherIncome(item.id, value)}
+                              />
+                              <MoneyInput
+                                label="ภาษีหัก ณ ที่จ่ายจากเงินได้ 40(2)"
+                                description="กรอกยอดภาษีที่ถูกหักจริงตามหนังสือรับรองหรือข้อมูลจากผู้จ่ายเงิน"
+                                value={income.section40_2TaxWithheld ?? 0}
+                                onChange={(value) =>
+                                  setIncome({ section40_2TaxWithheld: value })
+                                }
+                              />
                             </div>
-
-                            <div className="mt-1 text-sm text-slate-400">
-                              {
-                                item.description
-                              }
+                          </>
+                        ) : (
+                          <div className="grid gap-4 md:grid-cols-[1fr_220px] md:items-center">
+                            <div>
+                              <div className="font-medium text-slate-800">{item.label}</div>
+                              <div className="mt-1 text-sm text-slate-400">{item.description}</div>
                             </div>
-                          </div>
-
-                          <div className="relative">
-                            <input
-                              aria-label={item.label}
-                              inputMode="numeric"
-                              value={
-                                income
-                                  .otherIncome[
-                                  item.id
-                                ]
-                                  ? formatNumber(
-                                      income
-                                        .otherIncome[
-                                        item
-                                          .id
-                                      ]
-                                    )
-                                  : ""
-                              }
-                              onChange={(
-                                e
-                              ) =>
-                                setOtherIncome(
-                                  item.id,
-                                  parseNumber(
-                                    e
-                                      .target
-                                      .value
-                                  )
-                                )
-                              }
-                              placeholder="0"
-                              className="h-12 w-full rounded-xl border border-slate-300 px-4 pr-16 text-right text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                            />
-
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                              บาท
-                            </span>
-                          </div>
-                        </div>
-
-                        {item.id === "commission" && (
-                          <div className="mt-4 border-t border-slate-100 pt-4">
-                            <MoneyInput
-                              label="ภาษีหัก ณ ที่จ่ายจากเงินได้ 40(2)"
-                              description="กรอกยอดภาษีที่ถูกหักจริงตามหนังสือรับรองหรือข้อมูลจากผู้จ่ายเงิน"
-                              value={
-                                income.section40_2TaxWithheld ?? 0
-                              }
-                              onChange={(value) =>
-                                setIncome({
-                                  section40_2TaxWithheld:
-                                    value,
-                                })
-                              }
-                            />
+                            <div className="relative">
+                              <input
+                                aria-label={item.label}
+                                inputMode="numeric"
+                                value={
+                                  income.otherIncome[item.id]
+                                    ? formatNumber(income.otherIncome[item.id])
+                                    : ""
+                                }
+                                onChange={(e) =>
+                                  setOtherIncome(item.id, parseNumber(e.target.value))
+                                }
+                                placeholder="0"
+                                className="h-12 w-full rounded-xl border border-slate-300 px-4 pr-16 text-right text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                              />
+                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                                บาท
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>
-                    )
-                  )}
+                    ))
+                  }
 
                       <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4 sm:p-5">
                         <div>
@@ -4827,7 +4801,7 @@ function removeForeignBusinessIncome(
                           </div>
 
                           <div className="mt-1 text-sm leading-6 text-slate-500">
-                            เงินได้ที่มีลักษณะเป็นเงินรายปีตามมาตรา 40(3)
+                            เช่น เงินรายปีที่ได้รับตามพินัยกรรม หรือคำพิพากษาของศาลตามมาตรา 40(3) (ไม่ใช่เงินบำนาญทุกประเภท)
                           </div>
                         </div>
 
@@ -5393,7 +5367,7 @@ function removeForeignBusinessIncome(
                                 </option>
 
                                 <option value="other">
-                                  วิชาชีพอื่น
+                                  กฎหมาย / วิศวกรรม / สถาปัตยกรรม / การบัญชี
                                 </option>
                               </select>
 
@@ -5401,7 +5375,7 @@ function removeForeignBusinessIncome(
                                 ?.professionalType ===
                                 "other" && (
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
-                                  เช่น กฎหมาย วิศวกรรม
+                                  กลุ่มเดียวกัน: กฎหมาย วิศวกรรม
                                   สถาปัตยกรรม และการบัญชี
                                 </p>
                               )}
@@ -6298,15 +6272,15 @@ function BusinessExpenseCategoryGuidance({
           </p>
           <p className="break-words">
             อ้างอิง:{" "}
-            <a href="https://www.rd.go.th/2375.html" className="font-medium text-teal-800 underline underline-offset-2">
+            <a href="https://www.rd.go.th/2375.html" target="_blank" rel="noopener noreferrer" className="font-medium text-teal-800 underline underline-offset-2">
               พระราชกฤษฎีกาฯ ฉบับที่ 11
             </a>
             {" · "}
-            <a href="https://www.rd.go.th/62149.html" className="font-medium text-teal-800 underline underline-offset-2">
+            <a href="https://www.rd.go.th/62149.html" target="_blank" rel="noopener noreferrer" className="font-medium text-teal-800 underline underline-offset-2">
               คำอธิบายกรมสรรพากร มาตรา 40(8)
             </a>
             {" · "}
-            <a href="https://www.rd.go.th/61549.html" className="font-medium text-teal-800 underline underline-offset-2">
+            <a href="https://www.rd.go.th/61549.html" target="_blank" rel="noopener noreferrer" className="font-medium text-teal-800 underline underline-offset-2">
               ตัวอย่างร้านขายของชำ
             </a>
           </p>
