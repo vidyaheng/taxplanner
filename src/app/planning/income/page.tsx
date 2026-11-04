@@ -2742,8 +2742,8 @@ function removeForeignBusinessIncome(
                         </div>
 
                         <p className="mt-1 text-sm leading-6 text-slate-500">
-                          เงินได้ที่มีลักษณะเป็นเงินปีหรือเงินรายปี
-                          ที่ได้รับจากแหล่งเงินได้ในต่างประเทศ
+                          เช่น เงินรายปีตามพินัยกรรมหรือคำพิพากษาของศาล
+                          ที่เป็นเงินได้จากต่างประเทศ (ไม่รวมบำนาญทุกประเภทโดยอัตโนมัติ)
                         </p>
                       </div>
 
@@ -3641,14 +3641,14 @@ function removeForeignBusinessIncome(
                                         }
                                       )
                                     }
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                                    className="min-w-0 max-w-full w-full truncate rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 sm:px-4 sm:text-base"
                                   >
                                     <option value="">
                                       เลือกประเภทวิชาชีพ
                                     </option>
 
                                     <option value="medical">
-                                      การประกอบโรคศิลป
+                                      การประกอบโรคศิลป (เช่น แพทย์ประกอบวิชาชีพอิสระ)
                                     </option>
 
                                     <option value="fineArts">
@@ -3656,14 +3656,20 @@ function removeForeignBusinessIncome(
                                     </option>
 
                                     <option value="other">
-                                      วิชาชีพอื่น
+                                      กฎหมาย / วิศวกรรม / สถาปัตยกรรม / การบัญชี
                                     </option>
                                   </select>
+
+                                  {item.professionalType === "medical" && (
+                                    <p className="mt-2 max-w-full break-words text-xs leading-5 text-slate-600">
+                                      การประกอบโรคศิลปที่เข้าเกณฑ์คือรายได้จากการประกอบวิชาชีพทางการแพทย์อย่างอิสระ ไม่ใช่เงินเดือนแพทย์จากนายจ้างโดยอัตโนมัติ
+                                    </p>
+                                  )}
 
                                   {item.professionalType ===
                                     "other" && (
                                     <p className="mt-2 text-xs leading-5 text-slate-500">
-                                      เช่น กฎหมาย วิศวกรรม
+                                      กลุ่มเดียวกัน: กฎหมาย วิศวกรรม
                                       สถาปัตยกรรม และการบัญชี
                                     </p>
                                   )}
@@ -4519,6 +4525,28 @@ function removeForeignBusinessIncome(
                   </div>
               )}
 
+              {(income.otherIncome.other ?? 0) !== 0 && (
+                <div
+                  role="alert"
+                  className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950 sm:p-5"
+                >
+                  <h3 className="font-semibold">
+                    พบข้อมูลรายได้ที่ยังไม่ได้จัดประเภทจากการบันทึกครั้งก่อน
+                  </h3>
+                  <p className="mt-1">
+                    พบยอดเดิม <strong>{formatNumber(income.otherIncome.other ?? 0)} บาท</strong>
+                    {" "}ซึ่งไม่สามารถจัดประเภทหรือคำนวณภาษีโดยอัตโนมัติได้
+                  </p>
+                  <p className="mt-2">
+                    ระบบยังเก็บยอดเดิมไว้โดยไม่ลบหรือย้ายไปมาตรา 40 ใด
+                    กรุณาตรวจสอบเอกสารรายได้และกรอกยอดในหมวดเงินได้ 40(1)–40(8)
+                    ที่ตรงตามกฎหมาย การกรอกยอดใหม่ไม่ทำให้ยอดเก่าหายไป
+                    และเมื่อยอดนี้ยังอยู่ในข้อมูลเดิม ผลภาษีอาจยังไม่สมบูรณ์
+                    ทั้งนี้การรีเซ็ตจะล้างข้อมูลที่บันทึกทั้งหมด ไม่ใช่เฉพาะยอดนี้
+                  </p>
+                </div>
+              )}
+
               {income.hasOtherIncome && (
                 <div className="mt-6 space-y-4">
 
@@ -4630,94 +4658,33 @@ function removeForeignBusinessIncome(
                   )}
 
                   {otherIncomeDefinitions
-                    .filter(
-                      (item) =>
-                        item.id !== "rent" &&
-                        item.id !== "professional" &&
-                        item.id !== "business"
-                    )
-                    .map(
-                      (item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-2xl border border-slate-200 p-4 sm:p-5"
-                      >
-                        <div className="grid gap-4 md:grid-cols-[1fr_220px] md:items-center">
-
-                          <div>
-                            <div className="font-medium text-slate-800">
-                              {
-                                item.label
-                              }
-                            </div>
-
-                            <div className="mt-1 text-sm text-slate-400">
-                              {
-                                item.description
-                              }
-                            </div>
-                          </div>
-
-                          <div className="relative">
-                            <input
-                              aria-label={item.label}
-                              inputMode="numeric"
-                              value={
-                                income
-                                  .otherIncome[
-                                  item.id
-                                ]
-                                  ? formatNumber(
-                                      income
-                                        .otherIncome[
-                                        item
-                                          .id
-                                      ]
-                                    )
-                                  : ""
-                              }
-                              onChange={(
-                                e
-                              ) =>
-                                setOtherIncome(
-                                  item.id,
-                                  parseNumber(
-                                    e
-                                      .target
-                                      .value
-                                  )
-                                )
-                              }
-                              placeholder="0"
-                              className="h-12 w-full rounded-xl border border-slate-300 px-4 pr-16 text-right text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                            />
-
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                              บาท
-                            </span>
-                          </div>
+                    .filter((item) => item.id === "commission")
+                    .map((item) => (
+                      <div key={item.id} className="rounded-2xl border border-slate-200 p-4 sm:p-5">
+                        <h3 className="font-semibold text-slate-900">
+                          ค่านายหน้า / ค่าตอบแทน 40(2)
+                        </h3>
+                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                          {item.description}
+                        </p>
+                        <div className="tp-income-financial-row mt-4">
+                          <MoneyInput
+                            label="รายได้ค่านายหน้า / ค่าตอบแทนทั้งปี"
+                            value={income.otherIncome[item.id] ?? 0}
+                            onChange={(value) => setOtherIncome(item.id, value)}
+                          />
+                          <MoneyInput
+                            label="ภาษีหัก ณ ที่จ่ายจากเงินได้ 40(2)"
+                            description="กรอกยอดภาษีที่ถูกหักจริงตามหนังสือรับรองหรือข้อมูลจากผู้จ่ายเงิน"
+                            value={income.section40_2TaxWithheld ?? 0}
+                            onChange={(value) =>
+                              setIncome({ section40_2TaxWithheld: value })
+                            }
+                          />
                         </div>
-
-                        {item.id === "commission" && (
-                          <div className="mt-4 border-t border-slate-100 pt-4">
-                            <MoneyInput
-                              label="ภาษีหัก ณ ที่จ่ายจากเงินได้ 40(2)"
-                              description="กรอกยอดภาษีที่ถูกหักจริงตามหนังสือรับรองหรือข้อมูลจากผู้จ่ายเงิน"
-                              value={
-                                income.section40_2TaxWithheld ?? 0
-                              }
-                              onChange={(value) =>
-                                setIncome({
-                                  section40_2TaxWithheld:
-                                    value,
-                                })
-                              }
-                            />
-                          </div>
-                        )}
                       </div>
-                    )
-                  )}
+                    ))
+                  }
 
                       <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4 sm:p-5">
                         <div>
@@ -4782,6 +4749,10 @@ function removeForeignBusinessIncome(
                               <div className="font-medium">
                                 หักค่าใช้จ่ายแบบเหมา
                               </div>
+                              <div className="mt-1 text-xs leading-5 opacity-75">
+                                อัตรา{" "}
+                                {(TAX_RULES_2569.otherIncomeExpenses.section40_3Rights.standardRate * 100).toFixed(0)}%
+                              </div>
                             </button>
 
                             <button aria-pressed={rightsIncome?.expenseMethod === "actual"}
@@ -4799,6 +4770,9 @@ function removeForeignBusinessIncome(
                             >
                               <div className="font-medium">
                                 หักค่าใช้จ่ายตามจริง
+                              </div>
+                              <div className="mt-1 text-xs leading-5 opacity-75">
+                                ใช้ค่าใช้จ่ายที่เกี่ยวข้องและมีหลักฐาน
                               </div>
                             </button>
                           </div>
@@ -4827,7 +4801,7 @@ function removeForeignBusinessIncome(
                           </div>
 
                           <div className="mt-1 text-sm leading-6 text-slate-500">
-                            เงินได้ที่มีลักษณะเป็นเงินรายปีตามมาตรา 40(3)
+                            เช่น เงินรายปีที่ได้รับตามพินัยกรรม หรือคำพิพากษาของศาลตามมาตรา 40(3) (ไม่ใช่เงินบำนาญทุกประเภท)
                           </div>
                         </div>
 
@@ -5378,14 +5352,14 @@ function removeForeignBusinessIncome(
                                             .value as Section40_6ProfessionalIncomeData["professionalType"]),
                                   })
                                 }
-                                className="h-14 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                                className="h-14 min-w-0 max-w-full w-full truncate rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:px-4 sm:text-base"
                               >
                                 <option value="">
                                   เลือกประเภทวิชาชีพ
                                 </option>
 
                                 <option value="medical">
-                                  การประกอบโรคศิลป
+                                  การประกอบโรคศิลป (เช่น แพทย์ประกอบวิชาชีพอิสระ)
                                 </option>
 
                                 <option value="fineArts">
@@ -5393,15 +5367,21 @@ function removeForeignBusinessIncome(
                                 </option>
 
                                 <option value="other">
-                                  วิชาชีพอื่น
+                                  กฎหมาย / วิศวกรรม / สถาปัตยกรรม / การบัญชี
                                 </option>
                               </select>
+
+                                  {professionalIncome?.professionalType === "medical" && (
+                                    <p className="mt-2 max-w-full break-words text-xs leading-5 text-slate-600">
+                                      การประกอบโรคศิลปที่เข้าเกณฑ์คือรายได้จากการประกอบวิชาชีพทางการแพทย์อย่างอิสระ ไม่ใช่เงินเดือนแพทย์จากนายจ้างโดยอัตโนมัติ
+                                    </p>
+                                  )}
 
                               {professionalIncome
                                 ?.professionalType ===
                                 "other" && (
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
-                                  เช่น กฎหมาย วิศวกรรม
+                                  กลุ่มเดียวกัน: กฎหมาย วิศวกรรม
                                   สถาปัตยกรรม และการบัญชี
                                 </p>
                               )}
@@ -6298,15 +6278,15 @@ function BusinessExpenseCategoryGuidance({
           </p>
           <p className="break-words">
             อ้างอิง:{" "}
-            <a href="https://www.rd.go.th/2375.html" className="font-medium text-teal-800 underline underline-offset-2">
+            <a href="https://www.rd.go.th/2375.html" target="_blank" rel="noopener noreferrer" className="font-medium text-teal-800 underline underline-offset-2">
               พระราชกฤษฎีกาฯ ฉบับที่ 11
             </a>
             {" · "}
-            <a href="https://www.rd.go.th/62149.html" className="font-medium text-teal-800 underline underline-offset-2">
+            <a href="https://www.rd.go.th/62149.html" target="_blank" rel="noopener noreferrer" className="font-medium text-teal-800 underline underline-offset-2">
               คำอธิบายกรมสรรพากร มาตรา 40(8)
             </a>
             {" · "}
-            <a href="https://www.rd.go.th/61549.html" className="font-medium text-teal-800 underline underline-offset-2">
+            <a href="https://www.rd.go.th/61549.html" target="_blank" rel="noopener noreferrer" className="font-medium text-teal-800 underline underline-offset-2">
               ตัวอย่างร้านขายของชำ
             </a>
           </p>

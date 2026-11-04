@@ -55,7 +55,7 @@ const planningFields: {
     key: "pensionInsurance",
     label: "ประกันบำนาญเพิ่ม",
     description:
-      "เบี้ยประกันบำนาญที่กำลังพิจารณาจ่ายเพิ่ม",
+      "เบี้ยประกันบำนาญที่กำลังพิจารณาซื้อเพิ่ม",
   },
   {
     key: "rmf",
