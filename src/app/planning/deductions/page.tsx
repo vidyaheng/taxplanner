@@ -1311,15 +1311,6 @@ const donationPlanningChanged =
                                     <div className="mt-1 text-sm leading-5 text-slate-500">
                                       เพิ่มกรมธรรม์แยกตามบิดา / มารดา
                                     </div>
-                                    <details className="mt-1 text-sm text-slate-600">
-                                      <summary className="inline-flex min-h-8 cursor-pointer items-center rounded-md px-1 font-medium text-blue-700 underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700">
-                                        ดูเงื่อนไข
-                                      </summary>
-                                      <p className="mt-1 max-w-full break-words leading-6">
-                                        เพิ่มแยกตามกรมธรรม์และบิดา / มารดา
-                                        เพื่อให้ระบบตรวจสิทธิและกรณีร่วมจ่ายได้ถูกต้อง
-                                      </p>
-                                    </details>
                                   </div>
 
                                   {deductions
