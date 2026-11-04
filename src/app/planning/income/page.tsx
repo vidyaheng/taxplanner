@@ -16,6 +16,8 @@ import PlanningStepper
 
 import { TAX_RULES_2569 } from "@/tax-rules/2569";
 
+import { estimateSection40_1Withholding } from "@/lib/tax/withholding-estimator";
+
 import {
   aggregateForeignIncome,
 } from "@/lib/tax/foreign-income-aggregate";
@@ -1533,6 +1535,21 @@ function removeForeignBusinessIncome(
   const annualSalary =
     income.monthlySalary * 12;
 
+  // Read-only illustration derived from existing Income/Deductions state.
+  // It never writes section40_1TaxWithheld or any other financial value.
+  const withholdingEstimate =
+    state.taxYear === TAX_RULES_2569.taxYear
+      ? estimateSection40_1Withholding({
+          taxYear: state.taxYear,
+          income: {
+            monthlySalary: income.monthlySalary,
+            annualBonus: income.annualBonus,
+            otherEmploymentIncome: income.otherEmploymentIncome,
+          },
+          annualSocialSecurityPaid: state.deductions.socialSecurity,
+        })
+      : null;
+
   const legacyRentIncome =
     income.hasOtherIncome
       ? Math.max(
@@ -1940,6 +1957,64 @@ function removeForeignBusinessIncome(
                   }
                 />
               </div>
+
+              {withholdingEstimate && (
+                <div className="mt-3 rounded-xl border border-teal-100 bg-teal-50/70 p-3 text-sm text-slate-700">
+                  <div className="font-semibold text-teal-900">
+                    ภาษีหัก ณ ที่จ่ายโดยประมาณ
+                  </div>
+
+                  {withholdingEstimate.hasEmploymentIncome ? (
+                    <div className="mt-1 break-words font-semibold text-slate-900">
+                      {formatNumber(Math.round(withholdingEstimate.estimatedAnnualTax))} บาท/ปี
+                      <span className="font-normal text-slate-600">
+                        {" · "}เฉลี่ย {formatNumber(Math.round(withholdingEstimate.illustrativeMonthlyAverage))} บาท/เดือน
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-600">
+                      กรอกเงินเดือน โบนัส หรือรายได้งานประจำเพื่อดูประมาณการ
+                    </p>
+                  )}
+
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    คำนวณคร่าว ๆ จากรายได้ที่กรอกไว้ ยอดจริงอาจต่างจากที่บริษัทหัก
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    {income.monthlySalary > 0 && "สมมติเงินเดือนครบ 12 เดือน · "}
+                    {withholdingEstimate.socialSecuritySource === "excluded"
+                      ? "ยังไม่หักประกันสังคม (ไม่มีข้อมูลยอดจ่ายจริง)"
+                      : "หักประกันสังคมตามยอดที่กรอกไว้"}
+                  </p>
+
+                  <details className="mt-2 text-xs text-slate-700">
+                    <summary className="inline-flex min-h-8 cursor-pointer items-center rounded-md px-1 font-medium text-teal-800 underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-800">
+                      ดูวิธีประมาณการ
+                    </summary>
+                    <div className="mt-1 space-y-1 border-t border-teal-100 pt-2 leading-5">
+                      <p>
+                        เงินเดือน {formatNumber(income.monthlySalary)} บาท/เดือน × {withholdingEstimate.salaryMonthsUsed} เดือน
+                        รวมโบนัสและรายได้งานประจำอื่นที่กรอกเป็นยอดทั้งปีเพียงครั้งเดียว
+                      </p>
+                      <p>
+                        รายได้ 40(1) ประมาณ {formatNumber(withholdingEstimate.annualEmploymentIncome)} บาท
+                        หักค่าใช้จ่าย 50% (เพดานร่วม 40(1)/40(2) ไม่เกิน 100,000 บาท)
+                        และค่าลดหย่อนส่วนตัว 60,000 บาท
+                      </p>
+                      <p>
+                        {withholdingEstimate.socialSecuritySource === "recorded"
+                          ? `ใช้ยอดประกันสังคมที่กรอกไว้ โดยหักได้สูงสุด ${formatNumber(TAX_RULES_2569.deductions.general.socialSecurityMax)} บาท/ปี`
+                          : "ไม่สมมติว่ามีประกันสังคม ม.33 และไม่หักรายการนี้ถ้าไม่มีข้อมูลที่จ่ายจริง"}
+                      </p>
+                      <p>
+                        คิดภาษีตามขั้นอัตราปี 2569 แล้วหาร 12 เพื่อแสดงค่าเฉลี่ย
+                        ไม่ใช่จำนวนที่บริษัทต้องหักทุกงวด
+                        ยังไม่รวมสิทธิอื่น รายได้ 40(2) หรือการปรับภาษีเงินเดือนระหว่างปี
+                      </p>
+                    </div>
+                  </details>
+                </div>
+              )}
 
               {annualSalary > 0 && (
                 <div className="tp-alert tp-alert-info mt-4">
