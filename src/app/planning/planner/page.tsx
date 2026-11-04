@@ -23,6 +23,9 @@ import {
   calculatePlanningUsageDetails,
 } from "@/lib/tax/scenarios";
 
+import type { DeductionCapacityView, PensionCapacitySplit } from "@/lib/ui/deduction-capacity";
+import { getCapacityDisplay, getDeductionCapacityView, getPensionCapacitySplit } from "@/lib/ui/deduction-capacity";
+
 import {
   PlanningData,
   PlanningLimitReason,
@@ -347,6 +350,28 @@ export default function PlannerPage() {
         })
     );
 
+  // Both capacities are scenario probes using the unchanged Tax Engine.
+  // A capacity is a single-category opportunity, not an additive statutory cap.
+  const capacityAfterPlanning = totalPlannedPayment === 0
+    ? planningCapacity
+    : calculatePlanningCapacity(
+      plannedDeductions,
+      (deductions) =>
+        calculateTax({
+          taxYear: state.taxYear,
+          income: state.income,
+          family: state.family,
+          deductions,
+        })
+    );
+
+  const pensionSplit = getPensionCapacitySplit(
+    currentResult,
+    plannedResult,
+    planningCapacity,
+    capacityAfterPlanning
+  );
+
   /*
   * สิทธิของรายการใหม่เอง
   * ไม่หักผลกระทบที่เกิดกับสิทธิเดิม
@@ -480,16 +505,21 @@ export default function PlannerPage() {
               {planningFields.map((field) => (
                 <PlannerInput
                   key={field.key}
+                  fieldKey={field.key}
                   label={field.label}
                   description={field.description}
                   value={planning[field.key]}
-                  allowed={
-                    planningDetails[field.key]
-                      .allowedAdditional
-                  }
-                  capacity={
-                    planningCapacity[field.key]
-                  }
+                  capacitySummary={getDeductionCapacityView(
+                    field.key,
+                    currentResult,
+                    plannedResult,
+                    planningCapacity,
+                    capacityAfterPlanning,
+                    planning,
+                    planningDetails
+                  )}
+                  pensionSplit={field.key === "pensionInsurance" ? pensionSplit : undefined}
+                  retirementSharedRemaining={currentResult.retirementDeductions.sharedLimitRemaining}
                   reasons={
                     planningDetails[field.key]
                       .reasons
@@ -510,6 +540,9 @@ export default function PlannerPage() {
               ))}
 
             </div>
+            <p className="px-4 pb-4 pt-3 text-xs leading-5 text-slate-500 sm:px-6">
+              สิทธิที่ใช้ได้เป็นวงเงินของแต่ละหมวดเมื่อพิจารณาแยกกัน หมวดที่ใช้เพดานร่วมกันไม่สามารถนำยอดมาบวกเป็นสิทธิรวมได้
+            </p>
 
           </div>
 
@@ -776,191 +809,143 @@ export default function PlannerPage() {
 
 
 function PlannerInput({
+  fieldKey,
   label,
   description,
   value,
-  allowed,
-  capacity,
+  capacitySummary,
+  pensionSplit,
+  retirementSharedRemaining,
   reasons,
   sideEffects,
   showCalculation,
   onChange,
 }: {
+  fieldKey: PlanningFieldKey;
   label: string;
   description: string;
   value: number;
-  allowed: number;
-  capacity: number;
-
-  reasons:
-    PlanningLimitReason[];
-
-  sideEffects:
-    PlanningSideEffect[];
-
+  capacitySummary: DeductionCapacityView;
+  pensionSplit?: PensionCapacitySplit;
+  retirementSharedRemaining: number;
+  reasons: PlanningLimitReason[];
+  sideEffects: PlanningSideEffect[];
   showCalculation: boolean;
-
-  onChange: (
-    value: number
-  ) => void;
+  onChange: (value: number) => void;
 }) {
-  const unused =
-    Math.max(
-      0,
-      value - allowed
-    );
+  const display = getCapacityDisplay(capacitySummary);
+  const isExcess = display.status === "excess";
+  const reducedRights = sideEffects.filter((effect) => effect.change < 0);
 
-  const reducedRights =
-    sideEffects.filter(
-      (effect) =>
-        effect.change < 0
-    );
+  const actionLabel =
+    fieldKey === "rmf" || fieldKey === "thaiEsg"
+      ? "วางแผนลงทุนเพิ่ม (บาท)"
+      : "วางแผนซื้อเพิ่ม (บาท)";
 
   return (
-    <div className="p-4 sm:p-6">
-
-      <div className="grid gap-4 md:grid-cols-[1fr_220px] md:items-start">
-
-        <div>
-          <div className="font-medium text-slate-900">
-            {label}
-          </div>
-
-          <div className="mt-1 text-sm leading-5 text-slate-400">
-            {description}
-          </div>
-
-          {showCalculation && (
-            <div className="mt-2 text-xs text-slate-500">
-              วงเงินเพิ่มโดยประมาณ
-              เมื่อพิจารณารายการนี้แยก{" "}
-              <span className="font-medium text-slate-700">
-                {formatNumber(
-                  capacity
-                )}{" "}
-                บาท
-              </span>
-            </div>
-          )}
-
-          {showCalculation &&
-            value > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
-
-              <span className="font-medium text-blue-700">
-                ใช้ลดหย่อนเพิ่มได้{" "}
-                {formatNumber(
-                  allowed
-                )}{" "}
-                บาท
-              </span>
-
-              {unused > 0 && (
-                <div className="flex items-center gap-2">
-
-                  <span className="font-medium text-amber-600">
-                    ส่วนที่เกินสิทธิลดหย่อน{" "}
-                    {formatNumber(
-                      unused
-                    )}{" "}
-                    บาท
-                  </span>
-
-                  {reasons.length > 0 && (
-                    <LimitReasonButton
-                      reasons={reasons}
-                    />
-                  )}
-
-                </div>
-              )}
-
-              {value > 0 &&
-                reducedRights.length > 0 && (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">
-                        !
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-amber-900">
-                          แผนนี้มีผลต่อสิทธิเดิม
-                        </div>
-
-                        <div className="mt-2 space-y-2">
-                          {reducedRights.map(
-                            (effect) => (
-                              <div
-                                key={effect.key}
-                                className="text-xs leading-5 text-amber-800"
-                              >
-                                {sideEffectLabels[
-                                  effect.key
-                                ]}{" "}
-                                ลดจาก{" "}
-                                {formatNumber(
-                                  effect.beforeAllowed
-                                )}{" "}
-                                บาท เหลือ{" "}
-                                {formatNumber(
-                                  effect.afterAllowed
-                                )}{" "}
-                                บาท
-                                <span className="font-semibold">
-                                  {" "}
-                                  (ลดลง{" "}
-                                  {formatNumber(
-                                    Math.abs(
-                                      effect.change
-                                    )
-                                  )}{" "}
-                                  บาท)
-                                </span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-            </div>
-          )}
-
+    <div className="min-w-0 p-4 sm:p-6">
+      {/* Level 1: category and the unchanged editable input are one desktop row. */}
+      <div data-b3-action-row className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(200px,240px)] sm:items-center sm:gap-5">
+        <div className="min-w-0">
+          <div className="font-medium text-slate-900">{label}</div>
+          <p className="mt-1 text-sm leading-5 text-slate-500">{description}</p>
         </div>
-
-        <div className="relative">
-
-          <input
-            inputMode="numeric"
-            value={
-              value
-                ? formatNumber(
-                    value
-                  )
-                : ""
-            }
-            onChange={(e) =>
-              onChange(
-                parseNumber(
-                  e.target.value
-                )
-              )
-            }
-            placeholder="0"
-            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 pr-16 text-right text-base font-medium text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
-          />
-
-          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-            บาท
-          </span>
-
+        <div data-b3-primary-metric="planned" className="min-w-0">
+          <label htmlFor={`planning-add-${fieldKey}`} className="block text-xs font-medium leading-5 text-slate-700">
+            {actionLabel}
+          </label>
+          <div className="relative mt-1">
+            <input
+              id={`planning-add-${fieldKey}`}
+              aria-label={`${label} — ${actionLabel}`}
+              inputMode="numeric"
+              value={value ? formatNumber(value) : ""}
+              onChange={(e) => onChange(parseNumber(e.target.value))}
+              placeholder="0"
+              className="h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 pr-10 text-right text-base font-medium tabular-nums text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">บาท</span>
+          </div>
         </div>
-
       </div>
 
+      {/* Level 2: the two read-only information values stay below the input. */}
+      <div data-b3-deduction-info className="mt-3 grid min-w-0 grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:gap-4">
+        <div data-b3-primary-metric="available" className="min-w-0 px-1 py-1">
+          <div className="text-xs leading-5 text-slate-500">สิทธิที่ใช้ได้</div>
+          <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-1 text-base font-semibold tabular-nums text-teal-800 sm:text-lg">
+            <span className="min-w-0 break-words">
+              {showCalculation ? formatNumber(capacitySummary.remainingCurrent) : "—"}
+            </span>
+            <span className="text-xs font-normal text-slate-500">บาท</span>
+          </div>
+        </div>
+        <div
+          data-b3-primary-metric="balance"
+          className={[
+            "min-w-0 rounded-xl px-3 py-2",
+            isExcess ? "bg-amber-50" : "bg-teal-50/60",
+          ].join(" ")}
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <div className="text-xs leading-5 text-slate-600">
+            {isExcess ? "เกินสิทธิ" : "เหลือหลังวางแผน"}
+          </div>
+          <div className={[
+            "mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-base font-semibold tabular-nums sm:text-lg",
+            isExcess ? "text-amber-800" : "text-teal-800",
+          ].join(" ")}>
+            <span className="min-w-0 break-words">
+              {showCalculation ? formatNumber(display.amount) : "—"}
+              <span className="ml-1 text-xs font-normal">บาท</span>
+            </span>
+            {showCalculation && isExcess && reasons.length > 0 && (
+              <LimitReasonButton reasons={reasons} />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {showCalculation && pensionSplit && (
+        <details className="group mt-3 rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-2 text-xs leading-5 text-slate-700">
+          <summary className="flex cursor-pointer items-center justify-between gap-2 font-medium text-indigo-800">
+            ที่มาของสิทธิ
+            <span aria-hidden="true" className="text-sm transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <div className="mt-2 space-y-1 border-t border-indigo-100 pt-2">
+            <p>วงเงินประกันชีวิตทั่วไปที่ยังเหลือ: <strong>{formatNumber(pensionSplit.ordinaryRemaining)} บาท</strong></p>
+            <p>สิทธิบำนาญส่วนเพิ่มที่ยังเหลือ: <strong>{formatNumber(pensionSplit.extraRemaining)} บาท</strong></p>
+            <p className="text-slate-600">
+              ส่วนแรกใช้ร่วมกับประกันชีวิต/สุขภาพเดิม ส่วนเพิ่มอยู่ภายใต้เพดานเกษียณร่วม
+              (กลุ่มเกษียณเดิมเหลือ {formatNumber(retirementSharedRemaining)} บาท)
+              จึงไม่สามารถนำสิทธิ RMF มาบวกซ้ำได้
+            </p>
+          </div>
+        </details>
+      )}
+
+      {showCalculation && value > 0 &&
+        capacitySummary.netDeductionChange !== capacitySummary.additionalAllowed && (
+          <p className="mt-2 text-xs leading-5 text-amber-700" role="status">
+            สิทธิลดหย่อนรวมสุทธิเปลี่ยนไม่เท่ากับสิทธิของหมวดนี้ เนื่องจากมีผลต่อสิทธิรายการอื่น
+          </p>
+        )}
+
+      {showCalculation && value > 0 && reducedRights.length > 0 && (
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <div className="text-sm font-medium text-amber-900">แผนนี้มีผลต่อสิทธิเดิม</div>
+          <div className="mt-2 space-y-1">
+            {reducedRights.map((effect) => (
+              <p key={effect.key} className="text-xs leading-5 text-amber-800">
+                {sideEffectLabels[effect.key]} ลดจาก{" "}
+                {formatNumber(effect.beforeAllowed)} บาท เหลือ{" "}
+                {formatNumber(effect.afterAllowed)} บาท
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

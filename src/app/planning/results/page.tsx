@@ -155,6 +155,13 @@ function DeductionCompareRow({
         </summary>
 
         <div className="border-t border-slate-100">
+          <p className="px-5 pb-2 pt-3 text-xs leading-5 text-slate-500 sm:px-7 md:px-8">
+            ตารางนี้แสดงสิทธิที่นำไปลดหย่อนได้จริง ไม่ใช่ยอดจ่ายหรือลงทุนทั้งหมด
+            {" "}ตรวจเพดานและสิทธิที่เหลือได้ใน{" "}
+            <Link href="/planning/planner" className="font-medium text-teal-700 underline underline-offset-2">
+              หน้าวางแผน
+            </Link>
+          </p>
           {visibleDetails.map(
             (item) => (
               <div
