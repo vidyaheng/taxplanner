@@ -66,7 +66,7 @@ describe("UX-C1 — Income labels and accounting boundaries", () => {
     expect(income.match(/label="ภาษีหัก ณ ที่จ่ายจากเงินได้ 40\(1\)"/g)).toHaveLength(1);
     expect(income).toContain("estimateSection40_1Withholding");
     expect(income).toContain("illustrativeMonthlyAverage");
-    expect(income).toContain("section40_1TaxWithheld: value");
+    expect(income).toMatch(/setIncome\(\{\s*section40_1TaxWithheld:\s*value,?\s*\}\)/);
   });
 
   it("preserves two aligned 40(3) pairs and clarifies the annuity category", () => {
