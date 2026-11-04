@@ -3641,7 +3641,7 @@ function removeForeignBusinessIncome(
                                         }
                                       )
                                     }
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                                    className="min-w-0 max-w-full w-full truncate rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 sm:px-4 sm:text-base"
                                   >
                                     <option value="">
                                       เลือกประเภทวิชาชีพ
@@ -4519,6 +4519,28 @@ function removeForeignBusinessIncome(
                   </div>
               )}
 
+              {(income.otherIncome.other ?? 0) !== 0 && (
+                <div
+                  role="alert"
+                  className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950 sm:p-5"
+                >
+                  <h3 className="font-semibold">
+                    พบข้อมูลรายได้ที่ยังไม่ได้จัดประเภทจากการบันทึกครั้งก่อน
+                  </h3>
+                  <p className="mt-1">
+                    พบยอดเดิม <strong>{formatNumber(income.otherIncome.other ?? 0)} บาท</strong>
+                    {" "}ซึ่งไม่สามารถจัดประเภทหรือคำนวณภาษีโดยอัตโนมัติได้
+                  </p>
+                  <p className="mt-2">
+                    ระบบยังเก็บยอดเดิมไว้โดยไม่ลบหรือย้ายไปมาตรา 40 ใด
+                    กรุณาตรวจสอบเอกสารรายได้และกรอกยอดในหมวดเงินได้ 40(1)–40(8)
+                    ที่ตรงตามกฎหมาย การกรอกยอดใหม่ไม่ทำให้ยอดเก่าหายไป
+                    และเมื่อยอดนี้ยังอยู่ในข้อมูลเดิม ผลภาษีอาจยังไม่สมบูรณ์
+                    ทั้งนี้การรีเซ็ตจะล้างข้อมูลที่บันทึกทั้งหมด ไม่ใช่เฉพาะยอดนี้
+                  </p>
+                </div>
+              )}
+
               {income.hasOtherIncome && (
                 <div className="mt-6 space-y-4">
 
@@ -4630,65 +4652,30 @@ function removeForeignBusinessIncome(
                   )}
 
                   {otherIncomeDefinitions
-                    .filter(
-                      (item) =>
-                        item.id !== "rent" &&
-                        item.id !== "professional" &&
-                        item.id !== "business"
-                    )
+                    .filter((item) => item.id === "commission")
                     .map((item) => (
                       <div key={item.id} className="rounded-2xl border border-slate-200 p-4 sm:p-5">
-                        {item.id === "commission" ? (
-                          <>
-                            <h3 className="font-semibold text-slate-900">
-                              ค่านายหน้า / ค่าตอบแทน 40(2)
-                            </h3>
-                            <p className="mt-1 text-sm leading-6 text-slate-500">
-                              {item.description}
-                            </p>
-                            <div className="tp-income-financial-row mt-4">
-                              <MoneyInput
-                                label="รายได้ค่านายหน้า / ค่าตอบแทนทั้งปี"
-                                value={income.otherIncome[item.id] ?? 0}
-                                onChange={(value) => setOtherIncome(item.id, value)}
-                              />
-                              <MoneyInput
-                                label="ภาษีหัก ณ ที่จ่ายจากเงินได้ 40(2)"
-                                description="กรอกยอดภาษีที่ถูกหักจริงตามหนังสือรับรองหรือข้อมูลจากผู้จ่ายเงิน"
-                                value={income.section40_2TaxWithheld ?? 0}
-                                onChange={(value) =>
-                                  setIncome({ section40_2TaxWithheld: value })
-                                }
-                              />
-                            </div>
-                          </>
-                        ) : (
-                          <div className="grid gap-4 md:grid-cols-[1fr_220px] md:items-center">
-                            <div>
-                              <div className="font-medium text-slate-800">{item.label}</div>
-                              <div className="mt-1 text-sm text-slate-400">{item.description}</div>
-                            </div>
-                            <div className="relative">
-                              <input
-                                aria-label={item.label}
-                                inputMode="numeric"
-                                value={
-                                  income.otherIncome[item.id]
-                                    ? formatNumber(income.otherIncome[item.id])
-                                    : ""
-                                }
-                                onChange={(e) =>
-                                  setOtherIncome(item.id, parseNumber(e.target.value))
-                                }
-                                placeholder="0"
-                                className="h-12 w-full rounded-xl border border-slate-300 px-4 pr-16 text-right text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                              />
-                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                                บาท
-                              </span>
-                            </div>
-                          </div>
-                        )}
+                        <h3 className="font-semibold text-slate-900">
+                          ค่านายหน้า / ค่าตอบแทน 40(2)
+                        </h3>
+                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                          {item.description}
+                        </p>
+                        <div className="tp-income-financial-row mt-4">
+                          <MoneyInput
+                            label="รายได้ค่านายหน้า / ค่าตอบแทนทั้งปี"
+                            value={income.otherIncome[item.id] ?? 0}
+                            onChange={(value) => setOtherIncome(item.id, value)}
+                          />
+                          <MoneyInput
+                            label="ภาษีหัก ณ ที่จ่ายจากเงินได้ 40(2)"
+                            description="กรอกยอดภาษีที่ถูกหักจริงตามหนังสือรับรองหรือข้อมูลจากผู้จ่ายเงิน"
+                            value={income.section40_2TaxWithheld ?? 0}
+                            onChange={(value) =>
+                              setIncome({ section40_2TaxWithheld: value })
+                            }
+                          />
+                        </div>
                       </div>
                     ))
                   }
@@ -5352,7 +5339,7 @@ function removeForeignBusinessIncome(
                                             .value as Section40_6ProfessionalIncomeData["professionalType"]),
                                   })
                                 }
-                                className="h-14 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                                className="h-14 min-w-0 max-w-full w-full truncate rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:px-4 sm:text-base"
                               >
                                 <option value="">
                                   เลือกประเภทวิชาชีพ

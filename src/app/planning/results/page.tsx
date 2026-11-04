@@ -99,7 +99,7 @@ function CompareRow({
         className={[
           "whitespace-nowrap pr-2 text-right tabular-nums",
           emphasize ? "text-base sm:text-lg" : "text-sm sm:text-base",
-          plannedComparisonClass(current, planned),
+          plannedComparisonClass(displayedCurrent, displayedPlanned),
         ].join(" ")}
       >
         {displayedPlanned}
@@ -130,7 +130,7 @@ function DeductionCompareRow({
           {formatNumber(current)} บาท
         </div>
 
-        <div className={`pr-2 text-right text-sm tabular-nums sm:text-base ${plannedComparisonClass(current, planned)}`}>
+        <div className={`pr-2 text-right text-sm tabular-nums sm:text-base ${plannedComparisonClass(formatNumber(current), formatNumber(planned))}`}>
           {formatNumber(planned)} บาท
         </div>
       </div>
@@ -167,8 +167,8 @@ function DeductionCompareRow({
 
                 <div
                   className={[
-                    "whitespace-nowrap text-right text-sm font-medium tabular-nums",
-                    plannedComparisonClass(item.current, item.planned),
+                    "whitespace-nowrap text-right text-sm tabular-nums",
+                    plannedComparisonClass(formatNumber(item.current), formatNumber(item.planned)),
                   ].join(" ")}
                 >
                   <div>
@@ -177,7 +177,7 @@ function DeductionCompareRow({
                     )}
                   </div>
 
-                  {item.planned !== item.current && (
+                  {formatNumber(item.planned) !== formatNumber(item.current) && (
                     <div className="mt-0.5 text-xs font-normal">
                       {item.planned > item.current
                         ? `+${formatNumber(
@@ -706,7 +706,7 @@ export default function ResultsPage() {
                       )}
                     </div>
 
-                    <div className={`whitespace-nowrap pr-3 text-right text-sm tabular-nums sm:text-base ${plannedComparisonClass(currentResult.marginalTaxRate, plannedResult.marginalTaxRate)}`}>
+                    <div className={`whitespace-nowrap pr-3 text-right text-sm tabular-nums sm:text-base ${plannedComparisonClass(formatPercent(currentResult.marginalTaxRate), formatPercent(plannedResult.marginalTaxRate))}`}>
                       {formatPercent(
                         plannedResult.marginalTaxRate
                       )}

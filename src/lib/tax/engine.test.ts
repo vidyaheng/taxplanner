@@ -8260,3 +8260,50 @@ it("the separate estimate never becomes an actual withholding credit, payable or
   expect(withoutActual.taxPayable).toBeGreaterThan(after.taxPayable);
   expect(withoutActual.taxRefund).toBe(0);
 });
+
+it("preserves unsupported legacy other income as incomplete instead of silently reclassifying it", () => {
+  const income = createIncome({
+    hasOtherIncome: true,
+    section40_2TaxWithheld: 900,
+    otherIncome: {
+      commission: 15_000,
+      rent: 0,
+      professional: 0,
+      business: 0,
+      investment: 0,
+      other: 24_000,
+    },
+  });
+  const originalSerializedIncome = JSON.stringify(income);
+  const family = createFamily();
+  const deductions = createDeductions();
+
+  const withLegacy = calculateTax({ taxYear: 2569, income, family, deductions });
+  const withoutLegacy = calculateTax({
+    taxYear: 2569,
+    income: {
+      ...income,
+      otherIncome: { ...income.otherIncome, other: 0 },
+    },
+    family,
+    deductions,
+  });
+
+  expect(income.otherIncome.other).toBe(24_000);
+  expect(JSON.stringify(income)).toBe(originalSerializedIncome);
+  expect(withLegacy.totalGrossIncome).toBe(39_000);
+  expect(withoutLegacy.totalGrossIncome).toBe(15_000);
+  expect(withLegacy.isComplete).toBe(false);
+  expect(
+    withLegacy.warnings.some(
+      (warning) =>
+        warning.includes("ยังไม่ได้จัดประเภท") &&
+        warning.includes("Preliminary")
+    )
+  ).toBe(true);
+  expect(
+    withoutLegacy.warnings.some((warning) => warning.includes("Preliminary"))
+  ).toBe(false);
+  expect(withLegacy.taxCredits.withholdingTax).toBe(900);
+  expect(withoutLegacy.taxCredits.withholdingTax).toBe(900);
+});

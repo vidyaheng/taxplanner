@@ -7,28 +7,56 @@ const results = readFileSync(new URL("../../app/planning/results/page.tsx", impo
 const planner = readFileSync(new URL("../../app/planning/planner/page.tsx", import.meta.url), "utf8");
 
 describe("UX-C1 — change-only Results comparison", () => {
-  it("gives equal numeric values neutral styling, including zero values", () => {
-    expect(plannedComparisonClass(100_000, 100_000)).toBe("font-medium text-slate-700");
-    expect(plannedComparisonClass(0, 0)).toBe("font-medium text-slate-700");
+  const baht = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
+  const percent = new Intl.NumberFormat("th-TH", {
+    style: "percent",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+  const bahtStyle = (current: number, planned: number) =>
+    plannedComparisonClass(`${baht.format(current)} บาท`, `${baht.format(planned)} บาท`);
+  const percentStyle = (current: number, planned: number) =>
+    plannedComparisonClass(percent.format(current), percent.format(planned));
+
+  it("gives equal displayed Baht values neutral styling, including zero values", () => {
+    expect(bahtStyle(100_000, 100_000)).toBe("font-medium text-slate-700");
+    expect(bahtStyle(0, 0)).toBe("font-medium text-slate-700");
   });
 
-  it("emphasizes differences of either sign without implying savings", () => {
-    expect(plannedComparisonClass(100_000, 99_000)).toBe("font-bold text-teal-900");
-    expect(plannedComparisonClass(99_000, 100_000)).toBe("font-bold text-teal-900");
-    // Numeric comparison occurs before currency/percentage display rounding.
-    expect(plannedComparisonClass(100_000.001, 100_000.002)).toBe("font-bold text-teal-900");
+  it("emphasizes visible increases and decreases with the same bold blue", () => {
+    expect(bahtStyle(100_000, 99_000)).toBe("font-bold text-blue-600");
+    expect(bahtStyle(99_000, 100_000)).toBe("font-bold text-blue-600");
   });
 
-  it("compares numeric Result row values before formatting them", () => {
+  it("does not highlight raw Baht differences hidden by displayed rounding", () => {
+    expect(bahtStyle(100_000.001, 100_000.002)).toBe("font-medium text-slate-700");
+    expect(bahtStyle(100.01, 100.49)).toBe("font-medium text-slate-700");
+  });
+
+  it("highlights when Baht values cross a display-rounding boundary", () => {
+    expect(bahtStyle(100.49, 100.51)).toBe("font-bold text-blue-600");
+    expect(bahtStyle(100.51, 100.49)).toBe("font-bold text-blue-600");
+  });
+
+  it("matches percentage display precision and its 2-decimal boundary", () => {
+    expect(percentStyle(0.1000001, 0.1000002)).toBe("font-medium text-slate-700");
+    expect(percentStyle(0.10004, 0.10006)).toBe("font-bold text-blue-600");
+    expect(percentStyle(0.10006, 0.10004)).toBe("font-bold text-blue-600");
+    expect(percentStyle(0, 0)).toBe("font-medium text-slate-700");
+  });
+
+  it("compares exact displayed Results text without changing numeric engine inputs", () => {
     expect(results).toContain("current: number;");
     expect(results).toContain("planned: number;");
     expect(results).toContain("current={currentResult.totalGrossIncome}");
     expect(results).toContain("planned={plannedResult.totalGrossIncome}");
-    expect(results).toContain("plannedComparisonClass(current, planned)");
-    expect(results).toContain("plannedComparisonClass(item.current, item.planned)");
-    expect(results).toContain("plannedComparisonClass(currentResult.marginalTaxRate, plannedResult.marginalTaxRate)");
+    expect(results).toContain("plannedComparisonClass(displayedCurrent, displayedPlanned)");
+    expect(results).toContain("plannedComparisonClass(formatNumber(item.current), formatNumber(item.planned))");
+    expect(results).toContain("plannedComparisonClass(formatPercent(currentResult.marginalTaxRate), formatPercent(plannedResult.marginalTaxRate))");
     expect(results).toContain('unit="percent"');
     expect(results).not.toContain("text-blue-700");
+    expect(results).not.toContain("text-teal-900");
+    expect(results).toContain("formatNumber(item.planned) !== formatNumber(item.current)");
   });
 
   it("keeps actual tax credits and tax-engine calls unchanged in the Results page", () => {
@@ -52,13 +80,29 @@ describe("UX-C1 — Income labels and accounting boundaries", () => {
     expect(income).toContain("income.section40_2TaxWithheld ?? 0");
   });
 
-  it("preserves legacy other-income category separately from 40(2)", () => {
-    expect(income).toContain('id: "other"');
-    expect(income).toContain("setOtherIncome(item.id, parseNumber(e.target.value))");
-    expect(income).toContain('item.id === "commission" ? (');
-    expect(income).toContain('item.id !== "rent"');
-    expect(income).toContain('item.id !== "professional"');
-    expect(income).toContain('item.id !== "business"');
+  it("removes unclassified income input while retaining the legacy record key", () => {
+    expect(income).toContain('id: "other"'); // Non-UI compatibility definition
+    expect(income).toContain("return otherIncomeDefinitions.reduce("); // Old summary not rewritten
+    expect(income).toContain('.filter((item) => item.id === "commission")');
+    const commissionUI = income.slice(
+      income.indexOf("                  {otherIncomeDefinitions"),
+      income.indexOf('ค่าลิขสิทธิ์ / ค่าสิทธิ 40(3)')
+    );
+    expect(commissionUI).toContain('label="รายได้ค่านายหน้า / ค่าตอบแทนทั้งปี"');
+    expect(commissionUI).not.toContain('aria-label={item.label}');
+    expect(commissionUI).not.toContain("setOtherIncome(item.id, parseNumber(e.target.value))");
+    expect(income).not.toContain('setOtherIncome("other",');
+  });
+
+  it("shows a read-only nonzero legacy income notice even when the category toggle is false", () => {
+    expect(income).toContain('{(income.otherIncome.other ?? 0) !== 0 && (');
+    expect(income).toContain('role="alert"');
+    expect(income).toContain("formatNumber(income.otherIncome.other ?? 0)");
+    expect(income).toContain("ระบบยังเก็บยอดเดิมไว้โดยไม่ลบหรือย้ายไปมาตรา 40 ใด");
+    expect(income).toContain("กรุณาตรวจสอบเอกสารรายได้และกรอกยอดในหมวดเงินได้ 40(1)–40(8)");
+    expect(income.indexOf('{(income.otherIncome.other ?? 0) !== 0 && (')).toBeLessThan(
+      income.indexOf("{income.hasOtherIncome && (")
+    );
   });
 
   it("preserves PR #8 and #9 exact 40(1) labels and read-only estimator", () => {

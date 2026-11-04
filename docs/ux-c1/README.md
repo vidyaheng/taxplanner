@@ -21,7 +21,7 @@ Recommended sequence: UX-C1 -> UX-B3 -> UX-C2 -> TAX-C3; no simultaneous overlap
 ## UX-C1 decisions and preservation proofs
 
 ### A. Results
-- Compare **numeric values before formatting** and style the planned value using an isolated pure UI helper: changed -> bold accessible dark teal; unchanged -> neutral slate.
+- Compare **the exact formatted display strings**, not raw decimals; changed -> `font-bold text-blue-600`, unchanged -> `font-medium text-slate-700`. Use existing `formatNumber` (0 Baht decimals) and `formatPercent` (up to 2 percent decimals), without changing original numeric state.
 - Apply to summary rows, overall deductions, expanded deduction details, marginal rate and effective rate.
 - Both increases and decreases get the same "changed" emphasis; the highlighting itself does **not** imply tax savings. Net savings remain calculated exclusively by the existing engine/scenario path.
 - Preserve all existing `calculateTax`, `applyPlanningToDeductions`, tax-credit, payable/refund bindings and displayed units.
@@ -30,7 +30,7 @@ Recommended sequence: UX-C1 -> UX-B3 -> UX-C2 -> TAX-C3; no simultaneous overlap
 ### B. Section 40(2)
 - Existing domestic annual commission lives at `income.otherIncome.commission` via `setOtherIncome("commission", value)` and actual withholding at `income.section40_2TaxWithheld`.
 - Keep *exactly* these values/handlers, but present two `MoneyInput` fields in the existing responsive `tp-income-financial-row` grid, with a visible heading `ค่านายหน้า / ค่าตอบแทน 40(2)`.
-- Reuse the existing MoneyInput helper-after-control behavior. Do **not** introduce another commission or withholding input, recategorize the legacy generic `other` field, or mix statutory categories.
+- Reuse the existing MoneyInput helper-after-control behavior. Do **not** introduce another commission or withholding input, recategorize legacy unclassified `other` data, or mix statutory categories. The generic unclassified UI control has now been removed while preserving the stored key.
 
 ### C. Section 40(3) annual payments
 - Domestic examples: qualifying annual payments under a will and annual payments arising from a court judgment. Existing annuity input handlers, tax withholding and expense treatment unchanged.
@@ -60,6 +60,34 @@ No changes to Tax Engine, Tax Rules, Withholding Estimator, TaxPlannerContext, d
 
 - Full Vitest and source regression: UX-C1, PR #7 B2, PR #8 Microcopy, PR #10 Income/40(8), PR #9 Estimator, Engine and storage/Reset suites.
 - ESLint, TypeScript, Next.js Production Build, fresh exact-HEAD GitHub Actions status and Vercel Preview READY.
-- Director physical Preview check: Results equal and changed summary + expanded deduction rows; 40(2) paired values and original generic-other field; both 40(3) pairs and caveat; both 40(6) selectors; all 40(8) external links; planner wording. Mobile widths 375/390/430/768, keyboard Tab and details/links, reload/reset.
+- Director physical Preview check: Results equal and changed summary + expanded deduction rows; 40(2) paired values and absence of generic unclassified input; existing nonzero legacy other-income notice; both 40(3) pairs and caveat; both 40(6) selectors; all 40(8) external links; planner wording. Mobile widths 375/390/430/768, keyboard Tab and details/links, reload/reset.
 - **No browser, keyboard, screenshot or physical mobile QA is claimed without actual evidence.** Any unavailable validation is explicitly marked NOT EXECUTED.
 - Stop at Draft PR and return for Director review.
+
+## Director consolidated correction — 2026-11-04
+
+The Director requested a **limited correction inside the existing Draft PR #11**, without a new PR or merge.
+
+### Results precision and color
+
+- The planned-after value is **bold blue** `font-bold text-blue-600` **only if it looks different** after the existing page formatter is applied.
+- The comparison helper accepts already formatted **display strings** so the same exact Baht and percentage output precision is used for styling; no second custom rounding calculation or financial rule is introduced.
+- All summary rows, overall deductions, detail rows, effective/marginal percentages and the visible detail delta gate use matching display precision. Increased and decreased values have the same blue emphasis; unchanged text remains neutral.
+- Original `calculateTax`, `applyPlanningToDeductions`, all original source numeric values, tax/refund/credit computations remain unchanged.
+
+### Remove generic unclassified Income UI only
+
+- **Audited:** `otherIncome.other` is in `src/types/income.ts` and `src/store/TaxPlannerContext.tsx` (preserved), its `hasOtherIncome`-gated legacy contribution in `src/lib/tax/engine.ts` is named `unsupportedOtherIncome`, contributes to gross/preliminary amounts and marks `isComplete=false` when positive; existing engine warning mentions `Preliminary`. UI had been generated from `otherIncomeDefinitions.map` and an unrestricted noncommission fallback.
+- The UI map now renders **only `commission`**, with the existing 40(2) MoneyInput pair and original handlers. No generic `รายได้อื่น` entry appears.
+- **Legacy nonzero notice:** `income.otherIncome.other !== 0` displays a conspicuous, read-only warning with the original amount, explains that the category cannot be automatically assigned/calculated, directs users to the legally supported 40(1)–40(8) controls, and warns that re-entry does not erase old data. Notice is placed **outside** the `income.hasOtherIncome` gate so switching the toggle cannot conceal stored values.
+- The `otherIncome.other` data-model property, `otherIncomeDefinitions` compatibility entry and Income summary reduce are retained; no values are zeroed, migrated or automatically reclassified. All Engine preliminary/incomplete warnings are unchanged. The existing Reset button still resets the entire session, not just this amount.
+- Added engine integration fixture using commission and unsupported legacy other income to verify original gross amount, warning, incomplete status, actual withholding credit and input immutability.
+- `professionalType:"other"` in 40(6) is **unrelated** and remains unchanged.
+- The two 40(6) dropdowns now apply `min-w-0 max-w-full truncate` and responsive font/padding to limit overflow at narrow widths; this is a source-level responsive safeguard, **not** evidence of physical mobile QA.
+
+### Scope / QA
+
+- Files in this **revision compared with previous PR #11 HEAD**: `src/lib/ui/planned-comparison.ts`, `src/app/planning/results/page.tsx`, `src/app/planning/income/page.tsx`, `src/components/planning/ux-c1.test.ts`, `src/lib/tax/engine.test.ts` (**tests only**), and this README.
+- Existing 40(2) mapping and withholding, both 40(3) pairs/examples, all six 40(6) professions under three stored keys, both 40(8) category keys/guides/external links, PR #8 Microcopy, PR #9 Withholding Estimator and Planner pension wording must remain unchanged.
+- Physical Edge/Chrome browser, keyboard, screen-capture and mobile at 375px/390px: **NOT EXECUTED** by the agent unless separately evidenced.
+- No new PR; no Merge/Auto-merge/Production deployment/UX-B3/UX-C2/TAX-C3.
