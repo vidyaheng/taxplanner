@@ -24,7 +24,7 @@ import {
 } from "@/lib/tax/scenarios";
 
 import type { DeductionCapacityView, PensionCapacitySplit } from "@/lib/ui/deduction-capacity";
-import { getDeductionCapacityView, getPensionCapacitySplit } from "@/lib/ui/deduction-capacity";
+import { getCapacityDisplay, getDeductionCapacityView, getPensionCapacitySplit } from "@/lib/ui/deduction-capacity";
 
 import {
   PlanningData,
@@ -372,19 +372,6 @@ export default function PlannerPage() {
     capacityAfterPlanning
   );
 
-  const capacityLimitNotes: Record<PlanningFieldKey, string> = {
-    lifeInsurance:
-      `เพดานร่วมประกันชีวิต/สุขภาพ ${formatNumber(currentResult.insuranceDeductions.limits.lifeAndHealthCombinedMax)} บาท • อาจใช้สิทธิร่วมกับประกันสุขภาพตนเอง`,
-    healthInsuranceSelf:
-      `เพดานเฉพาะสุขภาพ ${formatNumber(currentResult.insuranceDeductions.limits.healthSelfMax)} บาท • รวมกับประกันชีวิตไม่เกิน ${formatNumber(currentResult.insuranceDeductions.limits.lifeAndHealthCombinedMax)} บาท`,
-    pensionInsurance:
-      `ส่วนเพิ่มตามรายได้ ${formatNumber(currentResult.retirementDeductions.limits.pensionIncomeLimit)} บาท (${formatNumber(currentResult.retirementDeductions.limits.pensionIncomeRate * 100)}%) • สูงสุดส่วนเพิ่ม ${formatNumber(currentResult.retirementDeductions.limits.pensionExtraMax)} บาท • กลุ่มเกษียณร่วมเหลือ ${formatNumber(currentResult.retirementDeductions.sharedLimitRemaining)} บาท`,
-    rmf:
-      `ตามรายได้ ${formatNumber(currentResult.retirementDeductions.limits.rmfIncomeLimit)} บาท (${formatNumber(currentResult.retirementDeductions.limits.rmfIncomeRate * 100)}%) • เพดาน RMF ${formatNumber(currentResult.retirementDeductions.limits.rmfMax)} บาท • กลุ่มเกษียณร่วมเหลือ ${formatNumber(currentResult.retirementDeductions.sharedLimitRemaining)} บาท`,
-    thaiEsg:
-      `ตามรายได้ ${formatNumber(currentResult.generalDeductions.limits.thaiEsgIncomeLimit)} บาท (${formatNumber(currentResult.generalDeductions.limits.thaiEsgIncomeRate * 100)}%) • เพดาน Thai ESG ${formatNumber(currentResult.generalDeductions.limits.thaiEsgMax)} บาท • แยกจากเพดานเกษียณของ RMF`,
-  };
-
   /*
   * สิทธิของรายการใหม่เอง
   * ไม่หักผลกระทบที่เกิดกับสิทธิเดิม
@@ -518,13 +505,10 @@ export default function PlannerPage() {
               {planningFields.map((field) => (
                 <PlannerInput
                   key={field.key}
+                  fieldKey={field.key}
                   label={field.label}
                   description={field.description}
                   value={planning[field.key]}
-                  allowed={
-                    planningDetails[field.key]
-                      .allowedAdditional
-                  }
                   capacitySummary={getDeductionCapacityView(
                     field.key,
                     currentResult,
@@ -534,8 +518,8 @@ export default function PlannerPage() {
                     planning,
                     planningDetails
                   )}
-                  capacityLimitNote={capacityLimitNotes[field.key]}
                   pensionSplit={field.key === "pensionInsurance" ? pensionSplit : undefined}
+                  retirementSharedRemaining={currentResult.retirementDeductions.sharedLimitRemaining}
                   reasons={
                     planningDetails[field.key]
                       .reasons
@@ -556,6 +540,9 @@ export default function PlannerPage() {
               ))}
 
             </div>
+            <p className="px-4 pb-4 pt-3 text-xs leading-5 text-slate-500 sm:px-6">
+              สิทธิที่ใช้ได้เป็นวงเงินของแต่ละหมวดเมื่อพิจารณาแยกกัน หมวดที่ใช้เพดานร่วมกันไม่สามารถนำยอดมาบวกเป็นสิทธิรวมได้
+            </p>
 
           </div>
 
@@ -822,238 +809,133 @@ export default function PlannerPage() {
 
 
 function PlannerInput({
+  fieldKey,
   label,
   description,
   value,
-  allowed,
   capacitySummary,
-  capacityLimitNote,
   pensionSplit,
+  retirementSharedRemaining,
   reasons,
   sideEffects,
   showCalculation,
   onChange,
 }: {
+  fieldKey: PlanningFieldKey;
   label: string;
   description: string;
   value: number;
-  allowed: number;
   capacitySummary: DeductionCapacityView;
-  capacityLimitNote: string;
   pensionSplit?: PensionCapacitySplit;
-
-  reasons:
-    PlanningLimitReason[];
-
-  sideEffects:
-    PlanningSideEffect[];
-
+  retirementSharedRemaining: number;
+  reasons: PlanningLimitReason[];
+  sideEffects: PlanningSideEffect[];
   showCalculation: boolean;
-
-  onChange: (
-    value: number
-  ) => void;
+  onChange: (value: number) => void;
 }) {
-  const unused =
-    Math.max(
-      0,
-      value - allowed
-    );
-
-  const reducedRights =
-    sideEffects.filter(
-      (effect) =>
-        effect.change < 0
-    );
+  const display = getCapacityDisplay(capacitySummary);
+  const isExcess = display.status === "excess";
+  const reducedRights = sideEffects.filter((effect) => effect.change < 0);
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="min-w-0 p-4 sm:p-6">
+      <div className="font-medium text-slate-900">{label}</div>
+      <p className="mt-1 text-sm leading-5 text-slate-500">{description}</p>
 
-      <div className="grid gap-4 md:grid-cols-[1fr_220px] md:items-start">
-
-        <div>
-          <div className="font-medium text-slate-900">
-            {label}
+      {/* Exactly three primary metrics: existing planning input is metric two. */}
+      <div data-b3-primary-metrics className="mt-3 grid grid-cols-2 items-end gap-3 min-[640px]:grid-cols-3">
+        <div data-b3-primary-metric="available" className="min-w-0">
+          <div className="text-xs leading-5 text-slate-500">สิทธิที่ใช้ได้</div>
+          <div className="mt-1 text-lg font-semibold tabular-nums text-teal-800">
+            {showCalculation ? formatNumber(capacitySummary.remainingCurrent) : "—"}
+            <span className="ml-1 text-xs font-normal text-slate-500">บาท</span>
           </div>
-
-          <div className="mt-1 text-sm leading-5 text-slate-400">
-            {description}
-          </div>
-
-          {showCalculation && (
-            <div className="mt-3 max-w-2xl border-t border-slate-100 pt-3">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs sm:grid-cols-3 xl:grid-cols-4">
-                {(
-                  [
-                    ["เพดานสิทธิ ณ ข้อมูลนี้", capacitySummary.conditionalCeiling],
-                    ["จ่าย/ลงทุนอยู่แล้ว", capacitySummary.paidCurrent],
-                    ["ใช้สิทธิแล้ว", capacitySummary.allowedCurrent],
-                    ["เหลือสิทธิก่อนแผน", capacitySummary.remainingCurrent],
-                    ["วางแผนเพิ่ม", capacitySummary.additionalPayment],
-                    ["ส่วนเพิ่มที่ใช้สิทธิได้", capacitySummary.additionalAllowed],
-                    ["ใช้สิทธิหลังวางแผน", capacitySummary.allowedAfter],
-                    ["เหลือสิทธิหลังวางแผน", capacitySummary.remainingAfter],
-                  ] as const
-                ).map(([itemLabel, amount]) => (
-                  <div key={itemLabel} className="min-w-0">
-                    <div className="leading-5 text-slate-500">{itemLabel}</div>
-                    <div className="mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums text-slate-800">
-                      {formatNumber(amount)} <span className="text-xs font-normal">บาท</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-2 text-xs leading-5 text-slate-500">{capacityLimitNote}</p>
-              {capacitySummary.additionalPayment > 0 &&
-                capacitySummary.netDeductionChange !== capacitySummary.additionalAllowed && (
-                  <p className="mt-1 text-xs leading-5 text-amber-700">
-                    สิทธิของรายการนี้เพิ่มได้ {formatNumber(capacitySummary.additionalAllowed)} บาท
-                    แต่เมื่อคิดผลกระทบต่อสิทธิเดิมในลำดับการวางแผนนี้
-                    สิทธิลดหย่อนรวมสุทธิเปลี่ยน {formatNumber(capacitySummary.netDeductionChange)} บาท
-                    (อาจมีสิทธิเดิมถูกแทนที่)
-                  </p>
-                )}
-              {pensionSplit && (
-                <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-2.5 text-xs leading-5 text-slate-700">
-                  <div className="font-semibold text-indigo-900">ประกันบำนาญ — สิทธิที่เหลือแยก 2 ส่วน</div>
-                  <div className="mt-1 grid gap-x-4 gap-y-1 sm:grid-cols-2">
-                    <div>
-                      เพดานประกันชีวิตทั่วไปที่เหลือ <strong className="tabular-nums">{formatNumber(pensionSplit.ordinaryRemaining)} บาท</strong>
-                      <span className="block text-slate-500">หลังวางแผนเหลือ {formatNumber(pensionSplit.ordinaryAfterRemaining)} บาท</span>
-                    </div>
-                    <div>
-                      ส่วนเพิ่มบำนาญภายใต้เพดานเกษียณร่วม <strong className="tabular-nums">{formatNumber(pensionSplit.extraRemaining)} บาท</strong>
-                      <span className="block text-slate-500">หลังวางแผนเหลือ {formatNumber(pensionSplit.extraAfterRemaining)} บาท</span>
-                    </div>
-                  </div>
-                  <div className="mt-1 font-medium text-indigo-900">
-                    รวมสิทธิที่เหลือสำหรับบำนาญ {formatNumber(pensionSplit.totalRemaining)} บาท
-                    <span className="block font-normal text-slate-600">หลังวางแผนเหลือ {formatNumber(pensionSplit.totalAfterRemaining)} บาท</span>
-                  </div>
-                  <p className="mt-1 text-slate-600">
-                    ส่วนแรกใช้เพดานร่วมกับประกันชีวิตและสุขภาพเดิม ส่วนเพิ่มใช้เพดานร่วมกลุ่มเกษียณ จึงไม่ควรบวกยอดคงเหลือ RMF กับบำนาญเป็นสิทธิใหม่ทั้งหมด
-                  </p>
-                </div>
-              )}
-              <p className="mt-2 text-xs leading-5 text-slate-500">
-                เพดานและยอดคงเหลือเป็นผลทดสอบเพิ่มทีละหมวดจาก Tax Engine
-                ไม่ใช่ยอดที่นำแต่ละหมวดมาบวกรวมกันได้ เมื่อมีหลายแผนร่วมกันให้ดู “ใช้สิทธิหลังวางแผน”
-              </p>
-            </div>
-          )}
-
-          {showCalculation &&
-            value > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
-
-
-
-              {unused > 0 && (
-                <div className="flex items-center gap-2">
-
-                  <span className="font-medium text-amber-600">
-                    ส่วนที่เกินสิทธิลดหย่อน{" "}
-                    {formatNumber(
-                      unused
-                    )}{" "}
-                    บาท
-                  </span>
-
-                  {reasons.length > 0 && (
-                    <LimitReasonButton
-                      reasons={reasons}
-                    />
-                  )}
-
-                </div>
-              )}
-
-              {value > 0 &&
-                reducedRights.length > 0 && (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">
-                        !
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-amber-900">
-                          แผนนี้มีผลต่อสิทธิเดิม
-                        </div>
-
-                        <div className="mt-2 space-y-2">
-                          {reducedRights.map(
-                            (effect) => (
-                              <div
-                                key={effect.key}
-                                className="text-xs leading-5 text-amber-800"
-                              >
-                                {sideEffectLabels[
-                                  effect.key
-                                ]}{" "}
-                                ลดจาก{" "}
-                                {formatNumber(
-                                  effect.beforeAllowed
-                                )}{" "}
-                                บาท เหลือ{" "}
-                                {formatNumber(
-                                  effect.afterAllowed
-                                )}{" "}
-                                บาท
-                                <span className="font-semibold">
-                                  {" "}
-                                  (ลดลง{" "}
-                                  {formatNumber(
-                                    Math.abs(
-                                      effect.change
-                                    )
-                                  )}{" "}
-                                  บาท)
-                                </span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-            </div>
-          )}
-
         </div>
 
-        <div className="relative">
-
-          <input
-            inputMode="numeric"
-            value={
-              value
-                ? formatNumber(
-                    value
-                  )
-                : ""
-            }
-            onChange={(e) =>
-              onChange(
-                parseNumber(
-                  e.target.value
-                )
-              )
-            }
-            placeholder="0"
-            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 pr-16 text-right text-base font-medium text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
-          />
-
-          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-            บาท
-          </span>
-
+        <div data-b3-primary-metric="planned" className="min-w-0">
+          <label htmlFor={`planning-add-${fieldKey}`} className="block text-xs leading-5 text-slate-500">
+            วางแผนซื้อ/ลงทุน
+          </label>
+          <div className="relative mt-1">
+            <input
+              id={`planning-add-${fieldKey}`}
+              inputMode="numeric"
+              value={value ? formatNumber(value) : ""}
+              onChange={(e) => onChange(parseNumber(e.target.value))}
+              placeholder="0"
+              className="h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 pr-10 text-right text-base font-medium tabular-nums text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+              บาท
+            </span>
+          </div>
         </div>
 
+        <div
+          data-b3-primary-metric="balance"
+          className={[
+            "col-span-2 min-w-0 rounded-xl px-3 py-2 min-[640px]:col-span-1",
+            isExcess ? "bg-amber-50" : "bg-teal-50/60",
+          ].join(" ")}
+          aria-live="polite"
+        >
+          <div className="text-xs leading-5 text-slate-600">
+            {isExcess ? "เกิน" : "เหลือ"}
+          </div>
+          <div className={[
+            "mt-1 flex items-center gap-2 text-lg font-semibold tabular-nums",
+            isExcess ? "text-amber-800" : "text-teal-800",
+          ].join(" ")}>
+            <span>
+              {showCalculation ? formatNumber(display.amount) : "—"}
+              <span className="ml-1 text-xs font-normal">บาท</span>
+            </span>
+            {showCalculation && isExcess && reasons.length > 0 && (
+              <LimitReasonButton reasons={reasons} />
+            )}
+          </div>
+        </div>
       </div>
 
+      {showCalculation && pensionSplit && (
+        <details className="group mt-3 rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-2 text-xs leading-5 text-slate-700">
+          <summary className="flex cursor-pointer items-center justify-between gap-2 font-medium text-indigo-800">
+            ที่มาของสิทธิ
+            <span aria-hidden="true" className="text-sm transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <div className="mt-2 space-y-1 border-t border-indigo-100 pt-2">
+            <p>วงเงินประกันชีวิตทั่วไปที่ยังเหลือ: <strong>{formatNumber(pensionSplit.ordinaryRemaining)} บาท</strong></p>
+            <p>สิทธิบำนาญส่วนเพิ่มที่ยังเหลือ: <strong>{formatNumber(pensionSplit.extraRemaining)} บาท</strong></p>
+            <p className="text-slate-600">
+              ส่วนแรกใช้ร่วมกับประกันชีวิต/สุขภาพเดิม ส่วนเพิ่มอยู่ภายใต้เพดานเกษียณร่วม
+              (กลุ่มเกษียณเดิมเหลือ {formatNumber(retirementSharedRemaining)} บาท)
+              จึงไม่สามารถนำสิทธิ RMF มาบวกซ้ำได้
+            </p>
+          </div>
+        </details>
+      )}
+
+      {showCalculation && value > 0 &&
+        capacitySummary.netDeductionChange !== capacitySummary.additionalAllowed && (
+          <p className="mt-2 text-xs leading-5 text-amber-700" role="status">
+            สิทธิลดหย่อนรวมสุทธิเปลี่ยนไม่เท่ากับสิทธิของหมวดนี้ เนื่องจากมีผลต่อสิทธิรายการอื่น
+          </p>
+        )}
+
+      {showCalculation && value > 0 && reducedRights.length > 0 && (
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <div className="text-sm font-medium text-amber-900">แผนนี้มีผลต่อสิทธิเดิม</div>
+          <div className="mt-2 space-y-1">
+            {reducedRights.map((effect) => (
+              <p key={effect.key} className="text-xs leading-5 text-amber-800">
+                {sideEffectLabels[effect.key]} ลดจาก{" "}
+                {formatNumber(effect.beforeAllowed)} บาท เหลือ{" "}
+                {formatNumber(effect.afterAllowed)} บาท
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

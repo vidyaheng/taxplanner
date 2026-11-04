@@ -1,79 +1,55 @@
-# TaxPlanner UX-B3 — Planner & Results Deduction Capacity
+# UX-B3 — Director Simplification Revision (Draft PR #12)
 
-## Director scope and starting gate
+**Decision:** 8-metric Planner UI rejected; implement **exactly three primary values per planning category** in the **existing Draft PR #12**, no new PR, no merge, no production deployment.
 
-- Baseline: `main` `9456ba3e01f72fe1d8c0ef352136ccce4be46e9f`, including merged PR #7–#11.
-- Production metadata VERIFIED: `dpl_EkuRy7KtHi2bh5stFCeWqguFVFQ6` READY, target production, `taxplannervid.vercel.app` alias matches, GitHub source SHA matches, 64 Vercel build events reviewed and no error events found.
-- Production **Browser Smoke NOT EXECUTED** in this development environment. Production is not modified.
-- Create **one Draft PR** from this main. No auto-merge and no Phase UX-C2/TAX-C3.
+**Original authorized base:** merged PR #11, `main` `9456ba3e01f72fe1d8c0ef352136ccce4be46e9f`. Production `dpl_EkuRy7KtHi2bh5stFCeWqguFVFQ6` and official `taxplannervid.vercel.app` alias confirmed READY and SHA-matched at project start. Reviewed UX-B3 HEAD `2b3d8235c58d635bfe7a496afd1b39e61a459985`.
 
-## Authorities and non-goals
+## UI implementation
 
-Existing authoritative calculation paths:
+Each of the five existing Planner categories displays only:
 
-- `src/lib/tax/engine.ts` — current and planned `calculateTax` output.
-- `src/lib/tax/deductions.ts` — insurance, retirement, and Thai ESG deductibility/ceilings.
-- `src/lib/tax/scenarios.ts` — unchanged `applyPlanningToDeductions`, `calculatePlanningCapacity` (one-field scenario probes) and `calculatePlanningUsageDetails` (sequential additions, side effects and net deduction deltas).
-- `src/tax-rules/2569/index.ts` — statutory source consumed by the engine. UX-B3 never duplicates its formulas.
+1. **สิทธิที่ใช้ได้** — `calculatePlanningCapacity(currentDeductions, calculateTax)[key]`, a *single-field, conditional* incremental eligible amount considering current paid deductions and relevant limits. Display **0** if fully exhausted.
+2. **วางแผนซื้อ/ลงทุน** — **the existing editable input itself**; no duplicate output tile, no new persisted key, same `setPlanning` and number parser.
+3. **เหลือ / เกิน** — use the shared `getCapacityDisplay` view helper:
+   - `เกิน`: **`calculatePlanningUsageDetails(...)[key].excess`** when positive, rather than blindly subtracting the standalone first figure. This is the scenario's actual non-deductible portion of the planned payment.
+   - `เหลือ`: **`calculatePlanningCapacity(plannedDeductions, calculateTax)[key]`** when no scenario excess, incorporating the *full* multi-field plan rather than a simplistic subtraction.
+   - The value is a status, not an extra statutory cap. Amber for `เกิน`; muted teal for `เหลือ`. The two-column mobile grid wraps the balance across the row; the `min-[640px]` grid displays all three horizontally.
 
-**No Tax Engine or Tax Rules changes**; no altered allocation priority or financial state/persistence. All financial inputs and credit/refund computations remain unchanged.
+The existing `src/lib/ui/deduction-capacity.ts` adapter still exposes legacy calculation metadata internally for testability, but only the **three** required metrics are shown in primary UI. No separate per-category 8-figure grid, extra statutory ceiling paragraphs, current paid/allowed tiles or duplicate total figures.
 
-## Planner capacity display
+## Collapsed pension disclosure
 
-Every one of the five supported Planner categories shows eight compact, right-readable metrics in a responsive two-column mobile / three-to-four-column wider layout:
+Only pension has a native `<details>` disclosure, **closed by default** and labeled **ที่มาของสิทธิ**. It explains:
+- Ordinary life/health shared allowance remaining, obtained from existing `retirementDeductions.pensionLifeRoomAvailable - pensionUsedAsLifeInsurance`.
+- Additional pension capacity, derived from scenario-engine standalone pension capacity net of the ordinary portion.
+- Existing shared retirement remaining from `retirementDeductions.sharedLimitRemaining` and the limitation on adding RMF and pension capacity.
 
-1. **Conditional ceiling** = existing engine-allowed deduction plus incremental single-category capacity returned by the scenario module. The number is **not** a new statutory limit.
-2. **Already paid/invested** = `TaxResult` field's `paid`.
-3. **Already allowed** = `TaxResult` field's `allowed`.
-4. **Remaining before planning** = `calculatePlanningCapacity(current)[key]`.
-5. **Additional payment/investment** = existing `planning[key]` input.
-6. **Additional allowed for this category** = `calculatePlanningUsageDetails(...)[key].allowedAdditional`.
-7. **Allowed after the FULL plan** = `calculateTax(applyPlanningToDeductions(...))` field's `allowed`.
-8. **Remaining after the FULL plan** = `calculatePlanningCapacity(plannedDeductions)[key]`.
+No new pension allocation formula, no duplication of the three primary values. At salary 50,000/month and no previous deductions: **190,000** available = ordinary life **100,000** + pension extra **90,000**; plan pension **100,000** -> **เหลือ 90,000**. With existing ordinary life premium 40,000: pension available **150,000**, and plan 100,000 -> **เหลือ 50,000**.
 
-The independent view adapter `src/lib/ui/deduction-capacity.ts` does **not** calculate any independent entitlement/limit: it only arranges the engine and scenario numbers. Zero-planning inputs reuse the already calculated current capacity.
+## Shared-limit integrity and warnings
 
-**Important:** Single-field capacity numbers are conditional and **NOT additive across fields**. The scenario implementation allocates in this order: life -> health -> pension extra -> RMF -> Thai ESG, and the engine allocates pension extra ahead of other retirement fund candidates. An increase in allowed pension can **displace another allowed retirement deduction**. UX-B3 displays the scenario-reported `netDeductionChange` warning when different from the field's `allowedAdditional`; the Planner's existing side-effect warning remains intact. No net increase in tax deduction is claimed merely because one field is reallocated.
+- `calculatePlanningCapacity` measures a **standalone** field's incremental room, **not** a promise that all category capacities can be added. One concise note after the five Planner entries says so.
+- When two planned categories compete for the shared retirement ceiling, **scenario excess overrides simple standalone subtraction**. Example: existing ordinary life 100,000 and GPF 400,000, new pension 90,000 and RMF 100,000; RMF standalone room is 100,000 but only 10,000 is eligible after the earlier pension allocation, hence **เกิน 90,000**.
+- The existing `PlanningUsageResult.netDeductionChange` warning and `sideEffects` warning remain visible *only when relevant*, not extra financial metric tiles. Example: GPF 450,000, plan pension 190,000: pension's individual allowance increases 190,000, GPF's allowance falls 40,000, **net eligible increase only 150,000**.
+- The existing reasons button remains available beside `เกิน` when reason details exist.
+- No Tax Engine, Tax Rules, scenario allocation order, persisted state, finance handlers, context, localStorage, reset/resume, authentication, Vercel/Supabase configuration or dependencies are modified.
 
-## Pension 190,000 explanation
+## Results protected
 
-For salary 50,000 THB/month (gross 600,000/year), when no insurance/fund rights are used:
+The pre-existing Results short eligibility explanation is retained without modifications in this revision. PR #11 styling remains: changed rows `bg-blue-100/70`, changed planned value `font-bold text-blue-600`, neutral unchanged values/rows, compare at formatted display precision. Credit handling, payable and refund remain untouched.
 
-- Ordinary life-insurance shared pool available for pension: **100,000 THB**, from `TaxResult.retirementDeductions.pensionLifeRoomAvailable` minus `pensionUsedAsLifeInsurance`.
-- Additional pension capacity via the existing 2569 15%-of-income and retirement-shared logic: **90,000 THB**, measured as scenario-engine `pensionInsurance` capacity net of the ordinary-pool portion.
-- Total individual pension capacity: **190,000 THB** from `calculatePlanningCapacity`; this total is conditional on other existing and planned deductions.
-- With already-paid ordinary life insurance 40,000 THB, ordinary pension room falls to **60,000 THB**, and pension total to **150,000 THB** when no other constraints are binding.
-- The view also shows remaining ordinary and additional pension components *after* the full plan. The additional pension component consumes the **retirement shared** pool; ordinary capacity is shared with qualifying life/health insurance.
+## Regression and release verification
 
-**Priority caveat:** A saturated retirement shared ceiling can make `netDeductionChange = 0` while a pension field's own `allowed` increases, by displacing GPF/RMF. The UI must show this scenario warning. Do not reallocate or change these rules in UX-B3.
+`src/components/planning/ux-b3.test.ts` retains all 11 pre-existing UX-B3 integration tests and adds 10 simplification tests:
+- Source proof of exactly three visible primary metric slots, a single existing input, desktop/mobile layout classes and collapsed pension disclosure.
+- Salary 600,000, pension 190,000 available, 100,000 planned, 90,000 remaining.
+- Existing life premium 40,000 reducing pension room.
+- Pension/RMF/Thai ESG exceeding limits; zero available under saturated retirement ceiling.
+- Shared-cap interactions where planned payment is at or below standalone capacity but scenario nevertheless reports over-limit.
+- Net deduction displacement warning; PR #11 Results style and withholding credits unchanged.
 
-## RMF vs Thai ESG at annual income 600,000
+**QA gates:** Full Vitest, ESLint, TypeScript, Next.js production build; exact-HEAD GitHub Actions SUCCESS; Preview READY with matching Git SHA; GitHub Mergeable TRUE; Draft, unmerged, auto-merge disabled; main/production unchanged.
 
-- The engine `retirementDeductions.limits.rmfIncomeLimit` is **180,000 THB** (30%); individual `rmfMax` is 500,000 THB and RMF also consumes the **500,000 THB retirement-shared ceiling** with other eligible retirement deductions.
-- The engine `generalDeductions.limits.thaiEsgIncomeLimit` is **180,000 THB** (30%); `thaiEsgMax` is **300,000 THB** and follows a **separate Thai ESG** framework rather than the retirement-shared ceiling.
-- Neither percentage cap is a guaranteed incremental allowance: display the actual engine-derived `calculatePlanningCapacity` remaining amount when existing deductions have already consumed limits.
-- Existing retirement contributions can limit or displace benefits of future retirement purchases; parallel headline capacities must not be automatically added.
+**Desktop 1440px / mobile 375px, 390px / keyboard physical Browser QA:** **NOT EXECUTED**, unless genuine screenshots or browser evidence are produced and explicitly reported.
 
-## Results detail addition (non-calculating)
-
-One small disclosure inside the existing expanded deductions area says displayed figures are **eligible deductions**, not amounts spent/invested, and links back to the Planner's detailed capacities. PR #11's `bg-blue-100/70`, `font-bold text-blue-600`, neutral unchanged rows and displayed-precision comparison are not modified.
-
-## Test fixtures and release gate
-
-New focused regression tests cover:
-
-- Salary 50k/year 600k => pension 100k ordinary + 90k extra = 190k.
-- Life insurance 40k => pension ordinary room 60k; combined total 150k.
-- RMF and Thai ESG 180k separate income-based limits.
-- Existing GPF 450k and pension planning: shared-room displacement, net effect and side-effect warning.
-- Life 100k + retirement shared cap exhausted => pension reallocation without a net deduction increase.
-- GPF 480k => RMF limited by remaining retirement-shared 20k.
-- RMF planned 200k and Thai ESG planned 210k => 180k allowed by income-based limits.
-- Full-plan values exactly equal `calculateTax`/scenario source outputs.
-- PR #11 result comparison styling source and semantics unchanged.
-
-Run full Vitest, ESLint, TypeScript and Next.js production build on one **exact HEAD**. Check GitHub Actions result, matching READY Vercel Preview SHA, GitHub Mergeable TRUE, and full file scope against main.
-
-**Physical Browser, keyboard, Desktop 1440 and Mobile 375/390 screenshots:** NOT EXECUTED unless actually tested. Vercel READY or code tests alone are not viewport proof.
-
-**STOP for Director Review. Do not merge, deploy Production or enable auto-merge.**
+**STOP FOR DIRECTOR REVIEW. DO NOT MERGE, ENABLE AUTO-MERGE OR DEPLOY PRODUCTION.**

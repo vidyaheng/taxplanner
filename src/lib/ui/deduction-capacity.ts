@@ -15,6 +15,8 @@ export interface DeductionCapacityView {
   additionalPayment: number;
   additionalAllowed: number;
   netDeductionChange: number;
+  /** Non-deductible planned amount returned by the scenario engine. */
+  excess: number;
   allowedAfter: number;
   remainingAfter: number;
 }
@@ -63,6 +65,7 @@ export function getDeductionCapacityView(
     additionalPayment: planning[key],
     additionalAllowed: usage[key].allowedAdditional,
     netDeductionChange: usage[key].netDeductionChange,
+    excess: usage[key].excess,
     allowedAfter: projected.allowed,
     remainingAfter: afterCapacity[key],
   };
@@ -100,4 +103,17 @@ export function getPensionCapacitySplit(
     extraAfterRemaining: Math.max(0, afterCapacity.pensionInsurance - ordinaryAfterRemaining),
     totalAfterRemaining: afterCapacity.pensionInsurance,
   };
+}
+
+/** Keep the primary Planner display to exactly three numbers.
+ * "Excess" is the scenario engine's eligible-vs-paid excess, not a
+ * subtraction from a standalone headroom which could ignore other plans.
+ * "Remaining" is the fresh post-plan engine capacity probe, not an
+ * independently implemented tax-cap calculation.
+ */
+export function getCapacityDisplay(view: DeductionCapacityView):
+  { status: "remaining" | "excess"; amount: number } {
+  return view.excess > 0
+    ? { status: "excess", amount: view.excess }
+    : { status: "remaining", amount: view.remainingAfter };
 }

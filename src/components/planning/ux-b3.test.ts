@@ -7,6 +7,7 @@ import {
   calculatePlanningUsageDetails,
 } from "../../lib/tax/scenarios";
 import {
+  getCapacityDisplay,
   getDeductionCapacityView,
   getPensionCapacitySplit,
 } from "../../lib/ui/deduction-capacity";
@@ -235,7 +236,116 @@ describe("UX-B3 — engine-authoritative deduction capacities (year 2569)", () =
     expect(planner).toContain("calculatePlanningCapacity(");
     expect(planner).toContain("calculatePlanningUsageDetails(");
     expect(planner).toContain("เบี้ยประกันบำนาญที่กำลังพิจารณาซื้อเพิ่ม");
-    expect(planner).toContain("แยกจากเพดานเกษียณของ RMF");
+    expect(planner).toContain("จึงไม่สามารถนำสิทธิ RMF มาบวกซ้ำได้");
     expect(planner).toContain("สิทธิลดหย่อนรวมสุทธิเปลี่ยน");
+  });
+});
+
+describe("UX-B3 Director simplification — exactly three primary metrics", () => {
+  const input = planner.slice(
+    planner.indexOf("function PlannerInput({"),
+    planner.indexOf("function LimitReasonButton({")
+  );
+
+  it("has only three visible primary metric slots and reuses the original planning input", () => {
+    expect((input.match(/data-b3-primary-metric="/g) ?? []).length).toBe(3);
+    expect(input).toContain('data-b3-primary-metric="available"');
+    expect(input).toContain('data-b3-primary-metric="planned"');
+    expect(input).toContain('data-b3-primary-metric="balance"');
+    expect((input.match(/<input/g) ?? []).length).toBe(1);
+    expect(input).toContain("สิทธิที่ใช้ได้");
+    expect(input).toContain("วางแผนซื้อ/ลงทุน");
+    expect(input).toContain('isExcess ? "เกิน" : "เหลือ"');
+    expect(input).toContain("onChange={(e) => onChange(parseNumber(e.target.value))}");
+    expect(input).not.toContain("เพดานสิทธิ ณ ข้อมูลนี้");
+    expect(input).not.toContain("จ่าย/ลงทุนอยู่แล้ว");
+    expect(input).not.toContain("ใช้สิทธิหลังวางแผน");
+  });
+
+  it("has responsive two-column mobile and three-column desktop; pension disclosure is collapsed", () => {
+    expect(input).toContain("grid-cols-2 items-end gap-3 min-[640px]:grid-cols-3");
+    expect(input).toContain("min-[640px]:col-span-1");
+    expect(input).toContain("min-w-0");
+    expect(input.match(/<details/g)).toHaveLength(1);
+    expect(input).not.toContain("<details open");
+    expect(input).toContain("ที่มาของสิทธิ");
+    expect(input).toContain("pensionSplit.ordinaryRemaining");
+    expect(input).toContain("pensionSplit.extraRemaining");
+    expect(input).toContain("retirementSharedRemaining");
+    expect(input).toContain('isExcess ? "bg-amber-50" : "bg-teal-50/60"');
+  });
+
+  it("salary 600,000: pension 190,000 available, 100,000 planned, 90,000 remaining", () => {
+    const f = fixture(emptyDeductions(), planned({ pensionInsurance: 100_000 }));
+    const v = f.view("pensionInsurance");
+    expect(v.remainingCurrent).toBe(190_000);
+    expect(v.additionalPayment).toBe(100_000);
+    expect(v.additionalAllowed).toBe(100_000);
+    expect(v.excess).toBe(0);
+    expect(getCapacityDisplay(v)).toEqual({ status: "remaining", amount: 90_000 });
+  });
+
+  it("life insurance 40,000 lowers available pension room and keeps remaining after a plan", () => {
+    const f = fixture({ ...emptyDeductions(), lifeInsurance: 40_000 }, planned({ pensionInsurance: 100_000 }));
+    expect(f.view("pensionInsurance").remainingCurrent).toBe(150_000);
+    expect(getCapacityDisplay(f.view("pensionInsurance"))).toEqual({ status: "remaining", amount: 50_000 });
+  });
+
+  it("pension purchase exceeding the engine capacity shows scenario excess, not a synthetic tax formula", () => {
+    const f = fixture(emptyDeductions(), planned({ pensionInsurance: 210_000 }));
+    const v = f.view("pensionInsurance");
+    expect(v.remainingCurrent).toBe(190_000);
+    expect(v.additionalAllowed).toBe(190_000);
+    expect(v.excess).toBe(f.usage.pensionInsurance.excess);
+    expect(getCapacityDisplay(v)).toEqual({ status: "excess", amount: 20_000 });
+  });
+
+  it("RMF exceeding income cap reports excess 20,000, Thai ESG exceeds separate cap", () => {
+    const rmf = fixture(emptyDeductions(), planned({ rmf: 200_000 }));
+    expect(getCapacityDisplay(rmf.view("rmf"))).toEqual({ status: "excess", amount: 20_000 });
+    const esg = fixture(emptyDeductions(), planned({ thaiEsg: 210_000 }));
+    expect(getCapacityDisplay(esg.view("thaiEsg"))).toEqual({ status: "excess", amount: 30_000 });
+  });
+
+  it("with shared retirement ceiling fully used, RMF capacity and remaining show zero", () => {
+    const d = { ...emptyDeductions(), gpf: 500_000 };
+    const f = fixture(d);
+    const v = f.view("rmf");
+    expect(v.remainingCurrent).toBe(0);
+    expect(getCapacityDisplay(v)).toEqual({ status: "remaining", amount: 0 });
+    const plannedF = fixture(d, planned({ rmf: 10_000 }));
+    expect(getCapacityDisplay(plannedF.view("rmf"))).toEqual({ status: "excess", amount: 10_000 });
+  });
+
+  it("other planned retirement additions can create excess even below standalone RMF capacity", () => {
+    const d = { ...emptyDeductions(), lifeInsurance: 100_000, gpf: 400_000 };
+    const f = fixture(d, planned({ pensionInsurance: 90_000, rmf: 100_000 }));
+    const v = f.view("rmf");
+    expect(v.remainingCurrent).toBe(100_000);
+    expect(v.additionalPayment).toBe(100_000);
+    expect(v.additionalAllowed).toBe(10_000);
+    expect(v.excess).toBe(90_000);
+    expect(getCapacityDisplay(v)).toEqual({ status: "excess", amount: 90_000 });
+  });
+
+  it("preserves the warning when a new pension allocation displaces existing retirement rights", () => {
+    const f = fixture(
+      { ...emptyDeductions(), gpf: 450_000 },
+      planned({ pensionInsurance: 190_000 })
+    );
+    expect(f.view("pensionInsurance").netDeductionChange).toBe(150_000);
+    expect(f.view("pensionInsurance").additionalAllowed).toBe(190_000);
+    expect(f.usage.pensionInsurance.sideEffects.some(e => e.key === "gpf" && e.change < 0)).toBe(true);
+    expect(input).toContain("netDeductionChange !== capacitySummary.additionalAllowed");
+    expect(input).toContain("แผนนี้มีผลต่อสิทธิเดิม");
+    expect(input).toContain("reducedRights.map");
+  });
+
+  it("keeps Results comparison and tax credit treatment independent of UX-B3 formatting", () => {
+    expect(plannedComparisonRowClass("100 บาท", "101 บาท")).toBe("bg-blue-100/70");
+    expect(plannedComparisonRowClass("100 บาท", "100 บาท")).toBe("");
+    expect(results).toContain("plannedComparisonRowClass(formatNumber(item.current), formatNumber(item.planned))");
+    expect(results).toContain("currentResult.taxCredits.withholdingTax");
+    expect(results).toContain("plannedResult.taxCredits.withholdingTax");
   });
 });
