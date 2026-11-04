@@ -212,12 +212,12 @@ describe("UX-C1 — Director three-point final correction", () => {
 
   it("highlights entire changed comparison row but never a display-equivalent row", () => {
     expect(plannedComparisonRowClass("100 บาท", "100 บาท")).toBe("");
-    expect(plannedComparisonRowClass("100 บาท", "101 บาท")).toBe("bg-blue-50/70");
-    expect(plannedComparisonRowClass("101 บาท", "100 บาท")).toBe("bg-blue-50/70");
+    expect(plannedComparisonRowClass("100 บาท", "101 บาท")).toBe("bg-blue-100/70");
+    expect(plannedComparisonRowClass("101 บาท", "100 บาท")).toBe("bg-blue-100/70");
     expect(plannedComparisonRowClass(baht.format(100.01), baht.format(100.49))).toBe("");
-    expect(plannedComparisonRowClass(baht.format(100.49), baht.format(100.51))).toBe("bg-blue-50/70");
+    expect(plannedComparisonRowClass(baht.format(100.49), baht.format(100.51))).toBe("bg-blue-100/70");
     expect(plannedComparisonRowClass(percent.format(0.1000001), percent.format(0.1000002))).toBe("");
-    expect(plannedComparisonRowClass(percent.format(0.10004), percent.format(0.10006))).toBe("bg-blue-50/70");
+    expect(plannedComparisonRowClass(percent.format(0.10004), percent.format(0.10006))).toBe("bg-blue-100/70");
     expect(plannedComparisonClass("100 บาท", "101 บาท")).toBe("font-bold text-blue-600");
     expect(plannedComparisonClass("100 บาท", "100 บาท")).toBe("font-medium text-slate-700");
   });

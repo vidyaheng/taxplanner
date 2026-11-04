@@ -18,5 +18,5 @@ export function plannedComparisonRowClass(
   displayedCurrent: string,
   displayedPlanned: string
 ): string {
-  return displayedCurrent !== displayedPlanned ? "bg-blue-50/70" : "";
+  return displayedCurrent !== displayedPlanned ? "bg-blue-100/70" : "";
 }
