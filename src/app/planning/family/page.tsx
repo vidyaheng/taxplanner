@@ -22,6 +22,15 @@ import {
 } from "@/lib/tax/engine";
 
 import { TAX_RULES_2569 } from "@/tax-rules/2569";
+import {
+  PARENT_RELATIONSHIP_SLOTS,
+  getFirstUnusedParentSlot,
+  getDuplicateParentSlotKeys,
+  getParentSlotLabel,
+  parentSlotKey,
+  slotFromKey,
+  canAssignParentSlot,
+} from "@/lib/ui/parent-relationship-slots";
 
 function parseNumber(
   value: string
@@ -52,6 +61,8 @@ export default function FamilyPage() {
   } = useTaxPlanner();
 
   const family = state.family;
+  const firstUnusedParentSlot = getFirstUnusedParentSlot(family.parents);
+  const duplicateParentSlotKeys = getDuplicateParentSlotKeys(family.parents);
 
   const spouseHasAssessableIncome =
     family.spouseHasAssessableIncome !==
@@ -449,12 +460,15 @@ const seniorAllocationRemaining =
   }
 
   function addParent() {
+    const nextSlot = getFirstUnusedParentSlot(family.parents);
+    if (!nextSlot) return;
+
     const parent: ParentData = {
       id: createId(),
 
-      owner: "taxpayer",
+      owner: nextSlot.owner,
 
-      relation: "father",
+      relation: nextSlot.relation,
 
       birthYearBE: null,
 
@@ -494,6 +508,13 @@ const seniorAllocationRemaining =
               : parent
         ),
     });
+  }
+
+  function changeParentRelationship(id: string, key: string) {
+    const slot = slotFromKey(key);
+    if (!slot || !canAssignParentSlot(family.parents, id, slot)) return;
+    // Change only relationship fields; keep the original record ID and all other data.
+    updateParent(id, { owner: slot.owner, relation: slot.relation });
   }
 
   function removeParent(
@@ -1485,127 +1506,95 @@ const seniorAllocationRemaining =
             {/* Parents */}
             <div className="mt-10 border-t border-slate-100 pt-8 tp-b2-section">
 
-              <div className="flex items-start justify-between gap-4">
-
-                <div>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
                   <h2 className="text-lg font-semibold text-slate-900">
                     บิดา / มารดา
                   </h2>
-
                   <p className="mt-1 text-sm text-slate-500">
                     เพิ่มเฉพาะบุคคลที่ต้องการตรวจสอบสิทธิลดหย่อน
                   </p>
                 </div>
-
                 <button
                   type="button"
                   onClick={addParent}
-                  className="shrink-0 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                  disabled={!firstUnusedParentSlot}
+                  className="shrink-0 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-800 hover:bg-teal-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   + เพิ่ม
                 </button>
               </div>
 
-              {family.parents.length >0 && (
+              {!firstUnusedParentSlot && (
+                <p className="mt-2 text-sm text-slate-600" role="status">
+                  บันทึกครบทั้ง 4 ความสัมพันธ์แล้ว ไม่สามารถเพิ่มรายการได้
+                </p>
+              )}
 
+              {duplicateParentSlotKeys.length > 0 && (
+                <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                  พบความสัมพันธ์บิดา/มารดาซ้ำในข้อมูลเดิม กรุณาตรวจสอบก่อนใช้ผลคำนวณภาษี
+                  ระบบยังเก็บข้อมูลทุกรายการไว้ ไม่ลบหรือรวมข้อมูลให้อัตโนมัติ
+                  <ul className="mt-1 list-disc pl-5">
+                    {duplicateParentSlotKeys.map((key) => (
+                      <li key={key}>{getParentSlotLabel(slotFromKey(key) ?? { owner: "taxpayer", relation: "father" })}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {family.parents.length > 0 && (
                 <div className="mt-5 space-y-4">
-
-                  {family.parents.map(
-                    (
-                      parent,
-                      index
-                    ) => (
-                      <div
-                        key={
-                          parent.id
-                        }
-                        className="tp-b2-record rounded-2xl border border-slate-200 p-4 sm:p-5"
-                      >
-
-                        <div className="flex items-center justify-between">
-
-                          <div className="font-semibold text-slate-900">
-                            บุพการี{" "}
-                            {index + 1}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              removeParent(
-                                parent.id
-                              )
-                            }
-                            className="tp-b2-delete"
-                          >
-                            ลบ
-                          </button>
+                  {family.parents.map((parent, index) => (
+                    <div
+                      key={parent.id}
+                      className="tp-b2-record min-w-0 rounded-2xl border border-slate-200 p-4 sm:p-5"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 font-semibold text-slate-900">
+                          {getParentSlotLabel(parent)}
+                          <span className="ml-2 text-xs font-normal text-slate-500">รายการ {index + 1}</span>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => removeParent(parent.id)}
+                          className="tp-b2-delete"
+                        >
+                          ลบ
+                        </button>
+                      </div>
 
-                        <div className="mt-5 grid gap-5 sm:grid-cols-2">
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              เป็นบิดา /
-                              มารดาของ
-                            </label>
-
-                            <select
-                              value={
-                                parent.owner
-                              }
-                              onChange={(e) =>
-                                updateParent(
-                                  parent.id,
-                                  {
-                                    owner:
-                                      e.target
-                                        .value as ParentData["owner"],
-                                  }
-                                )
-                              }
-                              className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4"
-                            >
-                              <option value="taxpayer">
-                                คุณ
-                              </option>
-
-                              <option value="spouse">
-                                คู่สมรส
-                              </option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              ความสัมพันธ์
-                            </label>
-
-                            <select
-                              value={
-                                parent.relation
-                              }
-                              onChange={(e) =>
-                                updateParent(
-                                  parent.id,
-                                  {
-                                    relation:
-                                      e.target
-                                        .value as ParentData["relation"],
-                                  }
-                                )
-                              }
-                              className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4"
-                            >
-                              <option value="father">
-                                บิดา
-                              </option>
-
-                              <option value="mother">
-                                มารดา
-                              </option>
-                            </select>
-                          </div>
+                      <div className="mt-5 grid min-w-0 gap-5 sm:grid-cols-2">
+                        <div className="min-w-0 sm:col-span-2">
+                          <label
+                            htmlFor={`parent-slot-${parent.id}`}
+                            className="mb-2 block text-sm font-medium text-slate-700"
+                          >
+                            ความสัมพันธ์กับผู้เสียภาษี
+                          </label>
+                          <select
+                            id={`parent-slot-${parent.id}`}
+                            value={parentSlotKey(parent)}
+                            onChange={(e) => changeParentRelationship(parent.id, e.target.value)}
+                            className="h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+                          >
+                            {PARENT_RELATIONSHIP_SLOTS.map((slot) => {
+                              const slotKey = parentSlotKey(slot);
+                              const occupiedByOther = family.parents.some(
+                                (existing) => existing.id !== parent.id && parentSlotKey(existing) === slotKey,
+                              );
+                              const isCurrent = parentSlotKey(parent) === slotKey;
+                              return (
+                                <option key={slotKey} value={slotKey} disabled={occupiedByOther && !isCurrent}>
+                                  {slot.label}{occupiedByOther && !isCurrent ? " (มีข้อมูลแล้ว)" : ""}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            ความสัมพันธ์ที่มีข้อมูลแล้วจะไม่สามารถเลือกซ้ำได้
+                          </p>
+                        </div>
 
                           <div>
                             <div className="mb-2 text-sm font-medium text-slate-700">
