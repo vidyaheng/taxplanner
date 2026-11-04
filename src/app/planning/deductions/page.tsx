@@ -1223,8 +1223,8 @@ const donationPlanningChanged =
                                         )}
 
                                     {field.key === "pensionInsurance" && deductions.pensionInsurance > 0 && (
-                                      <details className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                                        <summary className="min-h-8 cursor-pointer font-medium text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">ที่มาของสิทธิประกันบำนาญ</summary>
+                                      <details data-c2-pension-details className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                                        <summary data-c2-pension-summary className="min-h-8 cursor-pointer font-medium text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">ที่มาของสิทธิประกันบำนาญ</summary>
                                         <div className="mt-2 space-y-2 border-t border-slate-100 pt-2">
                                           <div className="flex flex-wrap items-center justify-between gap-2">
                                             <span>ส่วนที่ใช้ในวงเงินประกันชีวิตทั่วไป</span>

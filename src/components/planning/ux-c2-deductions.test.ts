@@ -90,7 +90,7 @@ describe("UX-C2.2 — Deductions input-first, engine-output-only", () => {
   it("keeps social security separate, Thai ESGX schedule, donation preview and special eligibility", () => {
     expect(page).toContain('field.key === "socialSecurity" ? null');
     expect(page).toContain('field.key === "socialSecurity" && generalFieldUsage');
-    expect(page).toContain("thaiEsgxTransfer.allowedThisYear");
+    expect(page).toMatch(/thaiEsgxTransfer\s*\.\s*allowedThisYear/);
     expect(page).toContain("thaiEsgxTransfer.schedule");
     expect(page).toContain("donationPlanningChanged");
     expect(page).toContain("donationPlanningDelta");
