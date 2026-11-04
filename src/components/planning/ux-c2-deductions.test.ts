@@ -123,7 +123,7 @@ describe("UX-C2.2 — Deductions input-first, engine-output-only", () => {
     expect(section).toContain("updateParentHealthPolicy");
     expect(section).toContain("policy.parentId");
     expect(section).toContain("policy.jointPayerCount");
-    expect(section).toMatch(/insuranceUsage\\s*\\.parentHealthInsurance/);
+    expect(section).toMatch(/insuranceUsage\s*\.parentHealthInsurance/);
     expect(page).toContain("taxResult.warnings");
   });
 
