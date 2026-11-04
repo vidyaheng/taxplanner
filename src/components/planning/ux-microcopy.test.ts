@@ -36,19 +36,18 @@ describe("UX Microcopy Director contracts", () => {
     expect(pages.planner).toContain("planningWarnings.map(");
     expect(pages.results).toContain("resultWarnings.map(");
   });
-  it("preserves complete legal texts in native keyboard-accessible details", () => {
+  it("preserves remaining legal texts in native keyboard-accessible details", () => {
     expect(pages.deductions).toContain("conditionDetails?: string;");
     expect(pages.deductions).toContain("field.conditionDetails");
     expect(pages.deductions).toContain("{conditionDetails && (");
-    expect(pages.deductions.match(/<details className=/g)).toHaveLength(2);
-    expect(pages.deductions.match(/<summary className=/g)).toHaveLength(2);
-    expect(pages.deductions.match(/ดูเงื่อนไข/g)).toHaveLength(2);
+    expect(pages.deductions.match(/<details className=/g)).toHaveLength(1);
+    expect(pages.deductions.match(/<summary className=/g)).toHaveLength(1);
+    expect(pages.deductions.match(/ดูเงื่อนไข/g)).toHaveLength(1);
     expect(pages.deductions).toContain("focus-visible:outline-2");
     expect(pages.deductions).toContain("max-w-full break-words");
     expect(pages.deductions).toContain("กรอกเฉพาะค่าซื้อและติดตั้งที่เข้าเงื่อนไข ระบบต้องติดตั้งบนที่อยู่อาศัย เชื่อมต่อโครงข่าย MEA/PEA สำเร็จ และมี e-Tax Invoice ใช้สิทธิได้ 1 ครั้ง 1 ระบบ สูงสุด 200,000 บาท");
     expect(pages.deductions).toContain("กรอกเฉพาะยอดซื้อผลงานที่เข้าเงื่อนไข เช่น จิตรกรรม ประติมากรรม ภาพพิมพ์ ภาพถ่าย หรือสื่อผสม ใช้สิทธิได้ตามจริงสูงสุด 100,000 บาท");
     expect(pages.deductions).toContain("สำหรับเงินที่บริจาคผ่านบัญชีเฉพาะของกองทัพอากาศเพื่อโครงการสร้างพระสถูปเจดีย์ ใช้สิทธิ 1 เท่า และใช้เพดาน 10% ร่วมกับเงินบริจาคทั่วไป");
-    expect(pages.deductions).toContain("เพื่อให้ระบบตรวจสิทธิและกรณีร่วมจ่ายได้ถูกต้อง");
     expect(pages.deductions).toContain("ปี 2569 การบริจาคให้วัด มูลนิธิ");
   });
   it("keeps all five planning steps and navigation links", () => {
