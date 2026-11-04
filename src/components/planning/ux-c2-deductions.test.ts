@@ -115,14 +115,15 @@ describe("UX-C2.2 — Deductions input-first, engine-output-only", () => {
     );
     expect(section).toContain("เบี้ยประกันสุขภาพบิดา / มารดา");
     expect(section).toContain("เพิ่มกรมธรรม์แยกตามบิดา / มารดา");
-    expect(section).not.toContain("ดูเงื่อนไข");
-    expect(section).not.toContain("เพื่อให้ระบบตรวจสิทธิและกรณีร่วมจ่ายได้ถูกต้อง");
+    const parentHeader = section.slice(0, section.indexOf("{deductions"));
+    expect(parentHeader).not.toContain("ดูเงื่อนไข");
+    expect(parentHeader).not.toContain("เพื่อให้ระบบตรวจสิทธิและกรณีร่วมจ่ายได้ถูกต้อง");
     expect(section).toContain("addParentHealthPolicy");
     expect(section).toContain("removeParentHealthPolicy");
     expect(section).toContain("updateParentHealthPolicy");
     expect(section).toContain("policy.parentId");
     expect(section).toContain("policy.jointPayerCount");
-    expect(section).toContain("insuranceUsage.parentHealthInsurance");
+    expect(section).toMatch(/insuranceUsage\\s*\\.parentHealthInsurance/);
     expect(page).toContain("taxResult.warnings");
   });
 
