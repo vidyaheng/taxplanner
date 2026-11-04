@@ -23,6 +23,9 @@ import {
   calculatePlanningUsageDetails,
 } from "@/lib/tax/scenarios";
 
+import type { DeductionCapacityView, PensionCapacitySplit } from "@/lib/ui/deduction-capacity";
+import { getDeductionCapacityView, getPensionCapacitySplit } from "@/lib/ui/deduction-capacity";
+
 import {
   PlanningData,
   PlanningLimitReason,
@@ -347,6 +350,41 @@ export default function PlannerPage() {
         })
     );
 
+  // Both capacities are scenario probes using the unchanged Tax Engine.
+  // A capacity is a single-category opportunity, not an additive statutory cap.
+  const capacityAfterPlanning = totalPlannedPayment === 0
+    ? planningCapacity
+    : calculatePlanningCapacity(
+      plannedDeductions,
+      (deductions) =>
+        calculateTax({
+          taxYear: state.taxYear,
+          income: state.income,
+          family: state.family,
+          deductions,
+        })
+    );
+
+  const pensionSplit = getPensionCapacitySplit(
+    currentResult,
+    plannedResult,
+    planningCapacity,
+    capacityAfterPlanning
+  );
+
+  const capacityLimitNotes: Record<PlanningFieldKey, string> = {
+    lifeInsurance:
+      `เพดานร่วมประกันชีวิต/สุขภาพ ${formatNumber(currentResult.insuranceDeductions.limits.lifeAndHealthCombinedMax)} บาท • อาจใช้สิทธิร่วมกับประกันสุขภาพตนเอง`,
+    healthInsuranceSelf:
+      `เพดานเฉพาะสุขภาพ ${formatNumber(currentResult.insuranceDeductions.limits.healthSelfMax)} บาท • รวมกับประกันชีวิตไม่เกิน ${formatNumber(currentResult.insuranceDeductions.limits.lifeAndHealthCombinedMax)} บาท`,
+    pensionInsurance:
+      `ส่วนเพิ่มตามรายได้ ${formatNumber(currentResult.retirementDeductions.limits.pensionIncomeLimit)} บาท (${formatNumber(currentResult.retirementDeductions.limits.pensionIncomeRate * 100)}%) • สูงสุดส่วนเพิ่ม ${formatNumber(currentResult.retirementDeductions.limits.pensionExtraMax)} บาท • กลุ่มเกษียณร่วมเหลือ ${formatNumber(currentResult.retirementDeductions.sharedLimitRemaining)} บาท`,
+    rmf:
+      `ตามรายได้ ${formatNumber(currentResult.retirementDeductions.limits.rmfIncomeLimit)} บาท (${formatNumber(currentResult.retirementDeductions.limits.rmfIncomeRate * 100)}%) • เพดาน RMF ${formatNumber(currentResult.retirementDeductions.limits.rmfMax)} บาท • กลุ่มเกษียณร่วมเหลือ ${formatNumber(currentResult.retirementDeductions.sharedLimitRemaining)} บาท`,
+    thaiEsg:
+      `ตามรายได้ ${formatNumber(currentResult.generalDeductions.limits.thaiEsgIncomeLimit)} บาท (${formatNumber(currentResult.generalDeductions.limits.thaiEsgIncomeRate * 100)}%) • เพดาน Thai ESG ${formatNumber(currentResult.generalDeductions.limits.thaiEsgMax)} บาท • แยกจากเพดานเกษียณของ RMF`,
+  };
+
   /*
   * สิทธิของรายการใหม่เอง
   * ไม่หักผลกระทบที่เกิดกับสิทธิเดิม
@@ -487,9 +525,17 @@ export default function PlannerPage() {
                     planningDetails[field.key]
                       .allowedAdditional
                   }
-                  capacity={
-                    planningCapacity[field.key]
-                  }
+                  capacitySummary={getDeductionCapacityView(
+                    field.key,
+                    currentResult,
+                    plannedResult,
+                    planningCapacity,
+                    capacityAfterPlanning,
+                    planning,
+                    planningDetails
+                  )}
+                  capacityLimitNote={capacityLimitNotes[field.key]}
+                  pensionSplit={field.key === "pensionInsurance" ? pensionSplit : undefined}
                   reasons={
                     planningDetails[field.key]
                       .reasons
@@ -780,7 +826,9 @@ function PlannerInput({
   description,
   value,
   allowed,
-  capacity,
+  capacitySummary,
+  capacityLimitNote,
+  pensionSplit,
   reasons,
   sideEffects,
   showCalculation,
@@ -790,7 +838,9 @@ function PlannerInput({
   description: string;
   value: number;
   allowed: number;
-  capacity: number;
+  capacitySummary: DeductionCapacityView;
+  capacityLimitNote: string;
+  pensionSplit?: PensionCapacitySplit;
 
   reasons:
     PlanningLimitReason[];
@@ -831,15 +881,64 @@ function PlannerInput({
           </div>
 
           {showCalculation && (
-            <div className="mt-2 text-xs text-slate-500">
-              วงเงินเพิ่มโดยประมาณ
-              เมื่อพิจารณารายการนี้แยก{" "}
-              <span className="font-medium text-slate-700">
-                {formatNumber(
-                  capacity
-                )}{" "}
-                บาท
-              </span>
+            <div className="mt-3 max-w-2xl border-t border-slate-100 pt-3">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs sm:grid-cols-3 xl:grid-cols-4">
+                {(
+                  [
+                    ["เพดานสิทธิ ณ ข้อมูลนี้", capacitySummary.conditionalCeiling],
+                    ["จ่าย/ลงทุนอยู่แล้ว", capacitySummary.paidCurrent],
+                    ["ใช้สิทธิแล้ว", capacitySummary.allowedCurrent],
+                    ["เหลือสิทธิก่อนแผน", capacitySummary.remainingCurrent],
+                    ["วางแผนเพิ่ม", capacitySummary.additionalPayment],
+                    ["ส่วนเพิ่มที่ใช้สิทธิได้", capacitySummary.additionalAllowed],
+                    ["ใช้สิทธิหลังวางแผน", capacitySummary.allowedAfter],
+                    ["เหลือสิทธิหลังวางแผน", capacitySummary.remainingAfter],
+                  ] as const
+                ).map(([itemLabel, amount]) => (
+                  <div key={itemLabel} className="min-w-0">
+                    <div className="leading-5 text-slate-500">{itemLabel}</div>
+                    <div className="mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums text-slate-800">
+                      {formatNumber(amount)} <span className="text-xs font-normal">บาท</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">{capacityLimitNote}</p>
+              {capacitySummary.additionalPayment > 0 &&
+                capacitySummary.netDeductionChange !== capacitySummary.additionalAllowed && (
+                  <p className="mt-1 text-xs leading-5 text-amber-700">
+                    สิทธิของรายการนี้เพิ่มได้ {formatNumber(capacitySummary.additionalAllowed)} บาท
+                    แต่เมื่อคิดผลกระทบต่อสิทธิเดิมในลำดับการวางแผนนี้
+                    สิทธิลดหย่อนรวมสุทธิเปลี่ยน {formatNumber(capacitySummary.netDeductionChange)} บาท
+                    (อาจมีสิทธิเดิมถูกแทนที่)
+                  </p>
+                )}
+              {pensionSplit && (
+                <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-2.5 text-xs leading-5 text-slate-700">
+                  <div className="font-semibold text-indigo-900">ประกันบำนาญ — สิทธิที่เหลือแยก 2 ส่วน</div>
+                  <div className="mt-1 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                    <div>
+                      เพดานประกันชีวิตทั่วไปที่เหลือ <strong className="tabular-nums">{formatNumber(pensionSplit.ordinaryRemaining)} บาท</strong>
+                      <span className="block text-slate-500">หลังวางแผนเหลือ {formatNumber(pensionSplit.ordinaryAfterRemaining)} บาท</span>
+                    </div>
+                    <div>
+                      ส่วนเพิ่มบำนาญภายใต้เพดานเกษียณร่วม <strong className="tabular-nums">{formatNumber(pensionSplit.extraRemaining)} บาท</strong>
+                      <span className="block text-slate-500">หลังวางแผนเหลือ {formatNumber(pensionSplit.extraAfterRemaining)} บาท</span>
+                    </div>
+                  </div>
+                  <div className="mt-1 font-medium text-indigo-900">
+                    รวมสิทธิที่เหลือสำหรับบำนาญ {formatNumber(pensionSplit.totalRemaining)} บาท
+                    <span className="block font-normal text-slate-600">หลังวางแผนเหลือ {formatNumber(pensionSplit.totalAfterRemaining)} บาท</span>
+                  </div>
+                  <p className="mt-1 text-slate-600">
+                    ส่วนแรกใช้เพดานร่วมกับประกันชีวิตและสุขภาพเดิม ส่วนเพิ่มใช้เพดานร่วมกลุ่มเกษียณ จึงไม่ควรบวกยอดคงเหลือ RMF กับบำนาญเป็นสิทธิใหม่ทั้งหมด
+                  </p>
+                </div>
+              )}
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                เพดานและยอดคงเหลือเป็นผลทดสอบเพิ่มทีละหมวดจาก Tax Engine
+                ไม่ใช่ยอดที่นำแต่ละหมวดมาบวกรวมกันได้ เมื่อมีหลายแผนร่วมกันให้ดู “ใช้สิทธิหลังวางแผน”
+              </p>
             </div>
           )}
 
@@ -847,13 +946,7 @@ function PlannerInput({
             value > 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
 
-              <span className="font-medium text-blue-700">
-                ใช้ลดหย่อนเพิ่มได้{" "}
-                {formatNumber(
-                  allowed
-                )}{" "}
-                บาท
-              </span>
+
 
               {unused > 0 && (
                 <div className="flex items-center gap-2">
