@@ -37,6 +37,8 @@ type DeductionKey = {
       : never;
 }[keyof DeductionData];
 
+import { DeductionEligibilitySummary } from "@/components/planning/DeductionEligibilitySummary";
+
 interface DeductionField {
   key: DeductionKey;
   label: string;
@@ -1025,10 +1027,20 @@ const donationPlanningChanged =
                                       donationFieldUsage.allowed
                                     : 0;
 
+                                const standardUsage = field.key === "lifeInsurance" ? insuranceUsage.lifeInsurance
+                                  : field.key === "healthInsuranceSelf" ? insuranceUsage.healthInsuranceSelf
+                                  : field.key === "spouseLifeInsurance" ? insuranceUsage.spouseLifeInsurance
+                                  : field.key === "pensionInsurance" ? retirementUsage.pensionInsurance
+                                  : field.key === "thaiEsg" ? generalUsage.thaiEsg
+                                  : field.key === "socialSecurity" ? null
+                                  : retirementFieldUsage ?? generalFieldUsage;
+
                                 return (
                                   <div key={field.key}>
                                     <DeductionInput
                                       label={field.label}
+                                      categoryKey={field.key}
+                                      usage={standardUsage}
                                       description={
                                         field.description
                                       }
@@ -1210,276 +1222,30 @@ const donationPlanningChanged =
                                           </div>
                                         )}
 
-                                    {generalFieldUsage &&
-                                      (deductions[field.key] ?? 0) > 0 && (
-                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
-                                          <div>
-                                            <div className="text-slate-500">
-                                              ใช้สิทธิได้
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-blue-700">
-                                              {formatNumber(
-                                                generalFieldUsage.allowed
-                                              )}{" "}
-                                              บาท
-                                            </div>
+                                    {field.key === "pensionInsurance" && deductions.pensionInsurance > 0 && (
+                                      <details className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                                        <summary className="min-h-8 cursor-pointer font-medium text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">ที่มาของสิทธิประกันบำนาญ</summary>
+                                        <div className="mt-2 space-y-2 border-t border-slate-100 pt-2">
+                                          <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <span>ส่วนที่ใช้ในวงเงินประกันชีวิตทั่วไป</span>
+                                            <span className="font-semibold tabular-nums">{formatNumber(retirementUsage.pensionUsedAsLifeInsurance)} บาท</span>
                                           </div>
-
-                                          <div>
-                                            <div className="text-slate-500">
-                                              เกินสิทธิ
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-slate-900">
-                                              {formatNumber(
-                                                generalFieldUsage.excess
-                                              )}{" "}
-                                              บาท
-                                            </div>
+                                          <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <span>ส่วนบำนาญเพิ่มเติมภายใต้เพดานเกษียณร่วม</span>
+                                            <span className="font-semibold tabular-nums">{formatNumber(retirementUsage.pensionExtraAllowed)} บาท</span>
                                           </div>
                                         </div>
-                                      )}
-
-                                    {retirementFieldUsage &&
-                                      (deductions[field.key] ?? 0) > 0 && (
-                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
-                                          <div>
-                                            <div className="text-slate-500">
-                                              ใช้สิทธิได้
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-blue-700">
-                                              {formatNumber(
-                                                retirementFieldUsage.allowed
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-
-                                          <div>
-                                            <div className="text-slate-500">
-                                              เกินสิทธิ
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-slate-900">
-                                              {formatNumber(
-                                                retirementFieldUsage.excess
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                    {field.key === "lifeInsurance" &&
-                                      deductions.lifeInsurance > 0 && (
-                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
-                                          <div>
-                                            <div className="text-slate-500">
-                                              ใช้สิทธิได้
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-blue-700">
-                                              {formatNumber(
-                                                insuranceUsage
-                                                  .lifeInsurance
-                                                  .allowed
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-
-                                          <div>
-                                            <div className="text-slate-500">
-                                              เกินสิทธิ
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-slate-900">
-                                              {formatNumber(
-                                                insuranceUsage
-                                                  .lifeInsurance
-                                                  .excess
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                    {field.key === "healthInsuranceSelf" &&
-                                      deductions.healthInsuranceSelf > 0 && (
-                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
-                                          <div>
-                                            <div className="text-slate-500">
-                                              ใช้สิทธิได้
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-blue-700">
-                                              {formatNumber(
-                                                insuranceUsage
-                                                  .healthInsuranceSelf
-                                                  .allowed
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-
-                                          <div>
-                                            <div className="text-slate-500">
-                                              เกินสิทธิ
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-slate-900">
-                                              {formatNumber(
-                                                insuranceUsage
-                                                  .healthInsuranceSelf
-                                                  .excess
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                    {field.key === "spouseLifeInsurance" &&
-                                      deductions.spouseLifeInsurance > 0 && (
-                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
-                                          <div>
-                                            <div className="text-slate-500">
-                                              ใช้สิทธิได้
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-blue-700">
-                                              {formatNumber(
-                                                insuranceUsage
-                                                  .spouseLifeInsurance
-                                                  .allowed
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-
-                                          <div>
-                                            <div className="text-slate-500">
-                                              เกินสิทธิ
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-slate-900">
-                                              {formatNumber(
-                                                insuranceUsage
-                                                  .spouseLifeInsurance
-                                                  .excess
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                    {field.key === "pensionInsurance" &&
-                                      deductions.pensionInsurance > 0 && (
-                                        <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm">
-
-                                          <div className="grid gap-3 sm:grid-cols-2">
-                                            <div>
-                                              <div className="text-slate-500">
-                                                ใช้สิทธิได้รวม
-                                              </div>
-
-                                              <div className="mt-1 font-semibold text-blue-700">
-                                                {formatNumber(
-                                                  retirementUsage
-                                                    .pensionInsurance
-                                                    .allowed
-                                                )}{" "}
-                                                บาท
-                                              </div>
-                                            </div>
-
-                                            <div>
-                                              <div className="text-slate-500">
-                                                เกินสิทธิ
-                                              </div>
-
-                                              <div className="mt-1 font-semibold text-slate-900">
-                                                {formatNumber(
-                                                  retirementUsage
-                                                    .pensionInsurance
-                                                    .excess
-                                                )}{" "}
-                                                บาท
-                                              </div>
-                                            </div>
-                                          </div>
-
-                                          <div className="mt-4 border-t border-slate-200 pt-3">
-                                            <div className="text-xs text-slate-500">
-                                              รายละเอียดสิทธิที่ใช้ได้
-                                            </div>
-
-                                            <div className="mt-2 flex items-center justify-between gap-4">
-                                              <span className="text-slate-500">
-                                                ส่วนของเบี้ยบำนาญที่ใช้ในวงเงิน 100,000 บาท
-                                              </span>
-
-                                              <span className="font-medium text-slate-900">
-                                                {formatNumber(
-                                                  retirementUsage
-                                                    .pensionUsedAsLifeInsurance
-                                                )}{" "}
-                                                บาท
-                                              </span>
-                                            </div>
-
-                                            <div className="mt-2 flex items-center justify-between gap-4">
-                                              <span className="text-slate-500">
-                                                ใช้สิทธิเบี้ยประกันบำนาญ
-                                              </span>
-
-                                              <span className="font-medium text-slate-900">
-                                                {formatNumber(
-                                                  retirementUsage
-                                                    .pensionExtraAllowed
-                                                )}{" "}
-                                                บาท
-                                              </span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                    {field.key === "thaiEsg" &&
-                                      deductions.thaiEsg > 0 && (
-                                        <div className="mt-3 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
-                                          <div>
-                                            <div className="text-slate-500">
-                                              ใช้สิทธิได้
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-blue-700">
-                                              {formatNumber(
-                                                generalUsage.thaiEsg.allowed
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-
-                                          <div>
-                                            <div className="text-slate-500">
-                                              เกินสิทธิ
-                                            </div>
-
-                                            <div className="mt-1 font-semibold text-slate-900">
-                                              {formatNumber(
-                                                generalUsage.thaiEsg.excess
-                                              )}{" "}
-                                              บาท
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-
+                                      </details>
+                                    )}
+                                    {field.key === "socialSecurity" && generalFieldUsage && deductions.socialSecurity > 0 && (
+                                      <div className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                                        <span className="font-medium text-slate-700">ใช้สิทธิได้ตามข้อมูลปัจจุบัน: </span>
+                                        <span className="font-semibold tabular-nums text-teal-800">{formatNumber(generalFieldUsage.allowed)} บาท</span>
+                                        {generalFieldUsage.excess > 0 && (
+                                          <p role="status" className="mt-1 font-medium text-amber-800">เกินสิทธิ {formatNumber(generalFieldUsage.excess)} บาท</p>
+                                        )}
+                                      </div>
+                                    )}
                                     {isThaiEsgx &&
                                       deductions
                                         .ltfToThaiEsgxTransferAmount >
@@ -2755,12 +2521,16 @@ const donationPlanningChanged =
 
 function DeductionInput({
   label,
+  categoryKey,
+  usage,
   description,
   conditionDetails,
   value,
   onChange,
 }: {
   label: string;
+  categoryKey: DeductionKey;
+  usage?: { allowed: number; excess: number } | null;
   description?: string;
   conditionDetails?: string;
   value: number | undefined;
@@ -2769,13 +2539,17 @@ function DeductionInput({
   ) => void;
 }) {
   const inputId = useId();
+  const inputHint = categoryKey === "ltfToThaiEsgxTransferAmount" ? "มูลค่าสับเปลี่ยน (บาท)"
+    : categoryKey === "rmf" || categoryKey === "thaiEsg" || categoryKey === "socialEnterpriseInvestment" ? "เงินลงทุน (บาท)"
+    : categoryKey === "specialDonation" || categoryKey === "generalDonation" || categoryKey === "airForceStupaDonation" || categoryKey === "politicalDonation" ? "ยอดบริจาคจริง (บาท)"
+    : "จำนวนที่จ่าย (บาท)";
 
   return (
-    <div className="tp-b2-deduction-field rounded-xl bg-white p-4">
+    <div className="tp-b2-deduction-field min-w-0 rounded-xl bg-white p-4">
 
-      <div className="grid gap-4 md:grid-cols-[1fr_220px] md:items-center">
+      <div data-c2-action-row className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(200px,240px)] md:items-center md:gap-5">
 
-        <div>
+        <div className="min-w-0">
           <label htmlFor={inputId} className="font-medium text-slate-800">
             {label}
           </label>
@@ -2798,7 +2572,9 @@ function DeductionInput({
           )}
         </div>
 
-        <div className="relative">
+        <div className="min-w-0">
+          <span aria-hidden="true" className="mb-1 block text-xs font-medium text-slate-600">{inputHint}</span>
+          <div className="relative">
 
           <input
             id={inputId}
@@ -2819,14 +2595,18 @@ function DeductionInput({
               )
             }
             placeholder="0"
-            className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 pr-16 text-right text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            className="h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-4 pr-16 text-right text-base font-medium tabular-nums text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
           />
 
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
             บาท
           </span>
+          </div>
         </div>
       </div>
+      {usage && (value ?? 0) > 0 && (
+        <DeductionEligibilitySummary usage={usage} />
+      )}
     </div>
   );
 }
