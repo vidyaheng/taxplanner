@@ -254,17 +254,20 @@ describe("UX-B3 Director simplification — exactly three primary metrics", () =
     expect(input).toContain('data-b3-primary-metric="balance"');
     expect((input.match(/<input/g) ?? []).length).toBe(1);
     expect(input).toContain("สิทธิที่ใช้ได้");
-    expect(input).toContain("วางแผนซื้อ/ลงทุน");
-    expect(input).toContain('isExcess ? "เกิน" : "เหลือ"');
+    expect(input).toContain("วางแผนซื้อเพิ่ม (บาท)");
+    expect(input).toContain("วางแผนลงทุนเพิ่ม (บาท)");
+    expect(input).toContain('isExcess ? "เกินสิทธิ" : "เหลือหลังวางแผน"');
     expect(input).toContain("onChange={(e) => onChange(parseNumber(e.target.value))}");
     expect(input).not.toContain("เพดานสิทธิ ณ ข้อมูลนี้");
     expect(input).not.toContain("จ่าย/ลงทุนอยู่แล้ว");
     expect(input).not.toContain("ใช้สิทธิหลังวางแผน");
   });
 
-  it("has responsive two-column mobile and three-column desktop; pension disclosure is collapsed", () => {
-    expect(input).toContain("grid-cols-2 items-end gap-3 min-[640px]:grid-cols-3");
-    expect(input).toContain("min-[640px]:col-span-1");
+  it("places action beside category on desktop, stacks on mobile and keeps pension collapsed", () => {
+    expect(input).toContain("sm:grid-cols-[minmax(0,1fr)_minmax(200px,240px)]");
+    expect(input).toContain("data-b3-action-row");
+    expect(input).toContain("data-b3-deduction-info");
+    expect(input).toContain("grid-cols-2 gap-3 border-t border-slate-100");
     expect(input).toContain("min-w-0");
     expect(input.match(/<details/g)).toHaveLength(1);
     expect(input).not.toContain("<details open");
@@ -273,6 +276,60 @@ describe("UX-B3 Director simplification — exactly three primary metrics", () =
     expect(input).toContain("pensionSplit.extraRemaining");
     expect(input).toContain("retirementSharedRemaining");
     expect(input).toContain('isExcess ? "bg-amber-50" : "bg-teal-50/60"');
+  });
+
+
+  it("keeps the input in the category action row and exactly two read-only values beneath", () => {
+    const actionStart = input.indexOf("data-b3-action-row");
+    const infoStart = input.indexOf("data-b3-deduction-info");
+    const disclosureStart = input.indexOf("{showCalculation && pensionSplit && (");
+    expect(actionStart).toBeGreaterThan(0);
+    expect(infoStart).toBeGreaterThan(actionStart);
+    expect(disclosureStart).toBeGreaterThan(infoStart);
+
+    const action = input.slice(actionStart, infoStart);
+    const information = input.slice(infoStart, disclosureStart);
+    expect(action).toContain("{label}");
+    expect(action).toContain("{description}");
+    expect(action).toContain("grid min-w-0 gap-3 sm:grid-cols-");
+    expect(action).toContain("sm:items-center");
+    expect(action.match(/<input/g)).toHaveLength(1);
+    expect(action).toContain('data-b3-primary-metric="planned"');
+    expect((information.match(/data-b3-primary-metric="/g) ?? []).length).toBe(2);
+    expect(information).toContain('data-b3-primary-metric="available"');
+    expect(information).toContain('data-b3-primary-metric="balance"');
+    expect(information).not.toContain("<input");
+    expect(information).toContain("สิทธิที่ใช้ได้");
+    expect(information).toContain("เหลือหลังวางแผน");
+    expect(information).toContain("เกินสิทธิ");
+    expect(information).toContain("aria-live=\"polite\"");
+    expect(information).toContain("aria-atomic=\"true\"");
+    expect(information).toContain("formatNumber(display.amount)");
+    expect(information).toContain('isExcess ? "text-amber-800" : "text-teal-800"');
+  });
+
+  it("uses field-specific labels and preserves keyboard/focus and numeric input handlers", () => {
+    expect(input).toContain('fieldKey === "rmf" || fieldKey === "thaiEsg"');
+    expect(input).toContain("วางแผนลงทุนเพิ่ม (บาท)");
+    expect(input).toContain("วางแผนซื้อเพิ่ม (บาท)");
+    expect(input).toContain("htmlFor={`planning-add-${fieldKey}`}");
+    expect(input).toContain("id={`planning-add-${fieldKey}`}");
+    expect(input).toContain("aria-label={`${label} — ${actionLabel}`}");
+    expect(input).toContain('inputMode="numeric"');
+    expect(input).toContain('value={value ? formatNumber(value) : ""}');
+    expect(input).toContain("onChange={(e) => onChange(parseNumber(e.target.value))}");
+    expect(input).toContain("focus:border-blue-500 focus:ring-4 focus:ring-blue-50");
+  });
+
+  it("keeps mobile amounts wrap-safe without additional financial tiles", () => {
+    expect(input).toContain("grid min-w-0 gap-3 sm:grid-cols-");
+    expect(input).toContain("grid min-w-0 grid-cols-2 gap-3");
+    expect(input).toContain("min-w-0 break-words");
+    expect(input).toContain("flex-wrap");
+    expect(input).toContain('isExcess ? "bg-amber-50" : "bg-teal-50/60"');
+    expect((input.match(/data-b3-primary-metric="/g) ?? []).length).toBe(3);
+    expect(input.match(/<details/g)).toHaveLength(1);
+    expect(input).not.toContain("<details open");
   });
 
   it("salary 600,000: pension 190,000 available, 100,000 planned, 90,000 remaining", () => {

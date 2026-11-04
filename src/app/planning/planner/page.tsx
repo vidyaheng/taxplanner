@@ -837,56 +837,66 @@ function PlannerInput({
   const isExcess = display.status === "excess";
   const reducedRights = sideEffects.filter((effect) => effect.change < 0);
 
+  const actionLabel =
+    fieldKey === "rmf" || fieldKey === "thaiEsg"
+      ? "วางแผนลงทุนเพิ่ม (บาท)"
+      : "วางแผนซื้อเพิ่ม (บาท)";
+
   return (
     <div className="min-w-0 p-4 sm:p-6">
-      <div className="font-medium text-slate-900">{label}</div>
-      <p className="mt-1 text-sm leading-5 text-slate-500">{description}</p>
-
-      {/* Exactly three primary metrics: existing planning input is metric two. */}
-      <div data-b3-primary-metrics className="mt-3 grid grid-cols-2 items-end gap-3 min-[640px]:grid-cols-3">
-        <div data-b3-primary-metric="available" className="min-w-0">
-          <div className="text-xs leading-5 text-slate-500">สิทธิที่ใช้ได้</div>
-          <div className="mt-1 text-lg font-semibold tabular-nums text-teal-800">
-            {showCalculation ? formatNumber(capacitySummary.remainingCurrent) : "—"}
-            <span className="ml-1 text-xs font-normal text-slate-500">บาท</span>
-          </div>
+      {/* Level 1: category and the unchanged editable input are one desktop row. */}
+      <div data-b3-action-row className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(200px,240px)] sm:items-center sm:gap-5">
+        <div className="min-w-0">
+          <div className="font-medium text-slate-900">{label}</div>
+          <p className="mt-1 text-sm leading-5 text-slate-500">{description}</p>
         </div>
-
         <div data-b3-primary-metric="planned" className="min-w-0">
-          <label htmlFor={`planning-add-${fieldKey}`} className="block text-xs leading-5 text-slate-500">
-            วางแผนซื้อ/ลงทุน
+          <label htmlFor={`planning-add-${fieldKey}`} className="block text-xs font-medium leading-5 text-slate-700">
+            {actionLabel}
           </label>
           <div className="relative mt-1">
             <input
               id={`planning-add-${fieldKey}`}
+              aria-label={`${label} — ${actionLabel}`}
               inputMode="numeric"
               value={value ? formatNumber(value) : ""}
               onChange={(e) => onChange(parseNumber(e.target.value))}
               placeholder="0"
-              className="h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 pr-10 text-right text-base font-medium tabular-nums text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+              className="h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 pr-10 text-right text-base font-medium tabular-nums text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-              บาท
-            </span>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">บาท</span>
           </div>
         </div>
+      </div>
 
+      {/* Level 2: the two read-only information values stay below the input. */}
+      <div data-b3-deduction-info className="mt-3 grid min-w-0 grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:gap-4">
+        <div data-b3-primary-metric="available" className="min-w-0 px-1 py-1">
+          <div className="text-xs leading-5 text-slate-500">สิทธิที่ใช้ได้</div>
+          <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-1 text-base font-semibold tabular-nums text-teal-800 sm:text-lg">
+            <span className="min-w-0 break-words">
+              {showCalculation ? formatNumber(capacitySummary.remainingCurrent) : "—"}
+            </span>
+            <span className="text-xs font-normal text-slate-500">บาท</span>
+          </div>
+        </div>
         <div
           data-b3-primary-metric="balance"
           className={[
-            "col-span-2 min-w-0 rounded-xl px-3 py-2 min-[640px]:col-span-1",
+            "min-w-0 rounded-xl px-3 py-2",
             isExcess ? "bg-amber-50" : "bg-teal-50/60",
           ].join(" ")}
           aria-live="polite"
+          aria-atomic="true"
         >
           <div className="text-xs leading-5 text-slate-600">
-            {isExcess ? "เกิน" : "เหลือ"}
+            {isExcess ? "เกินสิทธิ" : "เหลือหลังวางแผน"}
           </div>
           <div className={[
-            "mt-1 flex items-center gap-2 text-lg font-semibold tabular-nums",
+            "mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-base font-semibold tabular-nums sm:text-lg",
             isExcess ? "text-amber-800" : "text-teal-800",
           ].join(" ")}>
-            <span>
+            <span className="min-w-0 break-words">
               {showCalculation ? formatNumber(display.amount) : "—"}
               <span className="ml-1 text-xs font-normal">บาท</span>
             </span>

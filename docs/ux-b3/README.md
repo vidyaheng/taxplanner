@@ -1,6 +1,6 @@
-# UX-B3 — Director Simplification Revision (Draft PR #12)
+# UX-B3 — Director Layout Correction (Draft PR #12)
 
-**Decision:** 8-metric Planner UI rejected; implement **exactly three primary values per planning category** in the **existing Draft PR #12**, no new PR, no merge, no production deployment.
+**Decision:** Keep exactly three primary values per category, but arrange them as **Action above Information**. This is a **layout-only** revision in existing Draft PR #12: no new PR, merge, or production deployment.
 
 **Original authorized base:** merged PR #11, `main` `9456ba3e01f72fe1d8c0ef352136ccce4be46e9f`. Production `dpl_EkuRy7KtHi2bh5stFCeWqguFVFQ6` and official `taxplannervid.vercel.app` alias confirmed READY and SHA-matched at project start. Reviewed UX-B3 HEAD `2b3d8235c58d635bfe7a496afd1b39e61a459985`.
 
@@ -13,7 +13,14 @@ Each of the five existing Planner categories displays only:
 3. **เหลือ / เกิน** — use the shared `getCapacityDisplay` view helper:
    - `เกิน`: **`calculatePlanningUsageDetails(...)[key].excess`** when positive, rather than blindly subtracting the standalone first figure. This is the scenario's actual non-deductible portion of the planned payment.
    - `เหลือ`: **`calculatePlanningCapacity(plannedDeductions, calculateTax)[key]`** when no scenario excess, incorporating the *full* multi-field plan rather than a simplistic subtraction.
-   - The value is a status, not an extra statutory cap. Amber for `เกิน`; muted teal for `เหลือ`. The two-column mobile grid wraps the balance across the row; the `min-[640px]` grid displays all three horizontally.
+   - The value is a status, not an extra statutory cap. Amber for `เกินสิทธิ`; muted teal for `เหลือหลังวางแผน`. **Information** is displayed in two columns below the Action row, including on mobile.
+
+### Two-level visual hierarchy and accessible input
+
+- **Level 1 — ACTION:** category name + description on the left, **existing editable input** on the right at screen widths at/above the `sm` breakpoint. The width-constrained `minmax(200px,240px)` input column protects its usability. Below `sm` (including 375/390px), the category stacks above the input.
+- **Category-specific input labels:** insurance/pension shows `วางแผนซื้อเพิ่ม (บาท)`; RMF/Thai ESG show `วางแผนลงทุนเพิ่ม (บาท)`. Labels associate via `htmlFor`/`id`, and each input has a category-specific accessible `aria-label`. The same `value`, `parseNumber`, `onChange`, `setPlanning`, numeric input mode, keyboard focus styles and saved state remain.
+- **Level 2 — INFORMATION:** a compact two-column, read-only area always below Action with only `สิทธิที่ใช้ได้` and `เหลือหลังวางแผน / เกินสิทธิ`. Values are `min-w-0`, flex-wrapping and word-break safe for narrow viewports. The balance uses `aria-live="polite"`, `aria-atomic="true"` and retains the warning reason control.
+- **Below Level 2:** pension's `ที่มาของสิทธิ` disclosure remains collapsed; net-deduction displacement warnings only appear when relevant. No extra numeric tiles, cards or new calculations.
 
 The existing `src/lib/ui/deduction-capacity.ts` adapter still exposes legacy calculation metadata internally for testability, but only the **three** required metrics are shown in primary UI. No separate per-category 8-figure grid, extra statutory ceiling paragraphs, current paid/allowed tiles or duplicate total figures.
 
@@ -40,8 +47,8 @@ The pre-existing Results short eligibility explanation is retained without modif
 
 ## Regression and release verification
 
-`src/components/planning/ux-b3.test.ts` retains all 11 pre-existing UX-B3 integration tests and adds 10 simplification tests:
-- Source proof of exactly three visible primary metric slots, a single existing input, desktop/mobile layout classes and collapsed pension disclosure.
+`src/components/planning/ux-b3.test.ts` retains all 11 pre-existing UX-B3 integration tests and adds 10 simplification tests and **3 layout/accessibility regression tests**:
+- Source proof of exactly three primary metrics, single unchanged input, two stacked UI levels, desktop category/input alignment, mobile stacking, two information fields, category-specific labels, preserved keyboard focus, live status update semantics, narrow-screen wrap safeguards and default-collapsed pension disclosure.
 - Salary 600,000, pension 190,000 available, 100,000 planned, 90,000 remaining.
 - Existing life premium 40,000 reducing pension room.
 - Pension/RMF/Thai ESG exceeding limits; zero available under saturated retirement ceiling.
