@@ -3648,7 +3648,7 @@ function removeForeignBusinessIncome(
                                     </option>
 
                                     <option value="medical">
-                                      การประกอบโรคศิลป
+                                      การประกอบโรคศิลป (เช่น แพทย์ประกอบวิชาชีพอิสระ)
                                     </option>
 
                                     <option value="fineArts">
@@ -3659,6 +3659,12 @@ function removeForeignBusinessIncome(
                                       กฎหมาย / วิศวกรรม / สถาปัตยกรรม / การบัญชี
                                     </option>
                                   </select>
+
+                                  {item.professionalType === "medical" && (
+                                    <p className="mt-2 max-w-full break-words text-xs leading-5 text-slate-600">
+                                      การประกอบโรคศิลปที่เข้าเกณฑ์คือรายได้จากการประกอบวิชาชีพทางการแพทย์อย่างอิสระ ไม่ใช่เงินเดือนแพทย์จากนายจ้างโดยอัตโนมัติ
+                                    </p>
+                                  )}
 
                                   {item.professionalType ===
                                     "other" && (
@@ -4743,6 +4749,10 @@ function removeForeignBusinessIncome(
                               <div className="font-medium">
                                 หักค่าใช้จ่ายแบบเหมา
                               </div>
+                              <div className="mt-1 text-xs leading-5 opacity-75">
+                                อัตรา{" "}
+                                {(TAX_RULES_2569.otherIncomeExpenses.section40_3Rights.standardRate * 100).toFixed(0)}%
+                              </div>
                             </button>
 
                             <button aria-pressed={rightsIncome?.expenseMethod === "actual"}
@@ -4760,6 +4770,9 @@ function removeForeignBusinessIncome(
                             >
                               <div className="font-medium">
                                 หักค่าใช้จ่ายตามจริง
+                              </div>
+                              <div className="mt-1 text-xs leading-5 opacity-75">
+                                ใช้ค่าใช้จ่ายที่เกี่ยวข้องและมีหลักฐาน
                               </div>
                             </button>
                           </div>
@@ -5346,7 +5359,7 @@ function removeForeignBusinessIncome(
                                 </option>
 
                                 <option value="medical">
-                                  การประกอบโรคศิลป
+                                  การประกอบโรคศิลป (เช่น แพทย์ประกอบวิชาชีพอิสระ)
                                 </option>
 
                                 <option value="fineArts">
@@ -5357,6 +5370,12 @@ function removeForeignBusinessIncome(
                                   กฎหมาย / วิศวกรรม / สถาปัตยกรรม / การบัญชี
                                 </option>
                               </select>
+
+                                  {professionalIncome?.professionalType === "medical" && (
+                                    <p className="mt-2 max-w-full break-words text-xs leading-5 text-slate-600">
+                                      การประกอบโรคศิลปที่เข้าเกณฑ์คือรายได้จากการประกอบวิชาชีพทางการแพทย์อย่างอิสระ ไม่ใช่เงินเดือนแพทย์จากนายจ้างโดยอัตโนมัติ
+                                    </p>
+                                  )}
 
                               {professionalIncome
                                 ?.professionalType ===

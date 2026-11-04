@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { plannedComparisonClass } from "../../lib/ui/planned-comparison";
+import { plannedComparisonClass, plannedComparisonRowClass } from "../../lib/ui/planned-comparison";
+import { TAX_RULES_2569 } from "../../tax-rules/2569";
 
 const income = readFileSync(new URL("../../app/planning/income/page.tsx", import.meta.url), "utf8");
 const results = readFileSync(new URL("../../app/planning/results/page.tsx", import.meta.url), "utf8");
@@ -163,5 +164,78 @@ describe("UX-C1 — Income labels and accounting boundaries", () => {
     expect(planner).not.toContain("เบี้ยประกันบำนาญที่กำลังพิจารณาจ่ายเพิ่ม");
     expect(planner).toContain("เงินลงทุน RMF ที่กำลังพิจารณาลงทุนเพิ่ม");
     expect(planner).toContain("เงินลงทุน Thai ESG ที่กำลังพิจารณาลงทุนเพิ่ม");
+  });
+});
+
+describe("UX-C1 — Director three-point final correction", () => {
+  const baht = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
+  const percent = new Intl.NumberFormat("th-TH", {
+    style: "percent", minimumFractionDigits: 0, maximumFractionDigits: 2,
+  });
+
+  it("uses the existing 2569 royalty rights 50% rule directly inside the standard button", () => {
+    expect(TAX_RULES_2569.otherIncomeExpenses.section40_3Rights.standardRate).toBe(0.5);
+    const rights = income.slice(
+      income.indexOf("ค่าลิขสิทธิ์ / ค่าสิทธิ 40(3)"),
+      income.indexOf("เงินได้ประเภท Annuity 40(3)")
+    );
+    const standard = rights.slice(
+      rights.indexOf('expenseMethod: "standard"'),
+      rights.indexOf('expenseMethod: "actual"')
+    );
+    expect(standard).toContain("หักค่าใช้จ่ายแบบเหมา");
+    expect(standard).toContain("TAX_RULES_2569.otherIncomeExpenses.section40_3Rights.standardRate * 100");
+    expect(standard).toContain('className="mt-1 text-xs leading-5 opacity-75"');
+    expect(standard).not.toContain("contractStandardRate");
+    expect(standard).not.toContain("standardMax");
+    expect(rights).toContain("หักค่าใช้จ่ายตามจริง");
+    expect(rights).toContain("ใช้ค่าใช้จ่ายที่เกี่ยวข้องและมีหลักฐาน");
+    const annuity = income.slice(income.indexOf("เงินได้ประเภท Annuity 40(3)"));
+    expect(annuity.slice(0, 1600)).not.toContain("section40_3Rights.standardRate");
+    expect(income).toContain("updateRightsIncome({");
+    expect(income).toContain("rightsIncome?.taxWithheld ?? 0");
+  });
+
+  it("shows independent medical practice examples in both 40(6) selectors without changing keys", () => {
+    const medicalName = "การประกอบโรคศิลป (เช่น แพทย์ประกอบวิชาชีพอิสระ)";
+    expect(income.split(medicalName)).toHaveLength(3);
+    expect(income.match(/<option value="medical">/g)).toHaveLength(2);
+    expect(income.match(/<option value="fineArts">/g)).toHaveLength(2);
+    expect(income.match(/<option value="other">/g)).toHaveLength(2);
+    expect(income).toContain('professionalIncome?.professionalType === "medical"');
+    expect(income).toContain('item.professionalType === "medical"');
+    const caption = "ไม่ใช่เงินเดือนแพทย์จากนายจ้างโดยอัตโนมัติ";
+    expect(income.split(caption)).toHaveLength(3);
+    expect(income.match(/min-w-0 max-w-full w-full truncate rounded-xl/g)).toHaveLength(2);
+    expect(income).toContain('break-words text-xs leading-5 text-slate-600');
+  });
+
+  it("highlights entire changed comparison row but never a display-equivalent row", () => {
+    expect(plannedComparisonRowClass("100 บาท", "100 บาท")).toBe("");
+    expect(plannedComparisonRowClass("100 บาท", "101 บาท")).toBe("bg-blue-50/70");
+    expect(plannedComparisonRowClass("101 บาท", "100 บาท")).toBe("bg-blue-50/70");
+    expect(plannedComparisonRowClass(baht.format(100.01), baht.format(100.49))).toBe("");
+    expect(plannedComparisonRowClass(baht.format(100.49), baht.format(100.51))).toBe("bg-blue-50/70");
+    expect(plannedComparisonRowClass(percent.format(0.1000001), percent.format(0.1000002))).toBe("");
+    expect(plannedComparisonRowClass(percent.format(0.10004), percent.format(0.10006))).toBe("bg-blue-50/70");
+    expect(plannedComparisonClass("100 บาท", "101 บาท")).toBe("font-bold text-blue-600");
+    expect(plannedComparisonClass("100 บาท", "100 บาท")).toBe("font-medium text-slate-700");
+  });
+
+  it("applies row-level, display-precise highlighting to summaries, deductions, details, and tax rates", () => {
+    expect(results).toContain("plannedComparisonRowClass(displayedCurrent, displayedPlanned)");
+    expect(results).toContain("plannedComparisonRowClass(formatNumber(current), formatNumber(planned))");
+    expect(results).toContain("plannedComparisonRowClass(formatNumber(item.current), formatNumber(item.planned))");
+    expect(results).toContain(
+      "plannedComparisonRowClass(formatPercent(currentResult.marginalTaxRate), formatPercent(plannedResult.marginalTaxRate))"
+    );
+    expect((results.match(/plannedComparisonRowClass\(/g) ?? []).length).toBe(4);
+    expect(results).toContain('unit="percent"'); // effective rate uses CompareRow
+    expect(results).toContain('className="border-b border-slate-100"'); // do not color entire detail section
+    expect(results).toContain('formatNumber(item.planned) !== formatNumber(item.current)');
+    expect(results).toContain("currentResult.taxCredits.withholdingTax");
+    expect(results).toContain("plannedResult.taxCredits.withholdingTax");
+    expect(results).toContain("const currentResult = calculateTax({");
+    expect(results).toContain("const plannedResult = calculateTax({");
   });
 });

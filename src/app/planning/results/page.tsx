@@ -6,7 +6,7 @@ import { useTaxPlanner } from "@/store/TaxPlannerContext";
 import { calculateTax } from "@/lib/tax/engine";
 import { applyPlanningToDeductions } from "@/lib/tax/scenarios";
 import PlanningStepper from "@/components/planning/PlanningStepper";
-import { plannedComparisonClass } from "@/lib/ui/planned-comparison";
+import { plannedComparisonClass, plannedComparisonRowClass } from "@/lib/ui/planned-comparison";
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("th-TH", {
@@ -71,7 +71,10 @@ function CompareRow({
   const displayedPlanned = unit === "percent" ? formatPercent(planned) : `${formatNumber(planned)} บาท`;
   return (
     <div
-      className="grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8"
+      className={[
+        "grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8",
+        plannedComparisonRowClass(displayedCurrent, displayedPlanned),
+      ].join(" ")}
     >
       <div
         className={[
@@ -121,7 +124,10 @@ function DeductionCompareRow({
 
   return (
     <div className="border-b border-slate-100">
-      <div className="grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8">
+      <div className={[
+          "grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8",
+          plannedComparisonRowClass(formatNumber(current), formatNumber(planned)),
+        ].join(" ")}>
         <div className="min-w-0 text-sm font-medium text-slate-600">
           ค่าลดหย่อน
         </div>
@@ -153,7 +159,10 @@ function DeductionCompareRow({
             (item) => (
               <div
                 key={item.label}
-                className="grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8"
+                className={[
+                    "grid grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8",
+                    plannedComparisonRowClass(formatNumber(item.current), formatNumber(item.planned)),
+                  ].join(" ")}
               >
                 <div className="min-w-0 pl-2 text-sm text-slate-500">
                   {item.label}
@@ -689,7 +698,10 @@ export default function ResultsPage() {
                 />
 
                 <details className="group">
-                  <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8">
+                  <summary className={[
+                    "grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-slate-100 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:px-7 md:px-8",
+                    plannedComparisonRowClass(formatPercent(currentResult.marginalTaxRate), formatPercent(plannedResult.marginalTaxRate)),
+                  ].join(" ")}>
                     <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-600">
                       <span>
                         อัตราภาษีขั้นสูงสุด

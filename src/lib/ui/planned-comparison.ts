@@ -10,3 +10,13 @@ export function plannedComparisonClass(
     ? "font-bold text-blue-600"
     : "font-medium text-slate-700";
 }
+
+/** Mark only a comparison ROW whose displayed values actually differ.
+ * Use the same already-formatted strings as the amount text, not raw tax data.
+ */
+export function plannedComparisonRowClass(
+  displayedCurrent: string,
+  displayedPlanned: string
+): string {
+  return displayedCurrent !== displayedPlanned ? "bg-blue-50/70" : "";
+}
