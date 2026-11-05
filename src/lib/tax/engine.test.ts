@@ -8307,3 +8307,43 @@ it("preserves unsupported legacy other income as incomplete instead of silently 
   expect(withLegacy.taxCredits.withholdingTax).toBe(900);
   expect(withoutLegacy.taxCredits.withholdingTax).toBe(900);
 });
+
+describe("TAX-C3.1A legacy-to-direct engine financial parity", () => {
+  const parent:FamilyData["parents"][number]={
+    id:"p-father",owner:"taxpayer",relation:"father",birthYearBE:null,age60OrOlder:null,
+    annualAssessableIncome:20000,supportedByTaxpayer:false,
+    claimedByOtherTaxpayer:null,isInThailand:null
+  };
+  const linkedFamily=createFamily({isThaiTaxResident:true,parents:[parent]});
+  const income=createIncome({monthlySalary:100000});
+  const oldPolicy={id:"policy-a",parentId:"p-father",premiumPaidThisYear:12000,jointPayerCount:2};
+  const legacy=createDeductions({parentHealthInsurance:70000,parentHealthInsurancePolicies:[oldPolicy]});
+  it("existing linked policy remains financially identical after explicit validated conversion", () => {
+    const oldResult=calculateTax({taxYear:2569,income,family:linkedFamily,deductions:legacy});
+    const direct=createDeductions({...legacy,
+      parentHealthInsurancePolicies:[{...oldPolicy,relationshipKey:"taxpayer:father",
+        conversionStatus:"confirmed",qualifyingInsuranceConfirmed:true,evidenceConfirmed:true}],
+      parentHealthEligibilityProfiles:[{relationshipKey:"taxpayer:father",taxYear:2569,
+        annualAssessableIncome:20000,incomeConfirmed:true,isInThailand:null,legalChildConfirmed:true}]
+    });
+    const newResult=calculateTax({taxYear:2569,income,family:linkedFamily,deductions:direct});
+    expect(oldResult.insuranceDeductions.parentHealthInsurance).toEqual({paid:6000,allowed:6000,excess:0});
+    expect(newResult.insuranceDeductions.parentHealthInsurance).toEqual(oldResult.insuranceDeductions.parentHealthInsurance);
+    expect(newResult.taxableIncome).toBe(oldResult.taxableIncome);
+    expect(newResult.taxPayable).toBe(oldResult.taxPayable);
+    expect(newResult.isComplete).toBe(oldResult.isComplete);
+    expect(newResult.totalCurrentDeductions).toBe(oldResult.totalCurrentDeductions);
+  });
+  it("new direct record lacking confirmation gets zero allowed and incomplete tax result", () => {
+    const direct=createDeductions({...legacy,
+      parentHealthInsurancePolicies:[{...oldPolicy,relationshipKey:"taxpayer:father",
+        qualifyingInsuranceConfirmed:null,evidenceConfirmed:null}],
+      parentHealthEligibilityProfiles:[{relationshipKey:"taxpayer:father",taxYear:2569,
+        annualAssessableIncome:null,incomeConfirmed:null,isInThailand:null,legalChildConfirmed:null}]
+    });
+    const result=calculateTax({taxYear:2569,income,family:linkedFamily,deductions:direct});
+    expect(result.insuranceDeductions.parentHealthInsurance).toEqual({paid:6000,allowed:0,excess:6000});
+    expect(result.isComplete).toBe(false);
+    expect(result.warnings.some(w=>w.includes("แบบอิสระ"))).toBe(true);
+  });
+});
