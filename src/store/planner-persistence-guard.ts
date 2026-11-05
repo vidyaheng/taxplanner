@@ -8,6 +8,7 @@ import type { TaxPlannerState } from "./TaxPlannerContext";
 export const PLANNER_KEY = "thai-tax-planner-v0.1";
 export const RESET_WITNESS_KEY = "thai-tax-planner-v0.1-reset-witness";
 export const RECOVERY_EXPORT_KEY = "thai-tax-planner-conflict-recovery";
+export const JOURNAL_HEAD_KEY = "thai-tax-planner-v0.1-safe-journal-head";
 const journalKey = (resetId: string | null) =>
   `thai-tax-planner-v0.1-safe-journal-${resetId ?? "legacy"}`;
 type Stored = Pick<Storage, "getItem" | "setItem">;
@@ -28,7 +29,9 @@ export function readPlannerProtected(storage: Pick<Storage,"getItem">): {
   const primary = parse(rawPrimary);
   const corruptPrimary = Boolean(rawPrimary) && !primary;
   const reset = parse(storage.getItem(RESET_WITNESS_KEY));
-  const generation = idOf(reset) ?? idOf(primary);
+  const head = storage.getItem(JOURNAL_HEAD_KEY);
+  const journalGeneration = head === "legacy" ? null : head;
+  const generation = reset ? idOf(reset) : idOf(primary) ?? journalGeneration;
   const journal = parse(storage.getItem(journalKey(generation)));
   if (reset && idOf(primary) !== idOf(reset)) {
     const validJournal = journal && idOf(journal) === idOf(reset);
@@ -45,6 +48,7 @@ export function readPlannerProtected(storage: Pick<Storage,"getItem">): {
 /** Keeps the last new-version snapshot separately from the old app's single key. */
 export function writePlannerJournal(storage:Stored,snapshot:TaxPlannerState):void {
   storage.setItem(journalKey(idOf(snapshot)),JSON.stringify(snapshot));
+  storage.setItem(JOURNAL_HEAD_KEY,idOf(snapshot) ?? "legacy");
 }
 
 /** Called only for an explicit synchronous user Reset. Witness is written first. */
@@ -66,6 +70,7 @@ export function clearPreviousPlannerJournal(
   previousResetId: string | null
 ):void {
   if (!storage.removeItem) return;
+  storage.removeItem(JOURNAL_HEAD_KEY);
   // Remove every known journal from older reset generations, not just the
   // generation saved in the latest main document.
   const prefix = "thai-tax-planner-v0.1-safe-journal-";
