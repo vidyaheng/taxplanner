@@ -91,6 +91,26 @@ describe("TAX-C3.1A deterministic reset / stale-write interleavings",()=>{
     expect([...db.map.keys()].some(k=>k.includes("safe-journal-"))).toBe(false);
     expect(db.current().state?.deductions?.parentHealthInsurance).toBe(0);
   });
+  it("a malformed old-app document cannot hide valid independent recovery journal",async()=>{
+    const db=store();
+    expect(await savePlannerStateSerialized(db.storage,initial,1,immediate)).toMatchObject({status:"saved"});
+    db.storage.setItem(PLANNER_KEY,"{malformed JSON");
+    const recovered=db.current();
+    expect(recovered.conflict).toBe(true);
+    expect(recovered.source).toBe("journal");
+    expect(recovered.state?.income?.monthlySalary).toBe(75000);
+    expect(db.storage.getItem(PLANNER_KEY)).toBe("{malformed JSON");
+  });
+  it("journal storage failure prevents main-key mutation and rejects unsafe write",async()=>{
+    const db=store();
+    const storage={...db.storage,setItem:(key:string,val:string)=>{
+      if(key.includes("-safe-journal-")) throw new Error("journal write failed");
+      db.storage.setItem(key,val);
+    }};
+    await expect(savePlannerStateSerialized(storage,initial,1,immediate))
+      .rejects.toThrow("journal write failed");
+    expect(db.raw()).toEqual(initial);
+  });
   it("old-version tab cannot erase authoritative reset witness",()=>{
     const db=store();
     persistPlannerReset(db.storage,"reset-v2");
