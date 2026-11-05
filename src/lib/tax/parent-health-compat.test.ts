@@ -4,6 +4,7 @@ import type { DeductionData, ParentHealthInsurancePolicyData, ParentHealthEligib
 import type { FamilyData } from "@/types/family";
 import { calculateInsuranceDeductions } from "./deductions";
 import { resolveParentHealthPolicies } from "./parent-health-compat";
+import { prepareParentHealthConversion, confirmParentHealthConversion, rollbackParentHealthConversion } from "./parent-health-conversion";
 
 const relationships: ParentHealthRelationshipKey[] =
   ["taxpayer:father", "taxpayer:mother", "spouse:father", "spouse:mother"];
@@ -97,5 +98,63 @@ describe("TAX-C3.1A dormant independent parent health foundation", () => {
     const records=resolveParentHealthPolicies(input,baseFamily,TAX_RULES_2569);
     expect(records[0]).toMatchObject({source:"legacy-aggregate",paid:12000,eligibleShare:0});
     expect(input.parentHealthInsurancePolicies).toBeUndefined();
+  });
+});
+
+describe("TAX-C3.1A explicit legacy conversion and recovery", () => {
+  const legacyParent:FamilyData["parents"][number]={
+    id:"original-parent",owner:"taxpayer",relation:"father",
+    birthYearBE:null,age60OrOlder:null,annualAssessableIncome:30000,
+    supportedByTaxpayer:true,claimedByOtherTaxpayer:null,isInThailand:null
+  };
+  const original:DeductionData={...zeroDeductions,parentHealthInsurance:33333,
+    parentHealthInsurancePolicies:[{id:"original-policy",parentId:"original-parent",premiumPaidThisYear:12000,jointPayerCount:2}]};
+  const parentFamily:FamilyData={...baseFamily,parents:[legacyParent]};
+  const config={
+    deductions:original,family:parentFamily,rules:TAX_RULES_2569,
+    policyId:"original-policy",profile:profile("taxpayer:father",30000),
+    qualifyingInsuranceConfirmed:true,evidenceConfirmed:true
+  };
+  it("preview is pure; requires explicit confirmation; identifiers and paid/excess preserved", () => {
+    const plan=prepareParentHealthConversion(config);
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(original.parentHealthInsurancePolicies?.[0].relationshipKey).toBeUndefined();
+    expect(confirmParentHealthConversion(plan.preview,false,original)).toMatchObject({ok:false,reason:"user-confirmation-required"});
+    const accepted=confirmParentHealthConversion(plan.preview,true,original);
+    expect(accepted.ok).toBe(true);
+    if (!accepted.ok) return;
+    expect(accepted.next.parentHealthInsurance).toBe(33333);
+    expect(accepted.next.parentHealthInsurancePolicies?.[0]).toMatchObject({
+      id:"original-policy",parentId:"original-parent",premiumPaidThisYear:12000,jointPayerCount:2,
+      relationshipKey:"taxpayer:father"
+    });
+    expect(plan.preview.previousAllowed).toBe(6000);
+    expect(plan.preview.proposedAllowed).toBe(6000);
+    expect(plan.preview.previousExcess).toBe(0);
+    expect(rollbackParentHealthConversion(plan.preview,accepted.next)).toEqual({ok:true,next:original});
+    expect(rollbackParentHealthConversion(plan.preview,{...accepted.next,parentHealthInsurance:99}))
+      .toMatchObject({ok:false,reason:"state-conflict"});
+  });
+  it("orphan and duplicate Family relationships block ambiguous conversion", () => {
+    const orphan=prepareParentHealthConversion({...config,family:baseFamily});
+    expect(orphan).toMatchObject({ok:false,reason:"unresolved-or-duplicate-parent-id"});
+    const duplicate=prepareParentHealthConversion({...config,family:{...parentFamily,parents:[
+      legacyParent,{...legacyParent,id:"second-parent"}
+    ]}});
+    expect(duplicate).toMatchObject({ok:false,reason:"duplicate-legacy-relationship"});
+  });
+  it("unknown direct eligibility cannot silently replace formerly eligible legacy results", () => {
+    expect(prepareParentHealthConversion({...config,profile:profile("taxpayer:father",null)}))
+      .toMatchObject({ok:false,reason:"financial-difference-requires-separate-review"});
+    expect(prepareParentHealthConversion({...config,evidenceConfirmed:null}))
+      .toMatchObject({ok:false,reason:"financial-difference-requires-separate-review"});
+  });
+  it("intervening edits block stale user confirmation", () => {
+    const plan=prepareParentHealthConversion(config);
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(confirmParentHealthConversion(plan.preview,true,{...original,parentHealthInsurance:123}))
+      .toMatchObject({ok:false,reason:"state-conflict"});
   });
 });
