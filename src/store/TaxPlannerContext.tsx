@@ -274,7 +274,7 @@ export function persistPlannerReset(
   writePlannerResetWitness(storage, resetState);
   storage.setItem(STORAGE_KEY, JSON.stringify(resetState));
   try {
-    clearPreviousPlannerJournal(storage, previous?.resetId ?? null);
+    clearPreviousPlannerJournal(storage, previous?.resetId ?? null, resetId);
   } catch (error) {
     // The reset witness and primary were committed; never report this clean
     // reset as failed solely because best-effort journal cleanup was denied.
