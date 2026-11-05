@@ -1,7 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {persistPlannerReset,savePlannerStateSerialized,migrateStoredState} from "./TaxPlannerContext";
 import type {TaxPlannerState} from "./TaxPlannerContext";
-import {PLANNER_KEY,RESET_WITNESS_KEY,readPlannerProtected} from "./planner-persistence-guard";
+import {PLANNER_KEY,RESET_WITNESS_KEY,readPlannerProtected,writePlannerJournal,JOURNAL_HEAD_KEY} from "./planner-persistence-guard";
 const initial = {
   schemaVersion:14,taxYear:2569,resetId:"old-generation",persistRevision:1,
   income:{monthlySalary:75000},family:{maritalStatus:"married"},
@@ -91,6 +91,22 @@ describe("TAX-C3.1A deterministic reset / stale-write interleavings",()=>{
     persistPlannerReset(db.storage,"clean-private");
     expect([...db.map.keys()].some(k=>k.includes("safe-journal-"))).toBe(false);
     expect(db.current().state?.deductions?.parentHealthInsurance).toBe(0);
+  });
+  it("cleanup preserves a valid new-generation journal created during Reset",()=>{
+    const db=store();
+    let injected=false;
+    const storage={...db.storage,setItem:(key:string,val:string)=>{
+      db.storage.setItem(key,val);
+      if(!injected && key===PLANNER_KEY && JSON.parse(val).resetId==="new-generation") {
+        injected=true;
+        writePlannerJournal(db.storage,{...initial,resetId:"new-generation",persistRevision:1});
+      }
+    }};
+    persistPlannerReset(storage,"new-generation");
+    expect(db.storage.getItem(JOURNAL_HEAD_KEY)).toBe("new-generation");
+    expect(db.storage.getItem("thai-tax-planner-v0.1-safe-journal-new-generation")).not.toBeNull();
+    // Never auto-apply a newer journal over the clean reset primary.
+    expect(db.current()).toMatchObject({state:null,conflict:true});
   });
   it("a malformed old-app document cannot hide valid independent recovery journal",async()=>{
     const db=store();
