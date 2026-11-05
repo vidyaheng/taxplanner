@@ -68,33 +68,6 @@ function resolveParentHealthInsurance({
   return { paid, eligiblePaid, warnings };
 }
 
-function canUseSpouseParentHealthInsurance(
-  family: FamilyData
-): boolean {
-  const spouseHasAssessableIncome =
-    resolveSpouseAssessableIncome(
-      family
-    );
-
-  const currentSpouseQualifies =
-    family.maritalStatus === "married" &&
-    spouseHasAssessableIncome === false;
-
-  const formerSpouseQualifies =
-    (
-      family.maritalStatus === "divorced" ||
-      family.maritalStatus === "widowed"
-    ) &&
-    family.marriageEndedThisTaxYear === true &&
-    family.formerSpouseHadAssessableIncomeThisTaxYear ===
-      false;
-
-  return (
-    currentSpouseQualifies ||
-    formerSpouseQualifies
-  );
-}
-
 export function calculateInsuranceDeductions({
   deductions,
   family,
