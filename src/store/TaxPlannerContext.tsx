@@ -256,14 +256,26 @@ export function persistPlannerReset(
   resetId: string = globalThis.crypto?.randomUUID?.() ??
     `${Date.now()}-${Math.random().toString(36).slice(2)}`
 ): TaxPlannerState {
-  const previousRaw = storage.getItem?.(STORAGE_KEY) ?? null;
-  const previous = previousRaw ? (JSON.parse(previousRaw) as Partial<TaxPlannerState>) : null;
+  let previous: Partial<TaxPlannerState> | null = null;
+  try {
+    const previousRaw = storage.getItem?.(STORAGE_KEY) ?? null;
+    previous = previousRaw ? (JSON.parse(previousRaw) as Partial<TaxPlannerState>) : null;
+  } catch {
+    // Explicit Reset must still work when a legacy tab corrupted the primary.
+    previous = null;
+  }
   const resetState: TaxPlannerState = { ...initialState, resetId };
   // The reset witness is the authoritative synchronous fence. This sequence is
   // crash-recoverable through protected hydration, but not a localStorage transaction.
   writePlannerResetWitness(storage, resetState);
   storage.setItem(STORAGE_KEY, JSON.stringify(resetState));
-  clearPreviousPlannerJournal(storage, previous?.resetId ?? null);
+  try {
+    clearPreviousPlannerJournal(storage, previous?.resetId ?? null);
+  } catch (error) {
+    // The reset witness and primary were committed; never report this clean
+    // reset as failed solely because best-effort journal cleanup was denied.
+    console.error("Unable to purge older recovery journals after Reset", error);
+  }
   return resetState;
 }
 
@@ -1337,7 +1349,8 @@ export function TaxPlannerProvider({
     try {
       // Write synchronously so reloading immediately cannot revive old data.
       const cleanState = persistPlannerReset(window.localStorage);
-      window.sessionStorage.removeItem(RECOVERY_EXPORT_KEY);
+      try { window.sessionStorage.removeItem(RECOVERY_EXPORT_KEY); }
+      catch (error) { console.error("Unable to clear exported session backup", error); }
       recoverySnapshotRef.current = null;
       guardedSnapshotRef.current = null;
       recoveryExportedRef.current = false;
