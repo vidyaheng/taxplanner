@@ -1154,7 +1154,7 @@ export function TaxPlannerProvider({
       const pendingRecovery = window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
       if (pendingRecovery) {
         recoverySnapshotRef.current = pendingRecovery;
-        setRecoveryMessage("ยังมีข้อมูลสำรองจากความขัดแย้งครั้งก่อน กรุณาดาวน์โหลดก่อนปิดแท็บ ข้อมูลจะไม่ถูกนำไปเขียนทับอัตโนมัติ");
+        queueMicrotask(() => setRecoveryMessage("ยังมีข้อมูลสำรองจากความขัดแย้งครั้งก่อน กรุณาดาวน์โหลดก่อนปิดแท็บ ข้อมูลจะไม่ถูกนำไปเขียนทับอัตโนมัติ"));
       }
       const protectedRead = readPlannerProtected(window.localStorage);
       if (protectedRead.conflict && protectedRead.state) {
@@ -1165,7 +1165,7 @@ export function TaxPlannerProvider({
             window.sessionStorage.setItem(RECOVERY_EXPORT_KEY, JSON.stringify(protectedRead.state));
         } catch (error) { console.error("Cannot retain protected recovery", error); }
         recoverySnapshotRef.current = JSON.stringify(protectedRead.state);
-        setRecoveryMessage("พบข้อมูลเก่าทับข้อมูลที่ป้องกันไว้ ระบบหยุดการบันทึกและอ่านจาก Recovery Journal กรุณาดาวน์โหลดไฟล์ก่อนรีโหลด");
+        queueMicrotask(() => setRecoveryMessage("พบข้อมูลเก่าทับข้อมูลที่ป้องกันไว้ ระบบหยุดการบันทึกและอ่านจาก Recovery Journal กรุณาดาวน์โหลดไฟล์ก่อนรีโหลด"));
       }
       const parsed = protectedRead.state;
       if (parsed) {
