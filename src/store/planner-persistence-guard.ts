@@ -75,8 +75,14 @@ export function readPlannerProtected(storage: Pick<Storage, "getItem">): Protect
     // journal head. Never expose a pre-Reset primary as active.
     return result(witness, "reset-witness", "reset-generation-conflict");
   }
-  if (!headValid || (rawHead !== null && headId !== generation))
+  if (!headValid || (rawHead !== null && headId !== generation)) {
+    // A stale head created by an in-flight pre-Reset save cannot defeat a
+    // matching clean witness + clean main document.
+    if (witness && primary && idOf(primary) === idOf(witness) &&
+        same(witness, primary))
+      return result(witness, "reset-witness", "stale-journal-head-after-reset");
     return result(null, "journal", "malformed-or-mismatched-journal-head");
+  }
   if (rawPrimary && !primary) return result(null, "primary", "invalid-primary");
   if (rawJournal && !journal) return result(null, "journal", "invalid-journal");
   if (journal && idOf(journal) !== generation)
