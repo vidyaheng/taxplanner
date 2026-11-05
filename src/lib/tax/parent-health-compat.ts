@@ -38,9 +38,13 @@ export function evaluateDirectParentHealth(
   family: FamilyData,
   rules: TaxRuleSet
 ): "eligible" | "ineligible" | "incomplete" | "conflict" {
-  if (!profile || !policy.relationshipKey || profile.relationshipKey !== policy.relationshipKey ||
+  if (!policy.relationshipKey || !(
+    ["taxpayer:father", "taxpayer:mother", "spouse:father", "spouse:mother"] as string[]
+  ).includes(policy.relationshipKey)) return "incomplete";
+  if (!profile || profile.relationshipKey !== policy.relationshipKey ||
       profile.taxYear !== rules.taxYear || policy.conversionStatus === "conflict") return "incomplete";
   if (profile.incomeConfirmed !== true || profile.annualAssessableIncome === null ||
+      !Number.isFinite(profile.annualAssessableIncome) || profile.annualAssessableIncome < 0 ||
       profile.legalChildConfirmed === null || profile.legalChildConfirmed === undefined ||
       policy.qualifyingInsuranceConfirmed == null || policy.evidenceConfirmed == null ||
       (family.isThaiTaxResident === false && profile.isInThailand == null) ||
@@ -65,6 +69,9 @@ export function resolveParentHealthPolicies(deductions: DeductionData, family: F
   const profiles = deductions.parentHealthEligibilityProfiles ?? [];
   return policies.filter(p => p.premiumPaidThisYear > 0).map(policy => {
     const premium = Math.max(0, policy.premiumPaidThisYear);
+    if (policy.relationshipKey !== undefined && (!Number.isFinite(premium) || premium < 0))
+      return { source: "direct" as const, status: "incomplete" as const,
+        policyId: policy.id, originalParentId: policy.parentId, paid: 0, share: 0, eligibleShare: 0 };
     const payers = policy.jointPayerCount;
     if (payers === null || !Number.isInteger(payers) || payers < 1) return {
       source: policy.relationshipKey ? "direct" as const : "legacy-linked" as const,
@@ -74,7 +81,9 @@ export function resolveParentHealthPolicies(deductions: DeductionData, family: F
     if (policy.relationshipKey !== undefined) {
       const profile = profiles.find(p => p.relationshipKey === policy.relationshipKey && p.taxYear === rules.taxYear);
       const duplicates = profiles.filter(p => p.relationshipKey === policy.relationshipKey && p.taxYear === rules.taxYear);
-      const status = duplicates.length > 1 ? "conflict" as const : evaluateDirectParentHealth(policy, profile, family, rules);
+      const duplicatePolicyId = policies.filter(candidate => candidate.id === policy.id).length > 1;
+      const status = duplicates.length > 1 || duplicatePolicyId ? "conflict" as const :
+        evaluateDirectParentHealth(policy, profile, family, rules);
       return { source: "direct" as const, status, policyId: policy.id, originalParentId: policy.parentId,
         paid: share, share, eligibleShare: status === "eligible" ? share : 0 };
     }
