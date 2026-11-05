@@ -53,3 +53,13 @@ export function matchesResetWitness(storage:Pick<Storage,"getItem">,state:TaxPla
   const witness=parse(storage.getItem(RESET_WITNESS_KEY));
   return !witness || idOf(witness) === idOf(state);
 }
+
+/** Best-effort privacy cleanup after an explicit Reset; cannot control old JS. */
+export function clearPreviousPlannerJournal(
+  storage: Partial<Pick<Storage,"removeItem">>,
+  previousResetId: string | null
+):void {
+  storage.removeItem?.(journalKey(previousResetId));
+  // Legacy/default generation may have existed before a reset token was assigned.
+  if (previousResetId !== null) storage.removeItem?.(journalKey(null));
+}
