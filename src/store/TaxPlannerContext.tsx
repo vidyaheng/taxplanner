@@ -1121,6 +1121,7 @@ export function TaxPlannerProvider({
 
         if ((parsed.schemaVersion ?? 0) > CURRENT_SCHEMA_VERSION) {
           saveBlockedRef.current = true;
+          window.alert("ข้อมูลถูกบันทึกด้วย TaxPlanner เวอร์ชันใหม่กว่า ระบบนี้จะไม่บันทึกทับข้อมูล กรุณาเปิดเว็บไซต์เวอร์ชันล่าสุด");
           throw new Error("Saved data schema is newer than this TaxPlanner version; writes disabled");
         }
         savedRevisionRef.current = parsed.persistRevision ?? 0;
@@ -1171,6 +1172,12 @@ export function TaxPlannerProvider({
           : "ข้อมูล TaxPlanner ถูกเปลี่ยนจากหน้าต่างอื่น จึงหยุดบันทึกเพื่อป้องกันการเขียนทับ กรุณารีโหลดเพื่อตรวจข้อมูล");
       } catch (error) {
         saveBlockedRef.current = true;
+        try {
+          window.sessionStorage.setItem("thai-tax-planner-conflict-recovery", JSON.stringify(state));
+        } catch (backupError) {
+          console.error("Unable to create recovery snapshot", backupError);
+        }
+        window.alert("ไม่สามารถบันทึกข้อมูลได้อย่างปลอดภัย ระบบหยุดการบันทึก กรุณาตรวจสอบข้อมูลก่อนปิดหน้านี้");
         console.error("Unable to safely persist Tax Planner data", error);
       }
     });
