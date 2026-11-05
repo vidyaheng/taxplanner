@@ -14,7 +14,7 @@
 ### R2 — Old-version tab overwrites new persistence metadata
 1. An older tab uses the old single localStorage key, no Web Locks/revision handling.
 2. It may overwrite `persistRevision` or the future additive fields, even after new tabs have completed a save.
-3. **Correction:** Each new-version save writes a separate *per-generation* recovery journal before updating the old main key. Old JS does not write the journal. On startup the new app compares primary vs the guard journal and displays a guarded snapshot without automatically replacing the primary or overwriting newer content.
+3. **Correction:** Each new-version save writes a separate *per-generation* recovery journal plus a non-sensitive last-generation pointer before updating the old main key. The pointer also permits safe lookup when the old primary document has malformed JSON. Old JS does not write the journal. On startup the new app compares primary vs the guard journal and displays a guarded snapshot without automatically replacing the primary or overwriting newer content.
 4. **Limit:** If the older app wrote before a guarded journal existed, or after the page closes without a recoverable snapshot, that loss is not reversible. New JS cannot make old JS obey a new lock. Never claim absolute cross-version write safety.
 
 ### R3 — Hidden/erased conflict backup
@@ -44,7 +44,7 @@
 - Reset during stale primary write, with stale write landing last -> primary may contain stale data; protected hydration reads clean reset witness.
 - Old-version tab overwriting primary after new-version write -> journal remains available; no automatic destructive rewrite.
 - Old-version overwrite after reset -> witness remains authoritative.
-- Corrupt primary with valid journal -> recovered snapshot available.
+- Corrupt primary with valid journal -> recovered snapshot available via the independent generation pointer.
 - Journal write denied -> normal save throws, old primary remains.
 - Reset cleanup removes old journals; partial Reset failure does not revive stale data.
 
@@ -68,3 +68,9 @@ Existing `TaxPlannerContext.c3-1a.test.ts`, reset tests and tax-engine financial
 **NOT MERGE READY.** The strong practical mitigation detects/reset-fences old writes for *new app startup*, but the old app can still overwrite the legacy main key. Because normal and synchronous Reset operations cannot jointly enter one exclusive Web Lock, no atomicity guarantee is claimed. Cross-tab browser UAT, real export/recovery download, and explicit acceptance of old-version residual risk are required before Merge.
 
 No auto-merge, no Production deploy, no C3.1B.
+
+## F. Regression and CI evidence
+
+Latest source correction includes the corruption-recovery pointer and explicit reset-cleanup tests. The GitHub Actions workflow checks **full Vitest, ESLint and Next.js production build with TypeScript**; inspect the exact PR HEAD run rather than reusing an earlier commit's result. Previously verified correction run `41964523911` passed 28/28 files and 491/491 tests, including deterministic guard tests.
+
+The Vercel Preview is a non-Production deployment and does **not** count as interactive Edge/iPhone/Android acceptance. Re-check its SHA against the PR HEAD after any documentation or source follow-up commit.
