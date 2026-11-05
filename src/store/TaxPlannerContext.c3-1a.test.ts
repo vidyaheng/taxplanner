@@ -41,6 +41,24 @@ describe("C3.1A serialized browser persistence", () => {
     expect(await savePlannerStateSerialized(db.storage,tabB as never,2,exclusive)).toEqual({status:"conflict"});
     expect(db.read().deductions.parentHealthInsurance).toBe(12000);
   });
+  it("concurrent tab writes under one exclusive lock allow only one revision winner", async () => {
+    const db=store(initial);
+    let queue:Promise<unknown>=Promise.resolve();
+    const serialize=(cb:()=>WriteOutcome):Promise<WriteOutcome>=>{
+      const pending=queue.then(()=>cb());
+      queue=pending.then(()=>undefined,()=>undefined);
+      return pending;
+    };
+    const a=savePlannerStateSerialized(db.storage,{...initial,
+      deductions:{...initial.deductions,parentHealthInsurance:11111}} as never,2,serialize);
+    const b=savePlannerStateSerialized(db.storage,{...initial,
+      deductions:{...initial.deductions,parentHealthInsurance:22222}} as never,2,serialize);
+    const results=await Promise.all([a,b]);
+    expect(results.filter(r=>r.status==="saved")).toHaveLength(1);
+    expect(results.filter(r=>r.status==="conflict")).toHaveLength(1);
+    expect(db.read().deductions.parentHealthInsurance).toBe(11111);
+    expect(db.read().persistRevision).toBe(3);
+  });
   it("blocks future-schema writes and does not mutate stored data", async () => {
     const db=store({...initial,schemaVersion:99});
     const result=await savePlannerStateSerialized(db.storage,initial as never,2,exclusive);
