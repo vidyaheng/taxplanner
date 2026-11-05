@@ -19,9 +19,11 @@ function store(initial: object) {
 const exclusive = async (cb:()=>WriteOutcome):Promise<WriteOutcome> => cb();
 describe("C3.1A serialized browser persistence", () => {
   const initial = {schemaVersion:14,taxYear:2569, resetId:"r1", persistRevision:2,
+    income:{monthlySalary:75000},
     deductions:{parentHealthInsurance:9000,parentHealthInsurancePolicies:[
       {id:"policy-1",parentId:"family-1",premiumPaidThisYear:9000,jointPayerCount:3}
-    ]},family:{parents:[{id:"family-1",owner:"taxpayer",relation:"father"}]}};
+    ]},family:{parents:[{id:"family-1",owner:"taxpayer",relation:"father"}]},
+    planning:{rmf:30000}};
   it("preserves IDs, premiums, payer and legacy aggregate in additive hydration", () => {
     expect(migrateStoredState(initial as never)).toEqual(initial);
   });
