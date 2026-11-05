@@ -70,13 +70,13 @@ export function readPlannerProtected(storage: Pick<Storage, "getItem">): Protect
     ({ state, source, conflict: reason !== null, candidates, reason });
 
   if (rawWitness && !witness) return result(null, "reset-witness", "malformed-reset-witness");
-  if (!headValid || (rawHead !== null && headId !== generation))
-    return result(null, "journal", "malformed-or-mismatched-journal-head");
   if (witness && (!primary || idOf(primary) !== idOf(witness))) {
-    // An explicit Reset is authoritative over all prior generations. Preserve
-    // the conflicting primary for export, never expose pre-Reset data as active.
+    // Reset has precedence over all older-generation metadata, even an old
+    // journal head. Never expose a pre-Reset primary as active.
     return result(witness, "reset-witness", "reset-generation-conflict");
   }
+  if (!headValid || (rawHead !== null && headId !== generation))
+    return result(null, "journal", "malformed-or-mismatched-journal-head");
   if (rawPrimary && !primary) return result(null, "primary", "invalid-primary");
   if (rawJournal && !journal) return result(null, "journal", "invalid-journal");
   if (journal && idOf(journal) !== generation)
