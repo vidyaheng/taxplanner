@@ -111,6 +111,25 @@ describe("TAX-C3.1A deterministic reset / stale-write interleavings",()=>{
       .rejects.toThrow("journal write failed");
     expect(db.raw()).toEqual(initial);
   });
+  it("explicit Reset is synchronous even after the primary JSON is corrupted",()=>{
+    const db=store();
+    db.storage.setItem(PLANNER_KEY,"{bad");
+    const reset=persistPlannerReset(db.storage,"fresh-reset");
+    expect(reset.resetId).toBe("fresh-reset");
+    expect(db.raw().income.monthlySalary).toBe(0);
+    expect(db.current()).toMatchObject({source:"primary",conflict:false});
+  });
+  it("if primary reset write fails after witness commit, guarded hydration does not revive old data",()=>{
+    const db=store();
+    const broken={...db.storage,setItem:(key:string,val:string)=>{
+      if(key===PLANNER_KEY) throw new Error("primary storage failure");
+      db.storage.setItem(key,val);
+    }};
+    expect(()=>persistPlannerReset(broken,"partial-reset")).toThrow("primary storage failure");
+    expect(db.raw().resetId).toBe("old-generation");
+    expect(db.current().source).toBe("reset-witness");
+    expect(db.current().state?.income?.monthlySalary).toBe(0);
+  });
   it("old-version tab cannot erase authoritative reset witness",()=>{
     const db=store();
     persistPlannerReset(db.storage,"reset-v2");
