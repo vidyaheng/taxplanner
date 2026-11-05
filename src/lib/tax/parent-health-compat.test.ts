@@ -83,6 +83,22 @@ describe("TAX-C3.1A dormant independent parent health foundation", () => {
     expect(calculateInsuranceDeductions({deductions:input,family:baseFamily,rules:TAX_RULES_2569})
       .parentHealthInsurance.allowed).toBe(0);
   });
+  it("reused direct Policy ID is a conflict, while distinct policies sharing a parent are allowed", () => {
+    const one=policy("duplicate","taxpayer:father",8000);
+    const two=policy("duplicate","taxpayer:father",9000);
+    const input={...zeroDeductions,parentHealthInsurancePolicies:[one,two],
+      parentHealthEligibilityProfiles:[profile("taxpayer:father")]};
+    const records=resolveParentHealthPolicies(input,baseFamily,TAX_RULES_2569);
+    expect(records.map(x=>x.status)).toEqual(["conflict","conflict"]);
+    expect(calculateInsuranceDeductions({deductions:input,family:baseFamily,rules:TAX_RULES_2569})
+      .parentHealthInsurance.allowed).toBe(0);
+  });
+  it("non-finite and negative new parent income never produce an entitlement", () => {
+    for(const amount of [Number.NaN, -1, Number.POSITIVE_INFINITY]) {
+      expect(calc([policy("id","taxpayer:father",10000)],[profile("taxpayer:father",amount)])
+        .parentHealthInsurance.allowed).toBe(0);
+    }
+  });
   it("legacy detailed remains authoritative over the aggregate and preserves orphan ID", () => {
     const input:DeductionData={...zeroDeductions,parentHealthInsurance:99999,
       parentHealthInsurancePolicies:[{id:"original",parentId:"missing-family-id",
