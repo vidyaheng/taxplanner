@@ -234,6 +234,8 @@ export async function savePlannerStateSerialized(
 ): Promise<PlannerWriteResult> {
   if (!serialize) return { status: "unsupported" };
   return serialize(() => {
+    const protectedRead = readPlannerProtected(storage);
+    if (protectedRead.conflict) return {status: "conflict"};
     const raw = storage.getItem(STORAGE_KEY);
     const saved = raw ? (JSON.parse(raw) as Partial<TaxPlannerState>) : null;
     if (isStalePlannerTab(state, saved) ||
