@@ -1364,7 +1364,8 @@ export function TaxPlannerProvider({
     // Do not overwrite saved user data before hydration has finished.
     if (!hydrated) return false;
     // An unresolved recovery export is never discarded without a download.
-    if (recoverySnapshotRef.current && !recoveryExportedRef.current) {
+    if ((recoverySnapshotRef.current || guardedCandidatesRef.current.length > 0) &&
+        !recoveryExportedRef.current) {
       window.alert("ยังมีข้อมูลสำรองที่ไม่ได้ส่งออก กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีเซ็ต");
       return false;
     }
