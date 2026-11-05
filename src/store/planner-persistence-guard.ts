@@ -116,19 +116,29 @@ export function matchesResetWitness(storage: Pick<Storage, "getItem">, state: Ta
 /** Best-effort privacy cleanup, after synchronous reset witness/primary writes. */
 export function clearPreviousPlannerJournal(
   storage: Partial<Pick<Storage, "removeItem" | "key" | "length">>,
-  previousResetId: string | null
+  previousResetId: string | null,
+  newResetId?: string
 ): void {
   if (!storage.removeItem) return;
-  // The pointer is removed first so no subsequent protected read can resurrect
-  // a legacy journal from the old generation during cleanup.
-  storage.removeItem(JOURNAL_HEAD_KEY);
+  const keep = newResetId ? journalKey(newResetId) : null;
+  const head = "getItem" in storage && typeof storage.getItem === "function" ?
+    storage.getItem(JOURNAL_HEAD_KEY) : null;
+  // Preserve a newly-written current-generation journal and its pointer even
+  // when another tab writes during synchronous Reset cleanup.
+  if (!newResetId || head !== newResetId)
+    storage.removeItem(JOURNAL_HEAD_KEY);
   if (storage.key && typeof storage.length === "number") {
-    for (let i = storage.length - 1; i >= 0; i--) {
+    const obsolete: string[] = [];
+    for (let i = 0; i < storage.length; i++) {
       const key = storage.key(i);
-      if (key?.startsWith(JOURNAL_PREFIX)) storage.removeItem(key);
+      if (key?.startsWith(JOURNAL_PREFIX) && key !== JOURNAL_HEAD_KEY && key !== keep)
+        obsolete.push(key);
     }
+    for (const key of obsolete) storage.removeItem(key);
   } else {
-    storage.removeItem(journalKey(previousResetId));
-    if (previousResetId !== null) storage.removeItem(journalKey(null));
+    if (journalKey(previousResetId) !== keep)
+      storage.removeItem(journalKey(previousResetId));
+    if (previousResetId !== null && journalKey(null) !== keep)
+      storage.removeItem(journalKey(null));
   }
 }
