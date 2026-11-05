@@ -1126,6 +1126,7 @@ export function TaxPlannerProvider({
   const resetGenerationRef = useRef(0);
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const recoverySnapshotRef = useRef<string | null>(null);
+  const guardedSnapshotRef = useRef<string | null>(null);
   const recoveryExportedRef = useRef(false);
   function retainRecoverySnapshot(snapshot: TaxPlannerState, reason: string) {
     // Never erase a previously saved recovery snapshot without explicit export.
@@ -1142,8 +1143,17 @@ export function TaxPlannerProvider({
   function downloadRecoverySnapshot() {
     const saved = recoverySnapshotRef.current ??
       window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
-    if (!saved) return;
-    const blob = new Blob([saved], {type:"application/json;charset=utf-8"});
+    const guarded = guardedSnapshotRef.current;
+    if (!saved && !guarded) return;
+    // Explicit export includes *both* the first unsaved snapshot and the
+    // current protected read; neither silently replaces the other.
+    const bundle = JSON.stringify({
+      format: "taxplanner-recovery-bundle-v1",
+      instruction: "ข้อมูลสำรองสำหรับตรวจสอบเท่านั้น ห้ามนำเข้าเขียนทับข้อมูลล่าสุดอัตโนมัติ",
+      unsavedSnapshot: saved ? JSON.parse(saved) : null,
+      protectedSnapshot: guarded ? JSON.parse(guarded) : null,
+    },null,2);
+    const blob = new Blob([bundle], {type:"application/json;charset=utf-8"});
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -1170,7 +1180,9 @@ export function TaxPlannerProvider({
           if (!window.sessionStorage.getItem(RECOVERY_EXPORT_KEY))
             window.sessionStorage.setItem(RECOVERY_EXPORT_KEY, JSON.stringify(protectedRead.state));
         } catch (error) { console.error("Cannot retain protected recovery", error); }
-        recoverySnapshotRef.current = JSON.stringify(protectedRead.state);
+        guardedSnapshotRef.current = JSON.stringify(protectedRead.state);
+        if (!recoverySnapshotRef.current)
+          recoverySnapshotRef.current = JSON.stringify(protectedRead.state);
         queueMicrotask(() => setRecoveryMessage("พบข้อมูลเก่าทับข้อมูลที่ป้องกันไว้ ระบบหยุดการบันทึกและอ่านจาก Recovery Journal กรุณาดาวน์โหลดไฟล์ก่อนรีโหลด"));
       }
       const parsed = protectedRead.state;
@@ -1327,6 +1339,7 @@ export function TaxPlannerProvider({
       const cleanState = persistPlannerReset(window.localStorage);
       window.sessionStorage.removeItem(RECOVERY_EXPORT_KEY);
       recoverySnapshotRef.current = null;
+      guardedSnapshotRef.current = null;
       recoveryExportedRef.current = false;
       setRecoveryMessage(null);
       resetGenerationRef.current += 1;
@@ -1381,7 +1394,7 @@ export function TaxPlannerProvider({
           <button type="button" onClick={downloadRecoverySnapshot} style={{
             borderRadius:8,padding:"10px 16px",background:"#0f766e",color:"white",
             fontWeight:600,cursor:"pointer"
-          }}>ดาวน์โหลดข้อมูลสำรอง JSON</button>
+          }}>ดาวน์โหลดชุดข้อมูลสำรอง JSON</button>
           <p style={{fontSize:12,margin:"8px 0 0"}}>
             ไฟล์อาจมีข้อมูลรายได้และครอบครัว กรุณาเก็บไว้ในที่ปลอดภัย และอย่าส่งให้ผู้อื่น
           </p>
