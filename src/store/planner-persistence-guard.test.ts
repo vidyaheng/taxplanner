@@ -77,9 +77,10 @@ describe("TAX-C3.1A deterministic reset / stale-write interleavings",()=>{
     db.storage.setItem(PLANNER_KEY,JSON.stringify(initial));
     const recovered=db.current();
     expect(recovered.conflict).toBe(true);
-    expect(recovered.source).toBe("journal");
-    expect(recovered.state?.income?.monthlySalary).toBe(81000);
-    expect(recovered.state?.deductions?.parentHealthInsurancePolicies?.[0].id).toBe("policy-original");
+    expect(recovered.source).toBe("primary");
+    expect(recovered.state).toBeNull();
+    expect(recovered.candidates.find(c=>c.source==="journal")?.state.income?.monthlySalary).toBe(81000);
+    expect(recovered.candidates.find(c=>c.source==="journal")?.state.deductions?.parentHealthInsurancePolicies?.[0].id).toBe("policy-original");
     expect(db.raw().income.monthlySalary).toBe(75000); // no automatic destructive rewrite
   });
   it("explicit synchronous Reset removes financial journals from all older generations",async()=>{
@@ -97,8 +98,9 @@ describe("TAX-C3.1A deterministic reset / stale-write interleavings",()=>{
     db.storage.setItem(PLANNER_KEY,"{malformed JSON");
     const recovered=db.current();
     expect(recovered.conflict).toBe(true);
-    expect(recovered.source).toBe("journal");
-    expect(recovered.state?.income?.monthlySalary).toBe(75000);
+    expect(recovered.source).toBe("primary");
+    expect(recovered.state).toBeNull();
+    expect(recovered.candidates.find(c=>c.source==="journal")?.state.income?.monthlySalary).toBe(75000);
     expect(db.storage.getItem(PLANNER_KEY)).toBe("{malformed JSON");
   });
   it("journal storage failure prevents main-key mutation and rejects unsafe write",async()=>{
@@ -144,7 +146,7 @@ describe("TAX-C3.1A deterministic reset / stale-write interleavings",()=>{
     const db=store();
     expect(await savePlannerStateSerialized(db.storage,initial,1,immediate)).toMatchObject({status:"saved"});
     db.storage.setItem(PLANNER_KEY,JSON.stringify({...initial,schemaVersion:999}));
-    expect(db.current()).toMatchObject({source:"journal",conflict:true});
+    expect(db.current()).toMatchObject({source:"primary",state:null,conflict:true});
   });
   it("old snapshot survives reset guard without altering Family/Income/Deductions/Planner on attempted stale write",async()=>{
     const db=store();
