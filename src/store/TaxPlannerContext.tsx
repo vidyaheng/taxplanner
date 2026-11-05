@@ -25,7 +25,8 @@ import {
 } from "@/types/deductions";
 import {
   PLANNER_KEY, RECOVERY_EXPORT_KEY, readPlannerProtected,
-  matchesResetWitness, writePlannerJournal, writePlannerResetWitness
+  matchesResetWitness, writePlannerJournal, writePlannerResetWitness,
+  clearPreviousPlannerJournal
 } from "./planner-persistence-guard";
 
 import {
@@ -251,15 +252,18 @@ export async function savePlannerStateSerialized(
 
 /** Persist a complete clean planner snapshot before navigation/reload. */
 export function persistPlannerReset(
-  storage: Pick<Storage, "setItem">,
+  storage: Pick<Storage, "setItem"> & Partial<Pick<Storage, "getItem" | "removeItem">>,
   resetId: string = globalThis.crypto?.randomUUID?.() ??
     `${Date.now()}-${Math.random().toString(36).slice(2)}`
 ): TaxPlannerState {
+  const previousRaw = storage.getItem?.(STORAGE_KEY) ?? null;
+  const previous = previousRaw ? (JSON.parse(previousRaw) as Partial<TaxPlannerState>) : null;
   const resetState: TaxPlannerState = { ...initialState, resetId };
-  // This witness makes the explicit Reset survive an overlapping stale write.
-  // Reset remains synchronous; the marker is never changed by normal saves.
+  // The reset witness is the authoritative synchronous fence. This sequence is
+  // crash-recoverable through protected hydration, but not a localStorage transaction.
   writePlannerResetWitness(storage, resetState);
   storage.setItem(STORAGE_KEY, JSON.stringify(resetState));
+  clearPreviousPlannerJournal(storage, previous?.resetId ?? null);
   return resetState;
 }
 
@@ -1122,6 +1126,7 @@ export function TaxPlannerProvider({
   const resetGenerationRef = useRef(0);
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const recoverySnapshotRef = useRef<string | null>(null);
+  const recoveryExportedRef = useRef(false);
   function retainRecoverySnapshot(snapshot: TaxPlannerState, reason: string) {
     // Never erase a previously saved recovery snapshot without explicit export.
     try {
@@ -1147,6 +1152,7 @@ export function TaxPlannerProvider({
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+    recoveryExportedRef.current = true;
   }
 
   useEffect(() => {
@@ -1311,10 +1317,18 @@ export function TaxPlannerProvider({
   function resetPlanner(): boolean {
     // Do not overwrite saved user data before hydration has finished.
     if (!hydrated) return false;
-
+    // An unresolved recovery export is never discarded without a download.
+    if (recoverySnapshotRef.current && !recoveryExportedRef.current) {
+      window.alert("ยังมีข้อมูลสำรองที่ไม่ได้ส่งออก กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีเซ็ต");
+      return false;
+    }
     try {
       // Write synchronously so reloading immediately cannot revive old data.
       const cleanState = persistPlannerReset(window.localStorage);
+      window.sessionStorage.removeItem(RECOVERY_EXPORT_KEY);
+      recoverySnapshotRef.current = null;
+      recoveryExportedRef.current = false;
+      setRecoveryMessage(null);
       resetGenerationRef.current += 1;
       savedRevisionRef.current = 0;
       saveBlockedRef.current = false;
