@@ -1145,6 +1145,7 @@ export function TaxPlannerProvider({
   const guardedCandidatesRef = useRef<SnapshotCandidate[]>([]);
   const recoveryExportedRef = useRef(false);
   const recoveryDownloadAttemptedRef = useRef(false);
+  const [recoveryDownloadAttempted, setRecoveryDownloadAttempted] = useState(false);
   const [recoveryConfirmed, setRecoveryConfirmed] = useState(false);
   function retainRecoverySnapshot(snapshot: TaxPlannerState, reason: string) {
     // Never erase a previously saved recovery snapshot without explicit export.
@@ -1178,6 +1179,7 @@ export function TaxPlannerProvider({
         link.click();
         link.remove();
         recoveryDownloadAttemptedRef.current = true;
+        setRecoveryDownloadAttempted(true);
         recoveryExportedRef.current = false;
         setRecoveryConfirmed(false);
         setRecoveryMessage("ส่งคำขอดาวน์โหลดแล้ว แต่ไม่สามารถยืนยันได้ว่าไฟล์ถูกบันทึก กรุณาตรวจไฟล์ในเครื่องและทำเครื่องหมายยืนยัน");
@@ -1374,6 +1376,7 @@ export function TaxPlannerProvider({
       recoverySnapshotRef.current = null;
       guardedCandidatesRef.current = [];
       recoveryDownloadAttemptedRef.current = false;
+      setRecoveryDownloadAttempted(false);
       setRecoveryConfirmed(false);
       recoveryExportedRef.current = false;
       setRecoveryMessage(null);
@@ -1430,7 +1433,7 @@ export function TaxPlannerProvider({
             borderRadius:8,padding:"10px 16px",background:"#0f766e",color:"white",
             fontWeight:600,cursor:"pointer"
           }}>ดาวน์โหลดชุดข้อมูลสำรอง JSON</button>
-          {recoveryDownloadAttemptedRef.current && (
+          {recoveryDownloadAttempted && (
             <label style={{display:"block",marginTop:8}}>
               <input type="checkbox" checked={recoveryConfirmed}
                 onChange={event=>confirmRecoveryFileSaved(event.target.checked)}/>
