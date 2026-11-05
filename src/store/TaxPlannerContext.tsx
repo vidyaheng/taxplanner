@@ -1151,9 +1151,21 @@ export function TaxPlannerProvider({
 
   useEffect(() => {
     try {
+      const pendingRecovery = window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
+      if (pendingRecovery) {
+        recoverySnapshotRef.current = pendingRecovery;
+        setRecoveryMessage("ยังมีข้อมูลสำรองจากความขัดแย้งครั้งก่อน กรุณาดาวน์โหลดก่อนปิดแท็บ ข้อมูลจะไม่ถูกนำไปเขียนทับอัตโนมัติ");
+      }
       const protectedRead = readPlannerProtected(window.localStorage);
-      if (protectedRead.conflict) {
-        setRecoveryMessage("พบข้อมูลที่ถูกเขียนทับหรือขัดแย้งกัน ระบบใช้ข้อมูลสำรองที่ป้องกันไว้เพื่อแสดงผล กรุณาส่งออกข้อมูลสำรองก่อนดำเนินการต่อ");
+      if (protectedRead.conflict && protectedRead.state) {
+        saveBlockedRef.current = true;
+        // Preserve the guarded document without overwriting the primary value.
+        try {
+          if (!window.sessionStorage.getItem(RECOVERY_EXPORT_KEY))
+            window.sessionStorage.setItem(RECOVERY_EXPORT_KEY, JSON.stringify(protectedRead.state));
+        } catch (error) { console.error("Cannot retain protected recovery", error); }
+        recoverySnapshotRef.current = JSON.stringify(protectedRead.state);
+        setRecoveryMessage("พบข้อมูลเก่าทับข้อมูลที่ป้องกันไว้ ระบบหยุดการบันทึกและอ่านจาก Recovery Journal กรุณาดาวน์โหลดไฟล์ก่อนรีโหลด");
       }
       const parsed = protectedRead.state;
       if (parsed) {
@@ -1344,6 +1356,23 @@ export function TaxPlannerProvider({
         isHydrated: hydrated,
       }}
     >
+      {recoveryMessage && (
+        <div role="alert" aria-live="assertive" style={{
+          position:"fixed",bottom:16,left:16,right:16,zIndex:9999,
+          background:"#fff7ed",border:"2px solid #9a3412",borderRadius:12,
+          padding:16,color:"#7c2d12",boxShadow:"0 4px 12px #0002"
+        }}>
+          <div style={{fontWeight:700}}>TaxPlanner — หยุดบันทึกข้อมูลเพื่อความปลอดภัย</div>
+          <p style={{margin:"8px 0"}}>{recoveryMessage}</p>
+          <button type="button" onClick={downloadRecoverySnapshot} style={{
+            borderRadius:8,padding:"10px 16px",background:"#0f766e",color:"white",
+            fontWeight:600,cursor:"pointer"
+          }}>ดาวน์โหลดข้อมูลสำรอง JSON</button>
+          <p style={{fontSize:12,margin:"8px 0 0"}}>
+            ไฟล์อาจมีข้อมูลรายได้และครอบครัว กรุณาเก็บไว้ในที่ปลอดภัย และอย่าส่งให้ผู้อื่น
+          </p>
+        </div>
+      )}
       {children}
     </TaxPlannerContext.Provider>
   );
