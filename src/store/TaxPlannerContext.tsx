@@ -28,6 +28,8 @@ import {
   matchesResetWitness, writePlannerJournal, writePlannerResetWitness,
   clearPreviousPlannerJournal
 } from "./planner-persistence-guard";
+import { buildRecoveryBundle, serializeRecoveryBundle } from "./planner-recovery-export";
+import type { SnapshotCandidate } from "./planner-persistence-guard";
 
 import {
   PlanningData,
@@ -1138,8 +1140,10 @@ export function TaxPlannerProvider({
   const resetGenerationRef = useRef(0);
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const recoverySnapshotRef = useRef<string | null>(null);
-  const guardedSnapshotRef = useRef<string | null>(null);
+  const guardedCandidatesRef = useRef<SnapshotCandidate[]>([]);
   const recoveryExportedRef = useRef(false);
+  const recoveryDownloadAttemptedRef = useRef(false);
+  const [recoveryConfirmed, setRecoveryConfirmed] = useState(false);
   function retainRecoverySnapshot(snapshot: TaxPlannerState, reason: string) {
     // Never erase a previously saved recovery snapshot without explicit export.
     try {
@@ -1155,26 +1159,40 @@ export function TaxPlannerProvider({
   function downloadRecoverySnapshot() {
     const saved = recoverySnapshotRef.current ??
       window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
-    const guarded = guardedSnapshotRef.current;
-    if (!saved && !guarded) return;
-    // Explicit export includes *both* the first unsaved snapshot and the
-    // current protected read; neither silently replaces the other.
-    const bundle = JSON.stringify({
-      format: "taxplanner-recovery-bundle-v1",
-      instruction: "ข้อมูลสำรองสำหรับตรวจสอบเท่านั้น ห้ามนำเข้าเขียนทับข้อมูลล่าสุดอัตโนมัติ",
-      unsavedSnapshot: saved ? JSON.parse(saved) : null,
-      protectedSnapshot: guarded ? JSON.parse(guarded) : null,
-    },null,2);
-    const blob = new Blob([bundle], {type:"application/json;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "taxplanner-recovery.json";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    recoveryExportedRef.current = true;
+    const candidates = guardedCandidatesRef.current;
+    if (!saved && candidates.length === 0) return;
+    try {
+      const bundle = buildRecoveryBundle(saved, candidates);
+      const payload = serializeRecoveryBundle(bundle);
+      // Verify JSON before exposing it to the browser download mechanism.
+      JSON.parse(payload);
+      const blob = new Blob([payload], {type:"application/json;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      try {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "taxplanner-recovery.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        recoveryDownloadAttemptedRef.current = true;
+        recoveryExportedRef.current = false;
+        setRecoveryConfirmed(false);
+        setRecoveryMessage("ส่งคำขอดาวน์โหลดแล้ว แต่ไม่สามารถยืนยันได้ว่าไฟล์ถูกบันทึก กรุณาตรวจไฟล์ในเครื่องและทำเครื่องหมายยืนยัน");
+      } finally {
+        // Defer URL release until after the click has been dispatched.
+        queueMicrotask(() => URL.revokeObjectURL(url));
+      }
+    } catch (error) {
+      recoveryExportedRef.current = false;
+      setRecoveryConfirmed(false);
+      setRecoveryMessage("ส่งออกข้อมูลสำรองไม่สำเร็จ ระบบยังเก็บ Snapshot เดิมไว้ กรุณาลองอีกครั้งก่อนรีโหลด");
+      console.error("Unable to export recovery snapshot",error);
+    }
+  }
+  function confirmRecoveryFileSaved(confirmed: boolean) {
+    setRecoveryConfirmed(confirmed);
+    recoveryExportedRef.current = confirmed && recoveryDownloadAttemptedRef.current;
   }
 
   useEffect(() => {
@@ -1185,17 +1203,17 @@ export function TaxPlannerProvider({
         queueMicrotask(() => setRecoveryMessage("ยังมีข้อมูลสำรองจากความขัดแย้งครั้งก่อน กรุณาดาวน์โหลดก่อนปิดแท็บ ข้อมูลจะไม่ถูกนำไปเขียนทับอัตโนมัติ"));
       }
       const protectedRead = readPlannerProtected(window.localStorage);
-      if (protectedRead.conflict && protectedRead.state) {
+      if (protectedRead.conflict) {
         saveBlockedRef.current = true;
         // Preserve the guarded document without overwriting the primary value.
         try {
-          if (!window.sessionStorage.getItem(RECOVERY_EXPORT_KEY))
+          if (!window.sessionStorage.getItem(RECOVERY_EXPORT_KEY) && protectedRead.state)
             window.sessionStorage.setItem(RECOVERY_EXPORT_KEY, JSON.stringify(protectedRead.state));
         } catch (error) { console.error("Cannot retain protected recovery", error); }
-        guardedSnapshotRef.current = JSON.stringify(protectedRead.state);
+        guardedCandidatesRef.current = protectedRead.candidates;
         if (!recoverySnapshotRef.current)
           recoverySnapshotRef.current = JSON.stringify(protectedRead.state);
-        queueMicrotask(() => setRecoveryMessage("พบข้อมูลเก่าทับข้อมูลที่ป้องกันไว้ ระบบหยุดการบันทึกและอ่านจาก Recovery Journal กรุณาดาวน์โหลดไฟล์ก่อนรีโหลด"));
+        queueMicrotask(() => setRecoveryMessage("พบข้อมูลสำรองขัดแย้งกัน ระบบหยุดการบันทึกและไม่เลือก Snapshot ที่ไม่แน่ชัด กรุณาส่งออกทุกชุดเพื่อพิจารณา"));
       }
       const parsed = protectedRead.state;
       if (parsed) {
@@ -1352,7 +1370,9 @@ export function TaxPlannerProvider({
       try { window.sessionStorage.removeItem(RECOVERY_EXPORT_KEY); }
       catch (error) { console.error("Unable to clear exported session backup", error); }
       recoverySnapshotRef.current = null;
-      guardedSnapshotRef.current = null;
+      guardedCandidatesRef.current = [];
+      recoveryDownloadAttemptedRef.current = false;
+      setRecoveryConfirmed(false);
       recoveryExportedRef.current = false;
       setRecoveryMessage(null);
       resetGenerationRef.current += 1;
@@ -1408,6 +1428,16 @@ export function TaxPlannerProvider({
             borderRadius:8,padding:"10px 16px",background:"#0f766e",color:"white",
             fontWeight:600,cursor:"pointer"
           }}>ดาวน์โหลดชุดข้อมูลสำรอง JSON</button>
+          {recoveryDownloadAttemptedRef.current && (
+            <label style={{display:"block",marginTop:8}}>
+              <input type="checkbox" checked={recoveryConfirmed}
+                onChange={event=>confirmRecoveryFileSaved(event.target.checked)}/>
+              {" "}ฉันตรวจสอบแล้วว่าไฟล์ JSON ถูกบันทึกในเครื่องและเปิดอ่านได้
+            </label>
+          )}
+          <p style={{fontSize:12,margin:"8px 0"}}>
+            การคลิกดาวน์โหลดไม่ใช่หลักฐานว่าไฟล์ถูกบันทึกจริง การรีเซ็ตจะลบ Recovery Journal ที่เก็บไว้ในเว็บไซต์ กรุณาตรวจไฟล์ก่อนยืนยัน
+          </p>
           <p style={{fontSize:12,margin:"8px 0 0"}}>
             ไฟล์อาจมีข้อมูลรายได้และครอบครัว กรุณาเก็บไว้ในที่ปลอดภัย และอย่าส่งให้ผู้อื่น
           </p>
