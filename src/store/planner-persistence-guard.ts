@@ -56,10 +56,20 @@ export function matchesResetWitness(storage:Pick<Storage,"getItem">,state:TaxPla
 
 /** Best-effort privacy cleanup after an explicit Reset; cannot control old JS. */
 export function clearPreviousPlannerJournal(
-  storage: Partial<Pick<Storage,"removeItem">>,
+  storage: Partial<Pick<Storage,"removeItem"|"key"|"length">>,
   previousResetId: string | null
 ):void {
-  storage.removeItem?.(journalKey(previousResetId));
-  // Legacy/default generation may have existed before a reset token was assigned.
-  if (previousResetId !== null) storage.removeItem?.(journalKey(null));
+  if (!storage.removeItem) return;
+  // Remove every known journal from older reset generations, not just the
+  // generation saved in the latest main document.
+  const prefix = "thai-tax-planner-v0.1-safe-journal-";
+  if (storage.key && typeof storage.length === "number") {
+    for (let i = storage.length - 1; i >= 0; i--) {
+      const key = storage.key(i);
+      if (key?.startsWith(prefix)) storage.removeItem(key);
+    }
+  } else {
+    storage.removeItem(journalKey(previousResetId));
+    if (previousResetId !== null) storage.removeItem(journalKey(null));
+  }
 }
