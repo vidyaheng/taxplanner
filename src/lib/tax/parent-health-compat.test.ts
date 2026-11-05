@@ -64,6 +64,27 @@ describe("TAX-C3.1A dormant independent parent health foundation", () => {
     expect(calc([good],[{...profile("taxpayer:father"),legalChildConfirmed:null}]).parentHealthInsurance.allowed).toBe(0);
     expect(calc([{...good,qualifyingInsuranceConfirmed:false}],[profile("taxpayer:father")]).parentHealthInsurance.allowed).toBe(0);
   });
+  it("explicit false legal-child or evidence is ineligible and unknown policy qualification is incomplete", () => {
+    const good=policy("a","taxpayer:father",12000);
+    expect(calc([good],[{...profile("taxpayer:father"),legalChildConfirmed:false}])
+      .parentHealthInsurance.allowed).toBe(0);
+    expect(calc([{...good,evidenceConfirmed:false}],[profile("taxpayer:father")])
+      .parentHealthInsurance.allowed).toBe(0);
+    expect(calc([{...good,qualifyingInsuranceConfirmed:null}],[profile("taxpayer:father")])
+      .parentHealthInsurance.allowed).toBe(0);
+  });
+  it("premium 20,000 paid solely by taxpayer is limited to 15,000", () => {
+    const result=calc([policy("a","taxpayer:father",20000,1)],[profile("taxpayer:father")]);
+    expect(result.parentHealthInsurance).toEqual({paid:20000,allowed:15000,excess:5000});
+  });
+  it("spouse-parent retains legacy marital and spouse assessable income limits", () => {
+    const insured=policy("a","spouse:mother",12000);
+    const settings=profile("spouse:mother");
+    expect(calc([insured],[settings],{...baseFamily,maritalStatus:"married",
+      spouseHasAssessableIncome:false}).parentHealthInsurance.allowed).toBe(12000);
+    expect(calc([insured],[settings],{...baseFamily,maritalStatus:"married",
+      spouseHasAssessableIncome:true}).parentHealthInsurance.allowed).toBe(0);
+  });
   it("two different policies share profile and a single combined 15,000 cap", () => {
     const result=calc([policy("a","taxpayer:father",8000),policy("b","taxpayer:father",9000)],
       [profile("taxpayer:father")]);
