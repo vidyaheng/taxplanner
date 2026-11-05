@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useReducer,
+  useRef,
   useState,
 } from "react";
 
@@ -32,6 +33,8 @@ export interface TaxPlannerState {
 
   // Changes on each reset to fence off stale writes from other open tabs.
   resetId?: string;
+  /** Browser-local revision, not a financial input. */
+  persistRevision?: number;
 
   taxYear: number;
 
@@ -206,8 +209,34 @@ export function savePlannerStateIfCurrent(
   const raw = storage.getItem(STORAGE_KEY);
   const saved = raw ? (JSON.parse(raw) as Partial<TaxPlannerState>) : null;
   if (isStalePlannerTab(state, saved)) return false;
+  if (typeof saved?.schemaVersion === "number" && saved.schemaVersion > CURRENT_SCHEMA_VERSION) return false;
+  if (saved?.persistRevision !== undefined && state.persistRevision !== saved.persistRevision) return false;
   storage.setItem(STORAGE_KEY, JSON.stringify(state));
   return true;
+}
+
+/** Mandatory lock boundary for normal writes. No localStorage CAS is assumed. */
+export type PlannerWriteResult =
+  | { status: "saved"; revision: number }
+  | { status: "conflict" | "unsupported" };
+
+export async function savePlannerStateSerialized(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  state: TaxPlannerState,
+  expectedRevision: number,
+  serialize?: (critical: () => PlannerWriteResult) => Promise<PlannerWriteResult>
+): Promise<PlannerWriteResult> {
+  if (!serialize) return { status: "unsupported" };
+  return serialize(() => {
+    const raw = storage.getItem(STORAGE_KEY);
+    const saved = raw ? (JSON.parse(raw) as Partial<TaxPlannerState>) : null;
+    if (isStalePlannerTab(state, saved) ||
+        (saved?.schemaVersion ?? 0) > CURRENT_SCHEMA_VERSION ||
+        (saved?.persistRevision ?? 0) !== expectedRevision) return { status: "conflict" };
+    const revision = expectedRevision + 1;
+    storage.setItem(STORAGE_KEY, JSON.stringify({ ...state, persistRevision: revision }));
+    return { status: "saved", revision };
+  });
 }
 
 /** Persist a complete clean planner snapshot before navigation/reload. */
@@ -1074,6 +1103,9 @@ export function TaxPlannerProvider({
 
   const [hydrated, setHydrated] =
     useState(false);
+  const savedRevisionRef = useRef(0);
+  const pendingWritesRef = useRef<Promise<void>>(Promise.resolve());
+  const saveBlockedRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -1086,6 +1118,11 @@ export function TaxPlannerProvider({
         const parsed =
           JSON.parse(stored);
 
+        if ((parsed.schemaVersion ?? 0) > CURRENT_SCHEMA_VERSION) {
+          saveBlockedRef.current = true;
+          throw new Error("Saved data schema is newer than this TaxPlanner version; writes disabled");
+        }
+        savedRevisionRef.current = parsed.persistRevision ?? 0;
         const migrated =
           migrateStoredState(
             parsed
@@ -1107,19 +1144,33 @@ export function TaxPlannerProvider({
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
-
-    try {
-      if (!savePlannerStateIfCurrent(window.localStorage, state)) {
-        // Another tab reset the planner. Never overwrite its clean snapshot.
-        window.location.reload();
+    if (!hydrated || saveBlockedRef.current) return;
+    // Serializes this tab's own effects before entering the cross-tab lock.
+    pendingWritesRef.current = pendingWritesRef.current.then(async () => {
+      if (saveBlockedRef.current) return;
+      const lock = navigator.locks?.request
+        ? (critical: () => PlannerWriteResult) =>
+            navigator.locks.request("thai-tax-planner-v0.1-write", { mode: "exclusive" }, critical)
+        : undefined;
+      try {
+        const result = await savePlannerStateSerialized(
+          window.localStorage, state, savedRevisionRef.current, lock
+        );
+        if (result.status === "saved") {
+          savedRevisionRef.current = result.revision;
+          return;
+        }
+        saveBlockedRef.current = true;
+        // Session-scoped copy is recovery-only; do not put it back into the live store.
+        window.sessionStorage.setItem("thai-tax-planner-conflict-recovery", JSON.stringify(state));
+        window.alert(result.status === "unsupported"
+          ? "เบราว์เซอร์ไม่รองรับการล็อกข้อมูลที่จำเป็น จึงหยุดบันทึกเพื่อป้องกันข้อมูลสูญหาย"
+          : "ข้อมูล TaxPlanner ถูกเปลี่ยนจากหน้าต่างอื่น จึงหยุดบันทึกเพื่อป้องกันการเขียนทับ กรุณารีโหลดเพื่อตรวจข้อมูล");
+      } catch (error) {
+        saveBlockedRef.current = true;
+        console.error("Unable to safely persist Tax Planner data", error);
       }
-    } catch (error) {
-      console.error(
-        "Unable to save Tax Planner data",
-        error
-      );
-    }
+    });
   }, [state, hydrated]);
 
   useEffect(() => {
