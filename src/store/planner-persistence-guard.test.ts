@@ -14,7 +14,10 @@ function store(value:TaxPlannerState=initial) {
   const map=new Map<string,string>([[PLANNER_KEY,JSON.stringify(value)]]);
   const storage={
     getItem:(key:string)=>map.get(key)??null,
-    setItem:(key:string,val:string)=>{map.set(key,val);}
+    setItem:(key:string,val:string)=>{map.set(key,val);},
+    removeItem:(key:string)=>{map.delete(key);},
+    key:(index:number)=>[...map.keys()][index]??null,
+    get length(){return map.size;}
   };
   return {map,storage,raw:()=>JSON.parse(map.get(PLANNER_KEY)!),current:()=>readPlannerProtected(storage)};
 }
@@ -78,6 +81,15 @@ describe("TAX-C3.1A deterministic reset / stale-write interleavings",()=>{
     expect(recovered.state?.income?.monthlySalary).toBe(81000);
     expect(recovered.state?.deductions?.parentHealthInsurancePolicies?.[0].id).toBe("policy-original");
     expect(db.raw().income.monthlySalary).toBe(75000); // no automatic destructive rewrite
+  });
+  it("explicit synchronous Reset removes financial journals from all older generations",async()=>{
+    const db=store();
+    expect(await savePlannerStateSerialized(db.storage,initial,1,immediate)).toMatchObject({status:"saved"});
+    expect([...db.map.keys()].some(k=>k.includes("safe-journal-"))).toBe(true);
+    db.storage.setItem("thai-tax-planner-v0.1-safe-journal-an-older-token",JSON.stringify(initial));
+    persistPlannerReset(db.storage,"clean-private");
+    expect([...db.map.keys()].some(k=>k.includes("safe-journal-"))).toBe(false);
+    expect(db.current().state?.deductions?.parentHealthInsurance).toBe(0);
   });
   it("old-version tab cannot erase authoritative reset witness",()=>{
     const db=store();
