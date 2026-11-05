@@ -1,3 +1,16 @@
+/** Approved four parent-insurance relationship slots; not a Family record ID. */
+export type ParentHealthRelationshipKey =
+  | "taxpayer:father" | "taxpayer:mother" | "spouse:father" | "spouse:mother";
+
+export interface ParentHealthEligibilityProfile {
+  relationshipKey: ParentHealthRelationshipKey;
+  taxYear: number;
+  annualAssessableIncome: number | null;
+  incomeConfirmed: boolean | null;
+  isInThailand: boolean | null;
+  legalChildConfirmed: boolean | null;
+}
+
 export interface ParentHealthInsurancePolicyData {
   id: string;
 
@@ -28,6 +41,11 @@ export interface ParentHealthInsurancePolicyData {
    * null = ยังไม่ได้ตอบ
    */
   jointPayerCount: number | null;
+  /** C3.1A dormant direct-entry fields; absent on all legacy policies. */
+  relationshipKey?: ParentHealthRelationshipKey;
+  qualifyingInsuranceConfirmed?: boolean | null;
+  evidenceConfirmed?: boolean | null;
+  conversionStatus?: "unconfirmed" | "confirmed" | "conflict";
 }
 
 export interface DeductionData {
@@ -50,6 +68,8 @@ export interface DeductionData {
   */
   parentHealthInsurancePolicies?:
     ParentHealthInsurancePolicyData[];
+  /** Optional and never populated by legacy hydration automatically. */
+  parentHealthEligibilityProfiles?: ParentHealthEligibilityProfile[];
 
   pensionInsurance: number;
   /*
