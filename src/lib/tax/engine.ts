@@ -16,6 +16,8 @@ import {
   DeductionData,
 } from "@/types/deductions";
 
+import { resolveParentHealthPolicies } from "@/lib/tax/parent-health-compat";
+
 import {
   calculateInsuranceDeductions,
   calculateRetirementDeductions,
@@ -1486,11 +1488,22 @@ export function calculateTax({
   * legacy parentHealthInsurance
   * จึงไม่บังคับข้อมูลใหม่ย้อนหลัง
   */
+  // Direct-entry records stay dormant in C3.1A, but invalid fixtures must fail closed.
+  const hasIncompleteDirectParentHealthPolicies =
+    resolveParentHealthPolicies(deductions, family, rules).some(
+      record => record.source === "direct" &&
+        (record.status === "incomplete" || record.status === "conflict" || record.status === "unresolved")
+    );
+  if (hasIncompleteDirectParentHealthPolicies) {
+    warnings.push("ข้อมูลสิทธิประกันสุขภาพบิดา/มารดาแบบอิสระยังไม่ครบหรือขัดแย้ง กรุณาตรวจสอบก่อนใช้สิทธิ");
+  }
+
   const hasIncompleteParentHealthPolicyDetails =
     deductions.parentHealthInsurancePolicies !==
       undefined &&
     deductions.parentHealthInsurancePolicies.some(
       (policy) => {
+        if (policy.relationshipKey !== undefined) return false;
         const premiumPaid =
           Math.max(
             0,
@@ -1730,6 +1743,7 @@ export function calculateTax({
     !hasIncompleteParentOtherClaim &&
     !hasIncompleteParentThailandResidence &&
     !hasIncompleteParentHealthPolicyDetails &&
+    !hasIncompleteDirectParentHealthPolicies &&
     !hasIncompleteChildThailandStay &&
     !hasIncompleteDisabledThailandStay &&
     !hasIncompleteDisabledEvidence &&
