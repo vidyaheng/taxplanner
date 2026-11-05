@@ -1203,8 +1203,12 @@ export function TaxPlannerProvider({
     try {
       const pendingRecovery = window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
       if (pendingRecovery) {
+        // A surviving unsaved recovery snapshot is not an ordinary fresh tab.
+        // Require an explicit export/reconciliation instead of auto-saving a
+        // potentially stale hydrated form over its saved financial document.
+        saveBlockedRef.current = true;
         recoverySnapshotRef.current = pendingRecovery;
-        queueMicrotask(() => setRecoveryMessage("ยังมีข้อมูลสำรองจากความขัดแย้งครั้งก่อน กรุณาดาวน์โหลดก่อนปิดแท็บ ข้อมูลจะไม่ถูกนำไปเขียนทับอัตโนมัติ"));
+        queueMicrotask(() => setRecoveryMessage("ยังมีข้อมูลสำรองจากความขัดแย้งครั้งก่อน ระบบหยุดบันทึก กรุณาดาวน์โหลดก่อนปิดแท็บ ข้อมูลจะไม่ถูกนำไปเขียนทับอัตโนมัติ"));
       }
       const protectedRead = readPlannerProtected(window.localStorage);
       if (protectedRead.conflict) {
