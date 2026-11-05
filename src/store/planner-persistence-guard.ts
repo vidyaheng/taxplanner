@@ -11,7 +11,11 @@ export const RECOVERY_EXPORT_KEY = "thai-tax-planner-conflict-recovery";
 const journalKey = (resetId: string | null) =>
   `thai-tax-planner-v0.1-safe-journal-${resetId ?? "legacy"}`;
 type Stored = Pick<Storage, "getItem" | "setItem">;
-const parse = (raw: string | null): Partial<TaxPlannerState> | null => raw ? JSON.parse(raw) as Partial<TaxPlannerState> : null;
+const parse = (raw: string | null): Partial<TaxPlannerState> | null => {
+  if (!raw) return null;
+  try { return JSON.parse(raw) as Partial<TaxPlannerState>; }
+  catch { return null; }
+};
 const idOf = (data: Partial<TaxPlannerState> | null) => data?.resetId ?? null;
 
 /** Never silently replace data in localStorage on read. Reports recovery source. */
@@ -20,7 +24,9 @@ export function readPlannerProtected(storage: Pick<Storage,"getItem">): {
   source: "primary" | "journal" | "reset-witness";
   conflict: boolean;
 } {
-  const primary = parse(storage.getItem(PLANNER_KEY));
+  const rawPrimary = storage.getItem(PLANNER_KEY);
+  const primary = parse(rawPrimary);
+  const corruptPrimary = Boolean(rawPrimary) && !primary;
   const reset = parse(storage.getItem(RESET_WITNESS_KEY));
   const generation = idOf(reset) ?? idOf(primary);
   const journal = parse(storage.getItem(journalKey(generation)));
@@ -33,7 +39,7 @@ export function readPlannerProtected(storage: Pick<Storage,"getItem">): {
       idOf(journal) === generation) {
     return {state:journal,source:"journal",conflict:true};
   }
-  return {state:primary,source:"primary",conflict:false};
+  return {state:primary,source:"primary",conflict:corruptPrimary};
 }
 
 /** Keeps the last new-version snapshot separately from the old app's single key. */
