@@ -73,8 +73,10 @@ describe("C3.1A R2 snapshot authority policy",()=>{
   const db=storage(state("new",0,0));writePlannerResetWitness(db,state("new",0,0));
   db.setItem(JOURNAL_HEAD_KEY,"old");
   const read=readPlannerProtected(db);
-  expect(read).toMatchObject({state:null,conflict:true,reason:"malformed-or-mismatched-journal-head"});
-  expect(read.candidates.find(c=>c.source==="reset-witness")?.state.resetId).toBe("new");
+  expect(read).toMatchObject({source:"reset-witness",conflict:true,
+    reason:"stale-journal-head-after-reset"});
+  expect(read.state?.resetId).toBe("new");
+  expect(read.state?.income?.monthlySalary).toBe(0);
  });
  it("malformed pointer and malformed witness both fail closed",()=>{
   const db=storage();db.setItem(JOURNAL_HEAD_KEY,"../bad");
