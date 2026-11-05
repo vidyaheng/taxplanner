@@ -1106,6 +1106,7 @@ export function TaxPlannerProvider({
   const savedRevisionRef = useRef(0);
   const pendingWritesRef = useRef<Promise<void>>(Promise.resolve());
   const saveBlockedRef = useRef(false);
+  const resetGenerationRef = useRef(0);
 
   useEffect(() => {
     try {
@@ -1145,9 +1146,10 @@ export function TaxPlannerProvider({
 
   useEffect(() => {
     if (!hydrated || saveBlockedRef.current) return;
+    const generation = resetGenerationRef.current;
     // Serializes this tab's own effects before entering the cross-tab lock.
     pendingWritesRef.current = pendingWritesRef.current.then(async () => {
-      if (saveBlockedRef.current) return;
+      if (saveBlockedRef.current || generation !== resetGenerationRef.current) return;
       const lock = navigator.locks?.request
         ? (critical: () => PlannerWriteResult) =>
             navigator.locks.request("thai-tax-planner-v0.1-write", { mode: "exclusive" }, critical)
@@ -1156,6 +1158,7 @@ export function TaxPlannerProvider({
         const result = await savePlannerStateSerialized(
           window.localStorage, state, savedRevisionRef.current, lock
         );
+        if (generation !== resetGenerationRef.current) return;
         if (result.status === "saved") {
           savedRevisionRef.current = result.revision;
           return;
@@ -1187,6 +1190,12 @@ export function TaxPlannerProvider({
         if (isStalePlannerTab(state, saved)) {
           // Reload also clears page-local form useState values in long forms.
           window.location.reload();
+        } else if (!saveBlockedRef.current &&
+            saved?.persistRevision !== undefined &&
+            saved.persistRevision !== savedRevisionRef.current) {
+          saveBlockedRef.current = true;
+          window.sessionStorage.setItem("thai-tax-planner-conflict-recovery", JSON.stringify(state));
+          window.alert("มีการแก้ข้อมูลในอีกหน้าต่างหนึ่ง ระบบหยุดบันทึกในหน้านี้เพื่อป้องกันข้อมูลสูญหาย");
         }
       } catch (error) {
         console.error("Unable to synchronize Tax Planner tabs", error);
@@ -1251,6 +1260,9 @@ export function TaxPlannerProvider({
     try {
       // Write synchronously so reloading immediately cannot revive old data.
       const cleanState = persistPlannerReset(window.localStorage);
+      resetGenerationRef.current += 1;
+      savedRevisionRef.current = 0;
+      saveBlockedRef.current = false;
       dispatch({
         type: "RESET",
         payload: cleanState,
