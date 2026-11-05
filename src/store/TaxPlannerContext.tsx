@@ -23,6 +23,10 @@ import {
 import {
   DeductionData,
 } from "@/types/deductions";
+import {
+  PLANNER_KEY, RECOVERY_EXPORT_KEY, readPlannerProtected,
+  matchesResetWitness, writePlannerJournal, writePlannerResetWitness
+} from "./planner-persistence-guard";
 
 import {
   PlanningData,
@@ -167,8 +171,7 @@ const emptyPlanning: PlanningData = {
   thaiEsg: 0,
 };
 
-const STORAGE_KEY =
-  "thai-tax-planner-v0.1";
+const STORAGE_KEY = PLANNER_KEY;
 
 const CURRENT_SCHEMA_VERSION = 14;
 
@@ -231,10 +234,17 @@ export async function savePlannerStateSerialized(
     const raw = storage.getItem(STORAGE_KEY);
     const saved = raw ? (JSON.parse(raw) as Partial<TaxPlannerState>) : null;
     if (isStalePlannerTab(state, saved) ||
+        !matchesResetWitness(storage, state) ||
         (saved?.schemaVersion ?? 0) > CURRENT_SCHEMA_VERSION ||
         (saved?.persistRevision ?? 0) !== expectedRevision) return { status: "conflict" };
     const revision = expectedRevision + 1;
-    storage.setItem(STORAGE_KEY, JSON.stringify({ ...state, persistRevision: revision }));
+    const next = { ...state, persistRevision: revision };
+    // New-version journal survives an old-version tab overwriting the primary key.
+    // It is not a globally atomic transaction with localStorage.
+    writePlannerJournal(storage, next);
+    if (!matchesResetWitness(storage, state)) return { status: "conflict" };
+    storage.setItem(STORAGE_KEY, JSON.stringify(next));
+    if (!matchesResetWitness(storage, state)) return { status: "conflict" };
     return { status: "saved", revision };
   });
 }
@@ -246,6 +256,9 @@ export function persistPlannerReset(
     `${Date.now()}-${Math.random().toString(36).slice(2)}`
 ): TaxPlannerState {
   const resetState: TaxPlannerState = { ...initialState, resetId };
+  // This witness makes the explicit Reset survive an overlapping stale write.
+  // Reset remains synchronous; the marker is never changed by normal saves.
+  writePlannerResetWitness(storage, resetState);
   storage.setItem(STORAGE_KEY, JSON.stringify(resetState));
   return resetState;
 }
@@ -1107,17 +1120,43 @@ export function TaxPlannerProvider({
   const pendingWritesRef = useRef<Promise<void>>(Promise.resolve());
   const saveBlockedRef = useRef(false);
   const resetGenerationRef = useRef(0);
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
+  const recoverySnapshotRef = useRef<string | null>(null);
+  function retainRecoverySnapshot(snapshot: TaxPlannerState, reason: string) {
+    // Never erase a previously saved recovery snapshot without explicit export.
+    try {
+      const existing = window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
+      if (!existing) window.sessionStorage.setItem(RECOVERY_EXPORT_KEY, JSON.stringify(snapshot));
+      recoverySnapshotRef.current = existing ?? JSON.stringify(snapshot);
+    } catch (error) {
+      recoverySnapshotRef.current = JSON.stringify(snapshot);
+      console.error("Cannot persist session recovery snapshot", error);
+    }
+    setRecoveryMessage(reason);
+  }
+  function downloadRecoverySnapshot() {
+    const saved = recoverySnapshotRef.current ??
+      window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
+    if (!saved) return;
+    const blob = new Blob([saved], {type:"application/json;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "taxplanner-recovery.json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
 
   useEffect(() => {
     try {
-      const stored =
-        window.localStorage.getItem(
-          STORAGE_KEY
-        );
-
-      if (stored) {
-        const parsed =
-          JSON.parse(stored);
+      const protectedRead = readPlannerProtected(window.localStorage);
+      if (protectedRead.conflict) {
+        setRecoveryMessage("พบข้อมูลที่ถูกเขียนทับหรือขัดแย้งกัน ระบบใช้ข้อมูลสำรองที่ป้องกันไว้เพื่อแสดงผล กรุณาส่งออกข้อมูลสำรองก่อนดำเนินการต่อ");
+      }
+      const parsed = protectedRead.state;
+      if (parsed) {
 
         if ((parsed.schemaVersion ?? 0) > CURRENT_SCHEMA_VERSION) {
           saveBlockedRef.current = true;
@@ -1165,19 +1204,14 @@ export function TaxPlannerProvider({
           return;
         }
         saveBlockedRef.current = true;
-        // Session-scoped copy is recovery-only; do not put it back into the live store.
-        window.sessionStorage.setItem("thai-tax-planner-conflict-recovery", JSON.stringify(state));
-        window.alert(result.status === "unsupported"
-          ? "เบราว์เซอร์ไม่รองรับการล็อกข้อมูลที่จำเป็น จึงหยุดบันทึกเพื่อป้องกันข้อมูลสูญหาย"
-          : "ข้อมูล TaxPlanner ถูกเปลี่ยนจากหน้าต่างอื่น จึงหยุดบันทึกเพื่อป้องกันการเขียนทับ กรุณารีโหลดเพื่อตรวจข้อมูล");
+        retainRecoverySnapshot(state, result.status === "unsupported"
+          ? "เบราว์เซอร์ไม่รองรับระบบล็อกข้อมูล จึงหยุดบันทึก กรุณาดาวน์โหลดข้อมูลสำรองก่อนปิดหน้านี้"
+          : "มีข้อมูลจากแท็บอื่นเปลี่ยนแปลง ระบบหยุดบันทึก กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
+        window.alert("ไม่สามารถบันทึกได้อย่างปลอดภัย กรุณาดาวน์โหลดข้อมูลสำรองจากแถบแจ้งเตือนก่อนปิดหรือรีโหลด");
       } catch (error) {
         saveBlockedRef.current = true;
-        try {
-          window.sessionStorage.setItem("thai-tax-planner-conflict-recovery", JSON.stringify(state));
-        } catch (backupError) {
-          console.error("Unable to create recovery snapshot", backupError);
-        }
-        window.alert("ไม่สามารถบันทึกข้อมูลได้อย่างปลอดภัย ระบบหยุดการบันทึก กรุณาตรวจสอบข้อมูลก่อนปิดหน้านี้");
+        retainRecoverySnapshot(state, "การบันทึกล้มเหลว กรุณาดาวน์โหลดข้อมูลสำรองก่อนปิดหน้าหรือรีโหลด");
+        window.alert("ไม่สามารถบันทึกได้ กรุณาดาวน์โหลดข้อมูลสำรองจากแถบแจ้งเตือนก่อนปิดหรือรีโหลด");
         console.error("Unable to safely persist Tax Planner data", error);
       }
     });
@@ -1195,14 +1229,16 @@ export function TaxPlannerProvider({
           ? (JSON.parse(event.newValue) as Partial<TaxPlannerState>)
           : null;
         if (isStalePlannerTab(state, saved)) {
-          // Reload also clears page-local form useState values in long forms.
-          window.location.reload();
+          // Preserve any uncommitted changes and permit explicit export first.
+          saveBlockedRef.current = true;
+          retainRecoverySnapshot(state, "อีกแท็บหนึ่งรีเซ็ตข้อมูลแล้ว กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
+          window.alert("อีกแท็บหนึ่งรีเซ็ตข้อมูลแล้ว กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
         } else if (!saveBlockedRef.current &&
             saved?.persistRevision !== undefined &&
             saved.persistRevision !== savedRevisionRef.current) {
           saveBlockedRef.current = true;
-          window.sessionStorage.setItem("thai-tax-planner-conflict-recovery", JSON.stringify(state));
-          window.alert("มีการแก้ข้อมูลในอีกหน้าต่างหนึ่ง ระบบหยุดบันทึกในหน้านี้เพื่อป้องกันข้อมูลสูญหาย");
+          retainRecoverySnapshot(state, "พบการแก้ไขในแท็บอื่น ระบบหยุดบันทึก กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
+          window.alert("พบการแก้ไขจากแท็บอื่น กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
         }
       } catch (error) {
         console.error("Unable to synchronize Tax Planner tabs", error);
