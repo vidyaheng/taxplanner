@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useReducer,
+  useRef,
   useState,
 } from "react";
 
@@ -22,6 +23,13 @@ import {
 import {
   DeductionData,
 } from "@/types/deductions";
+import {
+  PLANNER_KEY, RECOVERY_EXPORT_KEY, readPlannerProtected,
+  matchesResetWitness, writePlannerJournal, writePlannerResetWitness,
+  clearPreviousPlannerJournal
+} from "./planner-persistence-guard";
+import { buildRecoveryBundle, serializeRecoveryBundle } from "./planner-recovery-export";
+import type { SnapshotCandidate } from "./planner-persistence-guard";
 
 import {
   PlanningData,
@@ -32,6 +40,8 @@ export interface TaxPlannerState {
 
   // Changes on each reset to fence off stale writes from other open tabs.
   resetId?: string;
+  /** Browser-local revision, not a financial input. */
+  persistRevision?: number;
 
   taxYear: number;
 
@@ -164,8 +174,7 @@ const emptyPlanning: PlanningData = {
   thaiEsg: 0,
 };
 
-const STORAGE_KEY =
-  "thai-tax-planner-v0.1";
+const STORAGE_KEY = PLANNER_KEY;
 
 const CURRENT_SCHEMA_VERSION = 14;
 
@@ -206,18 +215,71 @@ export function savePlannerStateIfCurrent(
   const raw = storage.getItem(STORAGE_KEY);
   const saved = raw ? (JSON.parse(raw) as Partial<TaxPlannerState>) : null;
   if (isStalePlannerTab(state, saved)) return false;
+  if (typeof saved?.schemaVersion === "number" && saved.schemaVersion > CURRENT_SCHEMA_VERSION) return false;
+  if (saved?.persistRevision !== undefined && state.persistRevision !== saved.persistRevision) return false;
   storage.setItem(STORAGE_KEY, JSON.stringify(state));
   return true;
 }
 
+/** Mandatory lock boundary for normal writes. No localStorage CAS is assumed. */
+export type PlannerWriteResult =
+  | { status: "saved"; revision: number }
+  | { status: "conflict" | "unsupported" };
+
+export async function savePlannerStateSerialized(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  state: TaxPlannerState,
+  expectedRevision: number,
+  serialize?: (critical: () => PlannerWriteResult) => Promise<PlannerWriteResult>
+): Promise<PlannerWriteResult> {
+  if (!serialize) return { status: "unsupported" };
+  return serialize(() => {
+    const protectedRead = readPlannerProtected(storage);
+    if (protectedRead.conflict) return {status: "conflict"};
+    const raw = storage.getItem(STORAGE_KEY);
+    const saved = raw ? (JSON.parse(raw) as Partial<TaxPlannerState>) : null;
+    if (isStalePlannerTab(state, saved) ||
+        !matchesResetWitness(storage, state) ||
+        (saved?.schemaVersion ?? 0) > CURRENT_SCHEMA_VERSION ||
+        (saved?.persistRevision ?? 0) !== expectedRevision) return { status: "conflict" };
+    const revision = expectedRevision + 1;
+    const next = { ...state, persistRevision: revision };
+    // New-version journal survives an old-version tab overwriting the primary key.
+    // It is not a globally atomic transaction with localStorage.
+    writePlannerJournal(storage, next);
+    if (!matchesResetWitness(storage, state)) return { status: "conflict" };
+    storage.setItem(STORAGE_KEY, JSON.stringify(next));
+    if (!matchesResetWitness(storage, state)) return { status: "conflict" };
+    return { status: "saved", revision };
+  });
+}
+
 /** Persist a complete clean planner snapshot before navigation/reload. */
 export function persistPlannerReset(
-  storage: Pick<Storage, "setItem">,
+  storage: Pick<Storage, "setItem"> & Partial<Pick<Storage, "getItem" | "removeItem">>,
   resetId: string = globalThis.crypto?.randomUUID?.() ??
     `${Date.now()}-${Math.random().toString(36).slice(2)}`
 ): TaxPlannerState {
+  let previous: Partial<TaxPlannerState> | null = null;
+  try {
+    const previousRaw = storage.getItem?.(STORAGE_KEY) ?? null;
+    previous = previousRaw ? (JSON.parse(previousRaw) as Partial<TaxPlannerState>) : null;
+  } catch {
+    // Explicit Reset must still work when a legacy tab corrupted the primary.
+    previous = null;
+  }
   const resetState: TaxPlannerState = { ...initialState, resetId };
+  // The reset witness is the authoritative synchronous fence. This sequence is
+  // crash-recoverable through protected hydration, but not a localStorage transaction.
+  writePlannerResetWitness(storage, resetState);
   storage.setItem(STORAGE_KEY, JSON.stringify(resetState));
+  try {
+    clearPreviousPlannerJournal(storage, previous?.resetId ?? null, resetId);
+  } catch (error) {
+    // The reset witness and primary were committed; never report this clean
+    // reset as failed solely because best-effort journal cleanup was denied.
+    console.error("Unable to purge older recovery journals after Reset", error);
+  }
   return resetState;
 }
 
@@ -1074,18 +1136,102 @@ export function TaxPlannerProvider({
 
   const [hydrated, setHydrated] =
     useState(false);
+  const savedRevisionRef = useRef(0);
+  const pendingWritesRef = useRef<Promise<void>>(Promise.resolve());
+  const saveBlockedRef = useRef(false);
+  const resetGenerationRef = useRef(0);
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
+  const recoverySnapshotRef = useRef<string | null>(null);
+  const guardedCandidatesRef = useRef<SnapshotCandidate[]>([]);
+  const recoveryExportedRef = useRef(false);
+  const recoveryDownloadAttemptedRef = useRef(false);
+  const [recoveryDownloadAttempted, setRecoveryDownloadAttempted] = useState(false);
+  const [recoveryConfirmed, setRecoveryConfirmed] = useState(false);
+  function retainRecoverySnapshot(snapshot: TaxPlannerState, reason: string) {
+    // Never erase a previously saved recovery snapshot without explicit export.
+    try {
+      const existing = window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
+      if (!existing) window.sessionStorage.setItem(RECOVERY_EXPORT_KEY, JSON.stringify(snapshot));
+      recoverySnapshotRef.current = existing ?? JSON.stringify(snapshot);
+    } catch (error) {
+      recoverySnapshotRef.current = JSON.stringify(snapshot);
+      console.error("Cannot persist session recovery snapshot", error);
+    }
+    setRecoveryMessage(reason);
+  }
+  function downloadRecoverySnapshot() {
+    const saved = recoverySnapshotRef.current ??
+      window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
+    const candidates = guardedCandidatesRef.current;
+    if (!saved && candidates.length === 0) return;
+    try {
+      const bundle = buildRecoveryBundle(saved, candidates);
+      const payload = serializeRecoveryBundle(bundle);
+      // Verify JSON before exposing it to the browser download mechanism.
+      JSON.parse(payload);
+      const blob = new Blob([payload], {type:"application/json;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      try {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "taxplanner-recovery.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        recoveryDownloadAttemptedRef.current = true;
+        setRecoveryDownloadAttempted(true);
+        recoveryExportedRef.current = false;
+        setRecoveryConfirmed(false);
+        setRecoveryMessage("ส่งคำขอดาวน์โหลดแล้ว แต่ไม่สามารถยืนยันได้ว่าไฟล์ถูกบันทึก กรุณาตรวจไฟล์ในเครื่องและทำเครื่องหมายยืนยัน");
+      } finally {
+        // Defer URL release until after the click has been dispatched.
+        queueMicrotask(() => URL.revokeObjectURL(url));
+      }
+    } catch (error) {
+      recoveryExportedRef.current = false;
+      setRecoveryConfirmed(false);
+      setRecoveryMessage("ส่งออกข้อมูลสำรองไม่สำเร็จ ระบบยังเก็บ Snapshot เดิมไว้ กรุณาลองอีกครั้งก่อนรีโหลด");
+      console.error("Unable to export recovery snapshot",error);
+    }
+  }
+  function confirmRecoveryFileSaved(confirmed: boolean) {
+    setRecoveryConfirmed(confirmed);
+    recoveryExportedRef.current = confirmed && recoveryDownloadAttemptedRef.current;
+  }
 
   useEffect(() => {
     try {
-      const stored =
-        window.localStorage.getItem(
-          STORAGE_KEY
-        );
+      const pendingRecovery = window.sessionStorage.getItem(RECOVERY_EXPORT_KEY);
+      if (pendingRecovery) {
+        // A surviving unsaved recovery snapshot is not an ordinary fresh tab.
+        // Require an explicit export/reconciliation instead of auto-saving a
+        // potentially stale hydrated form over its saved financial document.
+        saveBlockedRef.current = true;
+        recoverySnapshotRef.current = pendingRecovery;
+        queueMicrotask(() => setRecoveryMessage("ยังมีข้อมูลสำรองจากความขัดแย้งครั้งก่อน ระบบหยุดบันทึก กรุณาดาวน์โหลดก่อนปิดแท็บ ข้อมูลจะไม่ถูกนำไปเขียนทับอัตโนมัติ"));
+      }
+      const protectedRead = readPlannerProtected(window.localStorage);
+      if (protectedRead.conflict) {
+        saveBlockedRef.current = true;
+        // Preserve the guarded document without overwriting the primary value.
+        try {
+          if (!window.sessionStorage.getItem(RECOVERY_EXPORT_KEY) && protectedRead.state)
+            window.sessionStorage.setItem(RECOVERY_EXPORT_KEY, JSON.stringify(protectedRead.state));
+        } catch (error) { console.error("Cannot retain protected recovery", error); }
+        guardedCandidatesRef.current = protectedRead.candidates;
+        if (!recoverySnapshotRef.current)
+          recoverySnapshotRef.current = JSON.stringify(protectedRead.state);
+        queueMicrotask(() => setRecoveryMessage("พบข้อมูลสำรองขัดแย้งกัน ระบบหยุดการบันทึกและไม่เลือก Snapshot ที่ไม่แน่ชัด กรุณาส่งออกทุกชุดเพื่อพิจารณา"));
+      }
+      const parsed = protectedRead.state;
+      if (parsed) {
 
-      if (stored) {
-        const parsed =
-          JSON.parse(stored);
-
+        if ((parsed.schemaVersion ?? 0) > CURRENT_SCHEMA_VERSION) {
+          saveBlockedRef.current = true;
+          window.alert("ข้อมูลถูกบันทึกด้วย TaxPlanner เวอร์ชันใหม่กว่า ระบบนี้จะไม่บันทึกทับข้อมูล กรุณาเปิดเว็บไซต์เวอร์ชันล่าสุด");
+          throw new Error("Saved data schema is newer than this TaxPlanner version; writes disabled");
+        }
+        savedRevisionRef.current = parsed.persistRevision ?? 0;
         const migrated =
           migrateStoredState(
             parsed
@@ -1107,19 +1253,36 @@ export function TaxPlannerProvider({
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
-
-    try {
-      if (!savePlannerStateIfCurrent(window.localStorage, state)) {
-        // Another tab reset the planner. Never overwrite its clean snapshot.
-        window.location.reload();
+    if (!hydrated || saveBlockedRef.current) return;
+    const generation = resetGenerationRef.current;
+    // Serializes this tab's own effects before entering the cross-tab lock.
+    pendingWritesRef.current = pendingWritesRef.current.then(async () => {
+      if (saveBlockedRef.current || generation !== resetGenerationRef.current) return;
+      const lock = navigator.locks?.request
+        ? (critical: () => PlannerWriteResult) =>
+            navigator.locks.request("thai-tax-planner-v0.1-write", { mode: "exclusive" }, critical)
+        : undefined;
+      try {
+        const result = await savePlannerStateSerialized(
+          window.localStorage, state, savedRevisionRef.current, lock
+        );
+        if (generation !== resetGenerationRef.current) return;
+        if (result.status === "saved") {
+          savedRevisionRef.current = result.revision;
+          return;
+        }
+        saveBlockedRef.current = true;
+        retainRecoverySnapshot(state, result.status === "unsupported"
+          ? "เบราว์เซอร์ไม่รองรับระบบล็อกข้อมูล จึงหยุดบันทึก กรุณาดาวน์โหลดข้อมูลสำรองก่อนปิดหน้านี้"
+          : "มีข้อมูลจากแท็บอื่นเปลี่ยนแปลง ระบบหยุดบันทึก กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
+        window.alert("ไม่สามารถบันทึกได้อย่างปลอดภัย กรุณาดาวน์โหลดข้อมูลสำรองจากแถบแจ้งเตือนก่อนปิดหรือรีโหลด");
+      } catch (error) {
+        saveBlockedRef.current = true;
+        retainRecoverySnapshot(state, "การบันทึกล้มเหลว กรุณาดาวน์โหลดข้อมูลสำรองก่อนปิดหน้าหรือรีโหลด");
+        window.alert("ไม่สามารถบันทึกได้ กรุณาดาวน์โหลดข้อมูลสำรองจากแถบแจ้งเตือนก่อนปิดหรือรีโหลด");
+        console.error("Unable to safely persist Tax Planner data", error);
       }
-    } catch (error) {
-      console.error(
-        "Unable to save Tax Planner data",
-        error
-      );
-    }
+    });
   }, [state, hydrated]);
 
   useEffect(() => {
@@ -1134,8 +1297,16 @@ export function TaxPlannerProvider({
           ? (JSON.parse(event.newValue) as Partial<TaxPlannerState>)
           : null;
         if (isStalePlannerTab(state, saved)) {
-          // Reload also clears page-local form useState values in long forms.
-          window.location.reload();
+          // Preserve any uncommitted changes and permit explicit export first.
+          saveBlockedRef.current = true;
+          retainRecoverySnapshot(state, "อีกแท็บหนึ่งรีเซ็ตข้อมูลแล้ว กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
+          window.alert("อีกแท็บหนึ่งรีเซ็ตข้อมูลแล้ว กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
+        } else if (!saveBlockedRef.current &&
+            saved?.persistRevision !== undefined &&
+            saved.persistRevision !== savedRevisionRef.current) {
+          saveBlockedRef.current = true;
+          retainRecoverySnapshot(state, "พบการแก้ไขในแท็บอื่น ระบบหยุดบันทึก กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
+          window.alert("พบการแก้ไขจากแท็บอื่น กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีโหลด");
         }
       } catch (error) {
         console.error("Unable to synchronize Tax Planner tabs", error);
@@ -1196,10 +1367,27 @@ export function TaxPlannerProvider({
   function resetPlanner(): boolean {
     // Do not overwrite saved user data before hydration has finished.
     if (!hydrated) return false;
-
+    // An unresolved recovery export is never discarded without a download.
+    if ((recoverySnapshotRef.current || guardedCandidatesRef.current.length > 0) &&
+        !recoveryExportedRef.current) {
+      window.alert("ยังมีข้อมูลสำรองที่ไม่ได้ส่งออก กรุณาดาวน์โหลดข้อมูลสำรองก่อนรีเซ็ต");
+      return false;
+    }
     try {
       // Write synchronously so reloading immediately cannot revive old data.
       const cleanState = persistPlannerReset(window.localStorage);
+      try { window.sessionStorage.removeItem(RECOVERY_EXPORT_KEY); }
+      catch (error) { console.error("Unable to clear exported session backup", error); }
+      recoverySnapshotRef.current = null;
+      guardedCandidatesRef.current = [];
+      recoveryDownloadAttemptedRef.current = false;
+      setRecoveryDownloadAttempted(false);
+      setRecoveryConfirmed(false);
+      recoveryExportedRef.current = false;
+      setRecoveryMessage(null);
+      resetGenerationRef.current += 1;
+      savedRevisionRef.current = 0;
+      saveBlockedRef.current = false;
       dispatch({
         type: "RESET",
         payload: cleanState,
@@ -1238,6 +1426,33 @@ export function TaxPlannerProvider({
         isHydrated: hydrated,
       }}
     >
+      {recoveryMessage && (
+        <div role="alert" aria-live="assertive" style={{
+          position:"fixed",bottom:16,left:16,right:16,zIndex:9999,
+          background:"#fff7ed",border:"2px solid #9a3412",borderRadius:12,
+          padding:16,color:"#7c2d12",boxShadow:"0 4px 12px #0002"
+        }}>
+          <div style={{fontWeight:700}}>TaxPlanner — หยุดบันทึกข้อมูลเพื่อความปลอดภัย</div>
+          <p style={{margin:"8px 0"}}>{recoveryMessage}</p>
+          <button type="button" onClick={downloadRecoverySnapshot} style={{
+            borderRadius:8,padding:"10px 16px",background:"#0f766e",color:"white",
+            fontWeight:600,cursor:"pointer"
+          }}>ดาวน์โหลดชุดข้อมูลสำรอง JSON</button>
+          {recoveryDownloadAttempted && (
+            <label style={{display:"block",marginTop:8}}>
+              <input type="checkbox" checked={recoveryConfirmed}
+                onChange={event=>confirmRecoveryFileSaved(event.target.checked)}/>
+              {" "}ฉันตรวจสอบแล้วว่าไฟล์ JSON ถูกบันทึกในเครื่องและเปิดอ่านได้
+            </label>
+          )}
+          <p style={{fontSize:12,margin:"8px 0"}}>
+            การคลิกดาวน์โหลดไม่ใช่หลักฐานว่าไฟล์ถูกบันทึกจริง การรีเซ็ตจะลบ Recovery Journal ที่เก็บไว้ในเว็บไซต์ กรุณาตรวจไฟล์ก่อนยืนยัน
+          </p>
+          <p style={{fontSize:12,margin:"8px 0 0"}}>
+            ไฟล์อาจมีข้อมูลรายได้และครอบครัว กรุณาเก็บไว้ในที่ปลอดภัย และอย่าส่งให้ผู้อื่น
+          </p>
+        </div>
+      )}
       {children}
     </TaxPlannerContext.Provider>
   );

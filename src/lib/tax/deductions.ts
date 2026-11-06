@@ -9,6 +9,7 @@ import {
 } from "@/types/deductions";
 import { FamilyData } from "@/types/family";
 import { TaxRuleSet } from "@/tax-rules/types";
+import { resolveParentHealthPolicies } from "@/lib/tax/parent-health-compat";
 
 function usage(
   paid: number,
@@ -40,261 +41,31 @@ function resolveSpouseAssessableIncome(
   return family.spouseHasIncome;
 }
 
-function isParentEligibleForHealthInsurance({
-  parent,
-  family,
-  rules,
-  spouseParentHealthEligible,
-}: {
-  parent: FamilyData["parents"][number];
-  family: FamilyData;
-  rules: TaxRuleSet;
-  spouseParentHealthEligible: boolean;
-}): boolean {
-  const incomeEligible =
-    parent.annualAssessableIncome <=
-    rules.eligibility
-      .parentIncomeLimitInclusive;
-
-  const thailandResidenceEligible =
-    family.isThaiTaxResident !== false ||
-    parent.isInThailand === true ||
-    parent.isInThailand === undefined;
-
-  const ownerEligible =
-    parent.owner === "taxpayer" ||
-    (
-      parent.owner === "spouse" &&
-      spouseParentHealthEligible
-    );
-
-  return (
-    incomeEligible &&
-    thailandResidenceEligible &&
-    ownerEligible
-  );
-}
-
 function resolveParentHealthInsurance({
-  deductions,
-  family,
-  rules,
-  spouseParentHealthEligible,
+  deductions, family, rules
 }: {
   deductions: DeductionData;
   family: FamilyData;
   rules: TaxRuleSet;
-  spouseParentHealthEligible: boolean;
-}): {
-  paid: number;
-  eligiblePaid: number;
-  warnings: string[];
-} {
+}): { paid: number; eligiblePaid: number; warnings: string[] } {
+  const resolved = resolveParentHealthPolicies(deductions, family, rules);
+  const paid = resolved.reduce((sum, record) => sum + record.paid, 0);
+  const eligiblePaid = resolved.reduce((sum, record) => sum + record.eligibleShare, 0);
   const warnings: string[] = [];
-
-  const policies =
-    deductions.parentHealthInsurancePolicies;
-
-  /*
-   * legacy localStorage
-   *
-   * ไม่มี detailed list:
-   * ใช้ยอด aggregate เดิม
-   */
-  if (policies === undefined) {
-    const paid =
-      Math.max(
-        0,
-        deductions.parentHealthInsurance
-      );
-
-    const hasEligibleParent =
-      family.parents.some((parent) =>
-        isParentEligibleForHealthInsurance({
-          parent,
-          family,
-          rules,
-          spouseParentHealthEligible,
-        })
-      );
-
-    if (
-      paid > 0 &&
-      !hasEligibleParent
-    ) {
-      warnings.push(
-        "มีเบี้ยประกันสุขภาพบิดา/มารดา แต่ยังไม่มีข้อมูลบิดา/มารดาที่เข้าเงื่อนไขในหน้าครอบครัว"
-      );
-    }
-
-    return {
-      paid,
-      eligiblePaid:
-        hasEligibleParent
-          ? paid
-          : 0,
-      warnings,
-    };
+  if (deductions.parentHealthInsurancePolicies === undefined) {
+    if (paid > 0 && resolved.some(record => record.status !== "eligible"))
+      warnings.push("มีเบี้ยประกันสุขภาพบิดา/มารดา แต่ยังไม่มีข้อมูลบิดา/มารดาที่เข้าเงื่อนไขในหน้าครอบครัว");
+    return { paid, eligiblePaid, warnings };
   }
-
-  /*
-   * detailed list เป็น source of truth
-   */
-  let paid = 0;
-  let eligiblePaid = 0;
-
-  let hasInvalidPayerCount =
-    false;
-
-  let hasMissingParent =
-    false;
-
-  let hasIneligibleParent =
-    false;
-
-  for (const policy of policies) {
-    const premiumPaid =
-      Math.max(
-        0,
-        policy.premiumPaidThisYear
-      );
-
-    /*
-     * ไม่มีเบี้ย ไม่ต้องตรวจข้อมูลอื่น
-     */
-    if (premiumPaid <= 0) {
-      continue;
-    }
-
-    const payerCount =
-      policy.jointPayerCount;
-
-    /*
-     * ยังหาส่วนของผู้ใช้ไม่ได้
-     */
-    if (
-      payerCount === null ||
-      !Number.isInteger(
-        payerCount
-      ) ||
-      payerCount < 1
-    ) {
-      hasInvalidPayerCount =
-        true;
-
-      continue;
-    }
-
-    /*
-     * ส่วนเบี้ยที่เป็นของผู้มีเงินได้คนนี้
-     */
-    const taxpayerShare =
-      premiumPaid /
-      payerCount;
-
-    paid +=
-      taxpayerShare;
-
-    /*
-     * ยังไม่ได้เลือกพ่อ / แม่
-     */
-    if (
-      !policy.parentId ||
-      policy.parentId.trim() === ""
-    ) {
-      hasMissingParent =
-        true;
-
-      continue;
-    }
-
-    const parent =
-      family.parents.find(
-        (item) =>
-          item.id ===
-          policy.parentId
-      );
-
-    /*
-     * parent ถูกลบไปแล้ว
-     * หรือ id ไม่ตรงกับข้อมูล Family
-     */
-    if (!parent) {
-      hasMissingParent =
-        true;
-
-      continue;
-    }
-
-    const eligible =
-      isParentEligibleForHealthInsurance({
-        parent,
-        family,
-        rules,
-        spouseParentHealthEligible,
-      });
-
-    if (!eligible) {
-      hasIneligibleParent =
-        true;
-
-      continue;
-    }
-
-    eligiblePaid +=
-      taxpayerShare;
-  }
-
-  if (hasInvalidPayerCount) {
-    warnings.push(
-      "มีรายการเบี้ยประกันสุขภาพบิดา/มารดาที่ยังไม่ได้ระบุจำนวนผู้มีเงินได้ที่ร่วมจ่ายอย่างถูกต้อง"
-    );
-  }
-
-  if (hasMissingParent) {
-    warnings.push(
-      "มีรายการเบี้ยประกันสุขภาพบิดา/มารดาที่ยังไม่ได้เลือกบิดาหรือมารดา หรือข้อมูลบุพการีที่เลือกไว้ไม่พบแล้ว"
-    );
-  }
-
-  if (hasIneligibleParent) {
-    warnings.push(
-      "มีรายการเบี้ยประกันสุขภาพบิดา/มารดาที่ไม่เข้าเงื่อนไขการใช้สิทธิ จึงไม่นำรายการดังกล่าวมาหักลดหย่อน"
-    );
-  }
-
-  return {
-    paid,
-    eligiblePaid,
-    warnings,
-  };
-}
-
-function canUseSpouseParentHealthInsurance(
-  family: FamilyData
-): boolean {
-  const spouseHasAssessableIncome =
-    resolveSpouseAssessableIncome(
-      family
-    );
-
-  const currentSpouseQualifies =
-    family.maritalStatus === "married" &&
-    spouseHasAssessableIncome === false;
-
-  const formerSpouseQualifies =
-    (
-      family.maritalStatus === "divorced" ||
-      family.maritalStatus === "widowed"
-    ) &&
-    family.marriageEndedThisTaxYear === true &&
-    family.formerSpouseHadAssessableIncomeThisTaxYear ===
-      false;
-
-  return (
-    currentSpouseQualifies ||
-    formerSpouseQualifies
-  );
+  if (resolved.some(record => record.source === "legacy-linked" && record.status === "incomplete"))
+    warnings.push("มีรายการเบี้ยประกันสุขภาพบิดา/มารดาที่ยังไม่ได้ระบุจำนวนผู้มีเงินได้ที่ร่วมจ่ายอย่างถูกต้อง");
+  if (resolved.some(record => record.source === "legacy-linked" && record.status === "unresolved"))
+    warnings.push("มีรายการเบี้ยประกันสุขภาพบิดา/มารดาที่ยังไม่ได้เลือกบิดาหรือมารดา หรือข้อมูลบุพการีที่เลือกไว้ไม่พบแล้ว");
+  if (resolved.some(record => record.source === "legacy-linked" && record.status === "ineligible"))
+    warnings.push("มีรายการเบี้ยประกันสุขภาพบิดา/มารดาที่ไม่เข้าเงื่อนไขการใช้สิทธิ จึงไม่นำรายการดังกล่าวมาหักลดหย่อน");
+  if (resolved.some(record => record.source === "direct" && record.status !== "eligible"))
+    warnings.push("มีกรมธรรม์ประกันสุขภาพบิดา/มารดาแบบอิสระที่ยังยืนยันสิทธิไม่ครบ ไม่ผ่านเงื่อนไข หรือข้อมูลขัดแย้ง จึงไม่ใช้สิทธิรายการดังกล่าว");
+  return { paid, eligiblePaid, warnings };
 }
 
 export function calculateInsuranceDeductions({
@@ -313,11 +84,6 @@ export function calculateInsuranceDeductions({
       family
     );
 
-  const spouseParentHealthEligible =
-    canUseSpouseParentHealthInsurance(
-      family
-    );
-
   const insuranceRules =
     rules.deductions.insurance;
 
@@ -326,7 +92,6 @@ export function calculateInsuranceDeductions({
       deductions,
       family,
       rules,
-      spouseParentHealthEligible,
     });
 
   warnings.push(
