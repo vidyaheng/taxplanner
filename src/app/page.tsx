@@ -1,8 +1,17 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import { EVENT_CONFIG } from "@/config/event";
+import { getPresentationBranding } from "@/config/presentation";
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ presentation?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const presentation = getPresentationBranding(params.presentation);
+  const displayOrganization = presentation?.organization ?? EVENT_CONFIG.company;
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-10">
@@ -29,9 +38,32 @@ export default function Home() {
                 สำหรับผู้เข้าร่วมสัมมนา
               </div>
 
-              <div className="mb-5 text-sm font-medium text-slate-500">
-                {EVENT_CONFIG.company}
-              </div>
+              {presentation ? (
+                <div className="mb-5 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+                  <Image
+                    src="https://www.depa.or.th/storage/app/media/LogoDEPA-01.png"
+                    alt="ตราสัญลักษณ์ depa"
+                    width={168}
+                    height={168}
+                    priority
+                    unoptimized
+                    className="h-32 w-32 shrink-0 object-contain sm:h-40 sm:w-40"
+                  />
+                  <div className="min-w-0 text-lg font-semibold leading-relaxed text-slate-800">
+                    {displayOrganization}
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-5 text-base font-semibold leading-relaxed text-slate-700">
+                  {displayOrganization}
+                </div>
+              )}
+
+              {presentation && (
+                <p className="mb-5 max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                  {presentation.notice}
+                </p>
+              )}
 
               <h1 className="max-w-xl text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
                 ดูภาษีของคุณ
@@ -86,8 +118,8 @@ export default function Home() {
                   สำหรับผู้เข้าร่วมสัมมนา
                 </div>
 
-                <div className="mt-2 text-2xl font-semibold text-slate-900">
-                  {EVENT_CONFIG.company}
+                <div className="mt-2 break-words text-xl font-semibold leading-relaxed text-slate-900 sm:text-2xl">
+                  {displayOrganization}
                 </div>
               </div>
 
