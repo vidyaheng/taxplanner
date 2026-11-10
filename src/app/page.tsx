@@ -1,8 +1,16 @@
 import Link from "next/link";
 
 import { EVENT_CONFIG } from "@/config/event";
+import { getPresentationBranding } from "@/config/presentation";
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ presentation?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const presentation = getPresentationBranding(params.presentation);
+  const displayOrganization = presentation?.organization ?? EVENT_CONFIG.company;
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-10">
@@ -29,9 +37,15 @@ export default function Home() {
                 สำหรับผู้เข้าร่วมสัมมนา
               </div>
 
-              <div className="mb-5 text-sm font-medium text-slate-500">
-                {EVENT_CONFIG.company}
+              <div className="mb-5 text-base font-semibold leading-relaxed text-slate-700">
+                {displayOrganization}
               </div>
+
+              {presentation && (
+                <p className="mb-5 max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                  {presentation.notice}
+                </p>
+              )}
 
               <h1 className="max-w-xl text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
                 ดูภาษีของคุณ
@@ -86,8 +100,8 @@ export default function Home() {
                   สำหรับผู้เข้าร่วมสัมมนา
                 </div>
 
-                <div className="mt-2 text-2xl font-semibold text-slate-900">
-                  {EVENT_CONFIG.company}
+                <div className="mt-2 break-words text-xl font-semibold leading-relaxed text-slate-900 sm:text-2xl">
+                  {displayOrganization}
                 </div>
               </div>
 
