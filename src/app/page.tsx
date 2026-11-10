@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import { EVENT_CONFIG } from "@/config/event";
 import { getPresentationBranding } from "@/config/presentation";
@@ -37,9 +38,26 @@ export default async function Home({
                 สำหรับผู้เข้าร่วมสัมมนา
               </div>
 
-              <div className="mb-5 text-base font-semibold leading-relaxed text-slate-700">
-                {displayOrganization}
-              </div>
+              {presentation ? (
+                <div className="mb-5 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+                  <Image
+                    src="https://www.depa.or.th/storage/app/media/LogoDEPA-01.png"
+                    alt="ตราสัญลักษณ์ depa"
+                    width={168}
+                    height={168}
+                    priority
+                    unoptimized
+                    className="h-32 w-32 shrink-0 object-contain sm:h-40 sm:w-40"
+                  />
+                  <div className="min-w-0 text-lg font-semibold leading-relaxed text-slate-800">
+                    {displayOrganization}
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-5 text-base font-semibold leading-relaxed text-slate-700">
+                  {displayOrganization}
+                </div>
+              )}
 
               {presentation && (
                 <p className="mb-5 max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
