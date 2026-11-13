@@ -76,7 +76,7 @@ export default async function Home({
           {EVENT_CONFIG.active ? (
             <Link
               href="/planning/income"
-              className="inline-flex min-h-[56px] items-center justify-center gap-3 rounded-[14px] border border-[#0d8b8f] bg-[#0d8b8f] px-[26px] py-4 text-base font-bold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-[#09777b] hover:shadow-[0_14px_32px_rgba(13,139,143,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0d8b8f] motion-reduce:transition-none"
+              className="inline-flex min-h-[56px] items-center justify-center gap-3 rounded-[14px] border border-[#0d8b8f] bg-[#0d8b8f] px-[26px] py-4 text-base font-bold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-[#09777b] hover:shadow-[0_14px_32px_rgba(13,139,143,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0d8b8f] motion-reduce:transition-none motion-reduce:hover:transform-none"
             >
               เริ่มวางแผน <span aria-hidden="true">→</span>
             </Link>
