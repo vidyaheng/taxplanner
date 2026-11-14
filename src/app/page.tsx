@@ -37,8 +37,8 @@ export default async function Home({
         </Link>
       </header>
 
-      <section className="mx-auto flex min-h-[calc(100svh-164px)] w-full max-w-[1176px] flex-1 items-center px-7 pb-[88px] pt-6 max-sm:min-h-[calc(100svh-146px)] max-sm:px-[19px] max-sm:pb-16 max-sm:pt-2">
-        <div className="max-w-[760px]">
+      <section className="mx-auto grid min-h-[calc(100svh-164px)] w-full max-w-[1176px] flex-1 items-center gap-8 px-7 pb-[88px] pt-6 max-sm:min-h-[calc(100svh-146px)] max-sm:px-[19px] max-sm:pb-16 max-sm:pt-2 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
+        <div className="min-w-0 max-w-[760px]">
           {presentation ? (
             <div className="mb-8 max-w-xl">
               <div className="mb-3 flex flex-wrap items-center gap-4">
@@ -69,9 +69,11 @@ export default async function Home({
             <span className="text-[#0d8b8f]">ง่ายกว่าที่คิด</span>
           </h1>
 
-          <p className="mb-[34px] max-w-[560px] text-[clamp(17px,1.95vw,20px)] leading-[1.8] text-[#667887] max-sm:text-base">
-            คำนวณภาษี เช็กสิทธิ และลองวางแผนก่อนตัดสินใจ
-          </p>
+          <ul className="mb-[34px] flex flex-wrap items-center gap-x-7 gap-y-3 text-[clamp(16px,1.65vw,18px)] font-medium leading-relaxed text-[#536977]" aria-label="สิ่งที่คุณทำได้">
+            <li className="whitespace-nowrap">คำนวณภาษี</li>
+            <li className="whitespace-nowrap">เช็กสิทธิ</li>
+            <li className="whitespace-nowrap">วางแผน</li>
+          </ul>
 
           {EVENT_CONFIG.active ? (
             <Link
@@ -85,6 +87,32 @@ export default async function Home({
               สิทธิ์ทดลองใช้งานสิ้นสุดแล้ว
             </div>
           )}
+        </div>
+
+        {/* Desktop-only visual trial: an abstract checklist, with no financial claims. */}
+        <div className="hidden items-center justify-center lg:flex" aria-hidden="true">
+          <svg
+            viewBox="0 0 300 360"
+            width="300"
+            height="360"
+            fill="none"
+            focusable="false"
+            className="h-auto w-full max-w-[300px]"
+          >
+            <circle cx="158" cy="179" r="139" fill="#EFF9F7" />
+            <circle cx="235" cy="91" r="52" fill="#D9F0ED" opacity="0.72" />
+            <rect x="43" y="52" width="212" height="272" rx="27" fill="white" stroke="#CDE3E0" strokeWidth="2" />
+            <path d="M81 103H171" stroke="#B7D8D4" strokeWidth="9" strokeLinecap="round" />
+            <path d="M81 124H146" stroke="#E0EEEB" strokeWidth="7" strokeLinecap="round" />
+            <path d="M86 174L97 185L118 162" stroke="#158D89" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M139 176H215" stroke="#B7D8D4" strokeWidth="8" strokeLinecap="round" />
+            <path d="M139 193H194" stroke="#E0EEEB" strokeWidth="6" strokeLinecap="round" />
+            <path d="M86 235L97 246L118 223" stroke="#158D89" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M139 237H215" stroke="#B7D8D4" strokeWidth="8" strokeLinecap="round" />
+            <path d="M139 254H181" stroke="#E0EEEB" strokeWidth="6" strokeLinecap="round" />
+            <circle cx="229" cy="292" r="34" fill="#0D8B8F" />
+            <path d="M215 292L225 302L243 283" stroke="white" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
       </section>
 
