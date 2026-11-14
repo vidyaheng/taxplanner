@@ -1,8 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Manrope } from "next/font/google";
 
 import { EVENT_CONFIG } from "@/config/event";
 import { getPresentationBranding } from "@/config/presentation";
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export default async function Home({
   searchParams,
@@ -11,176 +17,108 @@ export default async function Home({
 }) {
   const params = await searchParams;
   const presentation = getPresentationBranding(params.presentation);
-  const displayOrganization = presentation?.organization ?? EVENT_CONFIG.company;
+
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-10">
-        <header className="flex items-center justify-between">
-          <div>
-            <div className="text-xl font-semibold text-slate-900">
-              Tax Planner
-            </div>
+    <main
+      className="relative flex min-h-screen flex-col overflow-hidden bg-white text-[#162b3a]"
+      style={{
+        fontFamily: `${manrope.style.fontFamily}, var(--font-thai), sans-serif`,
+        backgroundImage:
+          "radial-gradient(ellipse 52% 42% at 88% 52%, #ebf8f7 0%, transparent 74%)",
+      }}
+    >
+      <header className="mx-auto flex h-[88px] w-full max-w-[1176px] items-center px-7 max-sm:h-[76px] max-sm:px-[19px]">
+        <Link
+          href="/"
+          aria-label="TaxPlanner หน้าแรก"
+          className="text-[24px] font-extrabold tracking-[-0.9px] text-[#162b3a] focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0d8b8f]"
+        >
+          Tax<span className="text-[#0d8b8f]">Planner</span>
+        </Link>
+      </header>
 
-            <div className="text-sm text-slate-500">
-              Thailand Personal Income Tax
-            </div>
-          </div>
-
-          <div className="rounded-full bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
-            ปีภาษี 2569
-          </div>
-        </header>
-
-        <section className="flex flex-1 items-center py-12">
-          <div className="grid w-full gap-12 lg:grid-cols-2 lg:items-center">
-            <div>
-              <div className="mb-4 inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
-                สำหรับผู้เข้าร่วมสัมมนา
-              </div>
-
-              {presentation ? (
-                <div className="mb-5 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-                  <Image
-                    src="https://www.depa.or.th/storage/app/media/LogoDEPA-01.png"
-                    alt="ตราสัญลักษณ์ depa"
-                    width={168}
-                    height={168}
-                    priority
-                    unoptimized
-                    className="h-32 w-32 shrink-0 object-contain sm:h-40 sm:w-40"
-                  />
-                  <div className="min-w-0 text-lg font-semibold leading-relaxed text-slate-800">
-                    {displayOrganization}
-                  </div>
-                </div>
-              ) : (
-                <div className="mb-5 text-base font-semibold leading-relaxed text-slate-700">
-                  {displayOrganization}
-                </div>
-              )}
-
-              {presentation && (
-                <p className="mb-5 max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                  {presentation.notice}
+      <section className="mx-auto grid min-h-[calc(100svh-164px)] w-full max-w-[1176px] flex-1 items-center gap-8 px-7 pb-[88px] pt-6 max-sm:min-h-[calc(100svh-146px)] max-sm:px-[19px] max-sm:pb-16 max-sm:pt-2 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
+        <div className="min-w-0 max-w-[760px]">
+          {presentation ? (
+            <div className="mb-8 max-w-xl">
+              <div className="mb-3 flex flex-wrap items-center gap-4">
+                <Image
+                  src="https://www.depa.or.th/storage/app/media/LogoDEPA-01.png"
+                  alt="ตราสัญลักษณ์ depa"
+                  width={104}
+                  height={104}
+                  priority
+                  unoptimized
+                  className="h-20 w-20 object-contain"
+                />
+                <p className="max-w-[370px] text-sm font-semibold leading-7 text-[#162b3a]">
+                  {presentation.organization}
                 </p>
-              )}
-
-              <h1 className="max-w-xl text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
-                ดูภาษีของคุณ
-                <br />
-                ก่อนตัดสินใจลดหย่อน
-              </h1>
-
-              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
-                คำนวณภาษี ตรวจสอบสิทธิลดหย่อนที่ยังเหลือ
-                และทดลองแผนประกัน การลงทุน
-                และการออมเพื่อเกษียณ ก่อนตัดสินใจจริง
-              </p>
-
-              <div className="mt-8">
-                {EVENT_CONFIG.active ? (
-                  <Link
-                    href="/planning/income"
-                    className="inline-flex min-h-14 items-center justify-center rounded-xl bg-blue-600 px-8 text-base font-semibold text-white transition hover:bg-blue-700"
-                  >
-                    เริ่มวางแผนภาษี
-                  </Link>
-                ) : (
-                  <div className="inline-flex min-h-14 items-center justify-center rounded-xl bg-slate-200 px-8 text-base font-semibold text-slate-500">
-                    สิทธิ์ทดลองใช้งานสิ้นสุดแล้ว
-                  </div>
-                )}
               </div>
-
-              <div className="mt-3">
-                <Link
-                  href="/team"
-                  className="text-sm font-medium text-slate-500 transition hover:text-blue-700"
-                >
-                  สำหรับทีมงาน →
-                </Link>
-              </div>
-
-              <p className="mt-4 text-sm text-slate-400">
-                {EVENT_CONFIG.active
-                  ? `เปิดให้ทดลองใช้งานถึงวันที่ ${EVENT_CONFIG.expires}`
-                  : "ขอบคุณที่เข้าร่วมกิจกรรม"}
-              </p>
+              <p className="text-sm leading-6 text-[#667887]">{presentation.notice}</p>
             </div>
+          ) : null}
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
-              <div className="text-sm font-medium text-slate-500">
-                Tax Planning
-              </div>
+          <p className="mb-[18px] text-xs font-bold uppercase tracking-[1.3px] text-[#0d8b8f]">
+            Personal Tax Planning
+          </p>
 
-              <div className="mt-5 rounded-2xl bg-slate-50 p-5">
-                <div className="text-sm text-slate-500">
-                  สำหรับผู้เข้าร่วมสัมมนา
-                </div>
+          <h1 className="mb-[22px] text-[clamp(52px,7.4vw,92px)] font-extrabold leading-[1.12] tracking-[-2.5px] max-sm:text-[clamp(48px,12vw,64px)]">
+            ลดภาษี
+            <br />
+            <span className="text-[#0d8b8f]">ง่ายกว่าที่คิด</span>
+          </h1>
 
-                <div className="mt-2 break-words text-xl font-semibold leading-relaxed text-slate-900 sm:text-2xl">
-                  {displayOrganization}
-                </div>
-              </div>
+          <ul className="mb-[34px] flex flex-wrap items-center gap-x-7 gap-y-3 text-[clamp(16px,1.65vw,18px)] font-medium leading-relaxed text-[#536977]" aria-label="สิ่งที่คุณทำได้">
+            <li className="whitespace-nowrap">คำนวณภาษี</li>
+            <li className="whitespace-nowrap">เช็กสิทธิ</li>
+            <li className="whitespace-nowrap">วางแผน</li>
+          </ul>
 
-              <div className="mt-6 space-y-5">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">
-                    1
-                  </div>
-
-                  <div>
-                    <div className="font-medium text-slate-800">
-                      กรอกข้อมูลของคุณ
-                    </div>
-
-                    <div className="mt-1 text-sm leading-6 text-slate-500">
-                      รายได้ ครอบครัว และสิทธิลดหย่อนที่มีอยู่
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">
-                    2
-                  </div>
-
-                  <div>
-                    <div className="font-medium text-slate-800">
-                      ทดลองวางแผน
-                    </div>
-
-                    <div className="mt-1 text-sm leading-6 text-slate-500">
-                      เปรียบเทียบทางเลือกในการใช้สิทธิลดหย่อนเพิ่มเติม
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">
-                    3
-                  </div>
-
-                  <div>
-                    <div className="font-medium text-slate-800">
-                      ดูผลก่อนและหลังวางแผน
-                    </div>
-
-                    <div className="mt-1 text-sm leading-6 text-slate-500">
-                      ดูผลกระทบต่อเงินได้สุทธิและภาษีโดยประมาณ
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-7 border-t border-slate-100 pt-5 text-xs leading-5 text-slate-400">
-                เครื่องมือนี้จัดทำเพื่อช่วยประมาณการและวางแผนภาษี
-                ผลลัพธ์ไม่ใช่การยื่นแบบภาษีหรือคำวินิจฉัยทางภาษี
-              </div>
+          {EVENT_CONFIG.active ? (
+            <Link
+              href="/planning/income"
+              className="inline-flex min-h-[56px] items-center justify-center gap-3 rounded-[14px] border border-[#0d8b8f] bg-[#0d8b8f] px-[26px] py-4 text-base font-bold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-[#09777b] hover:shadow-[0_14px_32px_rgba(13,139,143,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0d8b8f] motion-reduce:transition-none motion-reduce:hover:transform-none"
+            >
+              เริ่มวางแผน <span aria-hidden="true">→</span>
+            </Link>
+          ) : (
+            <div className="inline-flex min-h-[56px] items-center rounded-[14px] bg-slate-100 px-[26px] py-4 text-base font-semibold text-slate-500">
+              สิทธิ์ทดลองใช้งานสิ้นสุดแล้ว
             </div>
-          </div>
-        </section>
-      </div>
+          )}
+        </div>
+
+        {/* Desktop-only visual trial: an abstract checklist, with no financial claims. */}
+        <div className="hidden items-center justify-center lg:flex" aria-hidden="true">
+          <svg
+            viewBox="0 0 300 360"
+            width="300"
+            height="360"
+            fill="none"
+            focusable="false"
+            className="h-auto w-full max-w-[300px]"
+          >
+            <circle cx="158" cy="179" r="139" fill="#EFF9F7" />
+            <circle cx="235" cy="91" r="52" fill="#D9F0ED" opacity="0.72" />
+            <rect x="43" y="52" width="212" height="272" rx="27" fill="white" stroke="#CDE3E0" strokeWidth="2" />
+            <path d="M81 103H171" stroke="#B7D8D4" strokeWidth="9" strokeLinecap="round" />
+            <path d="M81 124H146" stroke="#E0EEEB" strokeWidth="7" strokeLinecap="round" />
+            <path d="M86 174L97 185L118 162" stroke="#158D89" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M139 176H215" stroke="#B7D8D4" strokeWidth="8" strokeLinecap="round" />
+            <path d="M139 193H194" stroke="#E0EEEB" strokeWidth="6" strokeLinecap="round" />
+            <path d="M86 235L97 246L118 223" stroke="#158D89" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M139 237H215" stroke="#B7D8D4" strokeWidth="8" strokeLinecap="round" />
+            <path d="M139 254H181" stroke="#E0EEEB" strokeWidth="6" strokeLinecap="round" />
+            <circle cx="229" cy="292" r="34" fill="#0D8B8F" />
+            <path d="M215 292L225 302L243 283" stroke="white" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </section>
+
+      <footer className="mx-auto w-full max-w-[1176px] border-t border-[#e7edef] px-7 py-[22px] text-xs text-[#8a98a3] max-sm:px-[19px]">
+        ผลคำนวณเป็นการประมาณการเพื่อการวางแผน
+      </footer>
     </main>
   );
 }
