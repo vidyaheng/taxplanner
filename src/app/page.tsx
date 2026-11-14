@@ -24,10 +24,39 @@ export default async function Home({
       style={{
         fontFamily: `${manrope.style.fontFamily}, var(--font-thai), sans-serif`,
         backgroundImage:
-          "radial-gradient(ellipse 52% 42% at 88% 52%, #ebf8f7 0%, transparent 74%)",
+          "radial-gradient(ellipse 65% 55% at 102% 44%, rgba(214,244,243,0.38) 0%, rgba(238,250,250,0.17) 51%, transparent 83%)",
       }}
     >
-      <header className="mx-auto flex h-[88px] w-full max-w-[1176px] items-center px-7 max-sm:h-[76px] max-sm:px-[19px]">
+
+      {/* A2: widely spaced geometric rhythm, not a spreadsheet or blueprint. */}
+      <svg
+        className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[64%] lg:block"
+        viewBox="0 0 940 780"
+        preserveAspectRatio="xMidYMid slice"
+        fill="none"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <defs>
+          <linearGradient id="a2-grid-fade" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#A9D6D4" stopOpacity="0" />
+            <stop offset="52%" stopColor="#A9D6D4" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#A6D6D3" stopOpacity="0.4" />
+          </linearGradient>
+        </defs>
+        <g stroke="url(#a2-grid-fade)" strokeWidth="1">
+          <path d="M160 260L930 260M160 390L930 390M160 520L930 520" />
+          <path d="M360 90L360 710M510 90L510 710M660 90L660 710M810 90L810 710" />
+          <path d="M330 560L730 160M430 680L920 190" opacity="0.45" />
+        </g>
+        <g fill="#B0DBD7" opacity="0.42">
+          <circle cx="660" cy="390" r="2.5" />
+          <circle cx="810" cy="260" r="2.5" />
+          <circle cx="510" cy="520" r="2.5" />
+        </g>
+      </svg>
+
+      <header className="relative z-10 mx-auto flex h-[88px] w-full max-w-[1176px] items-center px-7 max-sm:h-[76px] max-sm:px-[19px]">
         <Link
           href="/"
           aria-label="TaxPlanner หน้าแรก"
@@ -37,7 +66,7 @@ export default async function Home({
         </Link>
       </header>
 
-      <section className="mx-auto grid min-h-[calc(100svh-164px)] w-full max-w-[1176px] flex-1 items-center gap-8 px-7 pb-[88px] pt-6 max-sm:min-h-[calc(100svh-146px)] max-sm:px-[19px] max-sm:pb-16 max-sm:pt-2 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
+      <section className="relative z-10 mx-auto flex min-h-[calc(100svh-164px)] w-full max-w-[1176px] flex-1 items-center px-7 pb-[88px] pt-6 max-sm:min-h-[calc(100svh-146px)] max-sm:px-[19px] max-sm:pb-16 max-sm:pt-2">
         <div className="min-w-0 max-w-[760px]">
           {presentation ? (
             <div className="mb-8 max-w-xl">
@@ -89,34 +118,9 @@ export default async function Home({
           )}
         </div>
 
-        {/* Desktop-only visual trial: an abstract checklist, with no financial claims. */}
-        <div className="hidden items-center justify-center lg:flex" aria-hidden="true">
-          <svg
-            viewBox="0 0 300 360"
-            width="300"
-            height="360"
-            fill="none"
-            focusable="false"
-            className="h-auto w-full max-w-[300px]"
-          >
-            <circle cx="158" cy="179" r="139" fill="#EFF9F7" />
-            <circle cx="235" cy="91" r="52" fill="#D9F0ED" opacity="0.72" />
-            <rect x="43" y="52" width="212" height="272" rx="27" fill="white" stroke="#CDE3E0" strokeWidth="2" />
-            <path d="M81 103H171" stroke="#B7D8D4" strokeWidth="9" strokeLinecap="round" />
-            <path d="M81 124H146" stroke="#E0EEEB" strokeWidth="7" strokeLinecap="round" />
-            <path d="M86 174L97 185L118 162" stroke="#158D89" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M139 176H215" stroke="#B7D8D4" strokeWidth="8" strokeLinecap="round" />
-            <path d="M139 193H194" stroke="#E0EEEB" strokeWidth="6" strokeLinecap="round" />
-            <path d="M86 235L97 246L118 223" stroke="#158D89" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M139 237H215" stroke="#B7D8D4" strokeWidth="8" strokeLinecap="round" />
-            <path d="M139 254H181" stroke="#E0EEEB" strokeWidth="6" strokeLinecap="round" />
-            <circle cx="229" cy="292" r="34" fill="#0D8B8F" />
-            <path d="M215 292L225 302L243 283" stroke="white" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
       </section>
 
-      <footer className="mx-auto w-full max-w-[1176px] border-t border-[#e7edef] px-7 py-[22px] text-xs text-[#8a98a3] max-sm:px-[19px]">
+      <footer className="relative z-10 mx-auto w-full max-w-[1176px] border-t border-[#e7edef] px-7 py-[22px] text-xs text-[#8a98a3] max-sm:px-[19px]">
         ผลคำนวณเป็นการประมาณการเพื่อการวางแผน
       </footer>
     </main>
