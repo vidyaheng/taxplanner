@@ -236,6 +236,7 @@
   .tp-v84__eyebrow { font-size: 12px; letter-spacing: .12em; margin-bottom: 18px; gap: 10px; }
   .tp-v84__eyebrow::before { height: 22px; width: 4px; }
   .tp-v84__headline { font-size: clamp(43px, 11.5vw, 54px); line-height: 1.2; margin-bottom: 12px; }
+  .tp-v84__headline span { white-space: normal; overflow-wrap: anywhere; }
   .tp-v84__subtitle { font-size: clamp(14px, 3.85vw, 17px); white-space: normal; margin-bottom: 22px; }
   .tp-v84__cta, .tp-v84__cta-disabled { width: 100%; min-width: 0; font-size: 20px; min-height: 54px; padding: 12px 20px; gap: 25px; }
   .tp-v84__desktop-art { display: none; }
@@ -251,7 +252,7 @@
 }
 @media (max-width: 360px) {
   .tp-v84__hero-inner { padding: 27px 20px 23px; }
-  .tp-v84__headline { font-size: 43px; }
+  .tp-v84__headline { font-size: 40px; letter-spacing: -.055em; }
   .tp-v84__subtitle { font-size: 13px; }
   .tp-v84__mobile-visual { padding-top: 94px; }
   .tp-v84__mobile-character { width: 144px; left: -10px; top: 0; }
