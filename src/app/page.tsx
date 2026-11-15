@@ -1,186 +1,144 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 
 import { EVENT_CONFIG } from "@/config/event";
-import { getPresentationBranding } from "@/config/presentation";
+import "./landing-v84.css";
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ presentation?: string | string[] }>;
-}) {
-  const params = await searchParams;
-  const presentation = getPresentationBranding(params.presentation);
-  const displayOrganization = presentation?.organization ?? EVENT_CONFIG.company;
+type SymbolKind = "income" | "deductions" | "overview" | "calculator" | "rights" | "plan";
+
+function SymbolIcon({ kind }: { kind: SymbolKind }) {
+  const shared = {
+    viewBox: "0 0 24 24",
+    "aria-hidden": true as const,
+    focusable: false as const,
+  };
+  if (kind === "income") {
+    return <svg {...shared}><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M3 10V6a2 2 0 0 1 2-2h13M15 14h6" /></svg>;
+  }
+  if (kind === "deductions") {
+    return <svg {...shared}><path d="M7 2h8l4 4v16H7zM15 2v5h4M10 12h6M10 16h6" /></svg>;
+  }
+  if (kind === "overview") {
+    return <svg {...shared}><path d="M3 21v-5h4v5M10 21V10h4v11M17 21V4h4v17" /></svg>;
+  }
+  if (kind === "calculator") {
+    return <svg {...shared}><rect x="5" y="2" width="14" height="20" rx="2" /><path d="M8 6h8M8 10h2M14 10h2M8 14h2M14 14h2M8 18h2M14 18h2" /></svg>;
+  }
+  if (kind === "rights") {
+    return <svg {...shared}><path d="M12 2 4 6v6c0 5 3 8 8 10 5-2 8-5 8-10V6zM8 12l3 3 5-6" /></svg>;
+  }
+  return <svg {...shared}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><path d="M12 12 21 3" /></svg>;
+}
+
+const journey = [
+  { label: "รายได้", icon: "income" },
+  { label: "ค่าลดหย่อน", icon: "deductions" },
+  { label: "ภาพรวมภาษี", icon: "overview" },
+] as const;
+
+const features = [
+  { label: "คำนวณภาษี", description: "ประมาณการภาษีจากข้อมูลของคุณ", icon: "calculator" },
+  { label: "ตรวจสอบสิทธิ", description: "สำรวจรายการลดหย่อนที่เกี่ยวข้อง", icon: "rights" },
+  { label: "วางแผนภาษี", description: "ทดลองทางเลือกและเปรียบเทียบผล", icon: "plan" },
+] as const;
+
+/**
+ * Public generic V8.4 landing. Presentation/company query parameters are
+ * intentionally ignored here: no modification to team access or event gating.
+ */
+export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-10">
-        <header className="flex items-center justify-between">
-          <div>
-            <div className="text-xl font-semibold text-slate-900">
-              Tax Planner
-            </div>
+    <main className="tp-v84" id="top">
+      <header className="tp-v84__header">
+        <Link href="/" className="tp-v84__brand" aria-label="TaxPlanner หน้าแรก">
+          <span className="tp-v84__mark" aria-hidden="true" />
+          <span>TaxPlanner</span>
+        </Link>
+        <a href="#features" className="tp-v84__nav">เกี่ยวกับเครื่องมือ</a>
+      </header>
 
-            <div className="text-sm text-slate-500">
-              Thailand Personal Income Tax
-            </div>
-          </div>
-
-          <div className="rounded-full bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
-            ปีภาษี 2569
-          </div>
-        </header>
-
-        <section className="flex flex-1 items-center py-12">
-          <div className="grid w-full gap-12 lg:grid-cols-2 lg:items-center">
-            <div>
-              <div className="mb-4 inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
-                สำหรับผู้เข้าร่วมสัมมนา
+      <section className="tp-v84__hero" aria-labelledby="tp-v84-heading">
+        <div className="tp-v84__hero-inner">
+          <div className="tp-v84__copy">
+            <p className="tp-v84__eyebrow">PERSONAL TAX PLANNING</p>
+            <h1 className="tp-v84__headline" id="tp-v84-heading">
+              ลดภาษี<span>ง่ายกว่าที่คิด</span>
+            </h1>
+            <p className="tp-v84__subtitle">คำนวณภาษี · เช็กสิทธิ · วางแผน</p>
+            {EVENT_CONFIG.active ? (
+              <Link href="/planning/income" className="tp-v84__cta">
+                เริ่มวางแผน <span aria-hidden="true">→</span>
+              </Link>
+            ) : (
+              <div className="tp-v84__cta-disabled" role="status">
+                สิทธิ์ทดลองใช้งานสิ้นสุดแล้ว
               </div>
+            )}
 
-              {presentation ? (
-                <div className="mb-5 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-                  <Image
-                    src="https://www.depa.or.th/storage/app/media/LogoDEPA-01.png"
-                    alt="ตราสัญลักษณ์ depa"
-                    width={168}
-                    height={168}
-                    priority
-                    unoptimized
-                    className="h-32 w-32 shrink-0 object-contain sm:h-40 sm:w-40"
-                  />
-                  <div className="min-w-0 text-lg font-semibold leading-relaxed text-slate-800">
-                    {displayOrganization}
+            <div className="tp-v84__mobile-visual" aria-label="ขั้นตอนการวางแผนภาษี">
+              <Image
+                className="tp-v84__mobile-character"
+                src="/taxplanner/v84-friendly-character.png"
+                alt=""
+                width={760}
+                height={570}
+                quality={75}
+                sizes="(max-width: 360px) 144px, 168px"
+              />
+              <div className="tp-v84__journey">
+                {journey.map((step) => (
+                  <div className="tp-v84__journey-item" key={step.label}>
+                    <span className="tp-v84__journey-icon"><SymbolIcon kind={step.icon} /></span>
+                    <span>{step.label}</span>
                   </div>
-                </div>
-              ) : (
-                <div className="mb-5 text-base font-semibold leading-relaxed text-slate-700">
-                  {displayOrganization}
-                </div>
-              )}
-
-              {presentation && (
-                <p className="mb-5 max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                  {presentation.notice}
-                </p>
-              )}
-
-              <h1 className="max-w-xl text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
-                ดูภาษีของคุณ
-                <br />
-                ก่อนตัดสินใจลดหย่อน
-              </h1>
-
-              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
-                คำนวณภาษี ตรวจสอบสิทธิลดหย่อนที่ยังเหลือ
-                และทดลองแผนประกัน การลงทุน
-                และการออมเพื่อเกษียณ ก่อนตัดสินใจจริง
-              </p>
-
-              <div className="mt-8">
-                {EVENT_CONFIG.active ? (
-                  <Link
-                    href="/planning/income"
-                    className="inline-flex min-h-14 items-center justify-center rounded-xl bg-blue-600 px-8 text-base font-semibold text-white transition hover:bg-blue-700"
-                  >
-                    เริ่มวางแผนภาษี
-                  </Link>
-                ) : (
-                  <div className="inline-flex min-h-14 items-center justify-center rounded-xl bg-slate-200 px-8 text-base font-semibold text-slate-500">
-                    สิทธิ์ทดลองใช้งานสิ้นสุดแล้ว
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3">
-                <Link
-                  href="/team"
-                  className="text-sm font-medium text-slate-500 transition hover:text-blue-700"
-                >
-                  สำหรับทีมงาน →
-                </Link>
-              </div>
-
-              <p className="mt-4 text-sm text-slate-400">
-                {EVENT_CONFIG.active
-                  ? `เปิดให้ทดลองใช้งานถึงวันที่ ${EVENT_CONFIG.expires}`
-                  : "ขอบคุณที่เข้าร่วมกิจกรรม"}
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
-              <div className="text-sm font-medium text-slate-500">
-                Tax Planning
-              </div>
-
-              <div className="mt-5 rounded-2xl bg-slate-50 p-5">
-                <div className="text-sm text-slate-500">
-                  สำหรับผู้เข้าร่วมสัมมนา
-                </div>
-
-                <div className="mt-2 break-words text-xl font-semibold leading-relaxed text-slate-900 sm:text-2xl">
-                  {displayOrganization}
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-5">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">
-                    1
-                  </div>
-
-                  <div>
-                    <div className="font-medium text-slate-800">
-                      กรอกข้อมูลของคุณ
-                    </div>
-
-                    <div className="mt-1 text-sm leading-6 text-slate-500">
-                      รายได้ ครอบครัว และสิทธิลดหย่อนที่มีอยู่
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">
-                    2
-                  </div>
-
-                  <div>
-                    <div className="font-medium text-slate-800">
-                      ทดลองวางแผน
-                    </div>
-
-                    <div className="mt-1 text-sm leading-6 text-slate-500">
-                      เปรียบเทียบทางเลือกในการใช้สิทธิลดหย่อนเพิ่มเติม
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">
-                    3
-                  </div>
-
-                  <div>
-                    <div className="font-medium text-slate-800">
-                      ดูผลก่อนและหลังวางแผน
-                    </div>
-
-                    <div className="mt-1 text-sm leading-6 text-slate-500">
-                      ดูผลกระทบต่อเงินได้สุทธิและภาษีโดยประมาณ
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-7 border-t border-slate-100 pt-5 text-xs leading-5 text-slate-400">
-                เครื่องมือนี้จัดทำเพื่อช่วยประมาณการและวางแผนภาษี
-                ผลลัพธ์ไม่ใช่การยื่นแบบภาษีหรือคำวินิจฉัยทางภาษี
+                ))}
               </div>
             </div>
           </div>
-        </section>
-      </div>
+
+          <div className="tp-v84__desktop-art" aria-hidden="true">
+            <div className="tp-v84__board">
+              <h2>แผนภาษีของคุณ</h2>
+              {journey.map((step) => (
+                <div className="tp-v84__board-row" key={step.label}>
+                  <span className="tp-v84__empty-check" />
+                  <SymbolIcon kind={step.icon} />
+                  <span>{step.label}</span>
+                </div>
+              ))}
+            </div>
+            <Image
+              className="tp-v84__desktop-character"
+              src="/taxplanner/v84-friendly-character.png"
+              alt=""
+              width={760}
+              height={570}
+              quality={75}
+              sizes="(min-width: 1101px) 32vw, 37vw"
+              priority
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="tp-v84__features" id="features" aria-labelledby="tp-v84-features-title">
+        <h2 id="tp-v84-features-title">สิ่งที่ TaxPlanner ช่วยคุณได้</h2>
+        <div className="tp-v84__feature-grid">
+          {features.map((feature) => (
+            <div className="tp-v84__feature" key={feature.label}>
+              <span className="tp-v84__feature-symbol"><SymbolIcon kind={feature.icon} /></span>
+              <div>
+                <h3>{feature.label}</h3>
+                <p>{feature.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <footer className="tp-v84__footer">
+        ผลคำนวณเป็นการประมาณการเพื่อการวางแผน
+      </footer>
     </main>
   );
 }
